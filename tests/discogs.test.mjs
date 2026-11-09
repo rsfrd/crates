@@ -253,11 +253,57 @@ test("the Borodin Quartet release, as Discogs lists it", () => {
       piece("Quartet No. 4 In D, Op. 83", "24:55", [["E1", "I. Allegretto"], ["E2", "II. Andantino"]]),
     ] };
   const n = normalizeRelease(release, "Shostakovich");
-  assert.equal(n.parser, 2);
+  assert.equal(n.parser, 4);
   assert.equal(n.discogs_artist, "Shostakovich, The Borodin Quartet");
   assert.equal(n.tracks.length, 14);
   assert.deepEqual([...new Set(n.tracks.map((t) => t.work))], ["Quartet No. 1 In C, Op. 49", "Quartet No. 2 In A, Op. 68", "Quartet No. 3 In F, Op. 73", "Quartet No. 4 In D, Op. 83"]);
   assert.equal(n.tracks[0].wdur, "13:50");
   assert.equal(n.tracks[1].wdur, undefined);
-  assert.deepEqual(n.tracks[4], { pos: "A5", title: "I. Overture: Moderato Con Moto", dur: "8:05", work: "Quartet No. 2 In A, Op. 68" });
+  assert.deepEqual(n.tracks[4], { pos: "A5", title: "I. Overture: Moderato Con Moto", dur: "8:05", work: "Quartet No. 2 In A, Op. 68", wi: 2 });
+});
+
+test("two pieces with the same title stay separate, each with its composer", () => {
+  // Shaped after the MHS 3521 Bax/Bliss release: same piece title, different composers.
+  const piece = (by, dur, subs) => ({ type_: "index", position: "", title: "Quintet For Oboe And String Quartet", duration: dur,
+    artists: [{ id: by[0], name: by[1], anv: "Sir " + by[1] }],
+    extraartists: [{ id: by[0], name: by[1], role: "Composed By" }],
+    sub_tracks: subs.map(([position, title, duration]) => ({ type_: "track", position, title, duration })) });
+  const release = { id: 1, title: "Two English Oboe Quintets",
+    artists: [{ id: 10, name: "Arnold Bax", join: "/" }, { id: 11, name: "Arthur Bliss", join: "-" }, { id: 12, name: "Bert Lucarelli", join: "," }, { id: 13, name: "The Manhattan String Quartet" }],
+    tracklist: [
+      piece([10, "Arnold Bax"], "17:11", [["A1", "1. Tempo Molto Moderato - Allegro Moderato", "6:11"], ["A2", "2. Lento Expressivo", "6:10"], ["A3", "3. Allegro Giocoso", "4:42"]]),
+      piece([11, "Arthur Bliss"], "21:29", [["B1", "1. Assai Sostenuto", "7:56"], ["B2", "2. Andante Con Moto", "7:30"], ["B3", "3. Vivace", "5:35"]]),
+    ] };
+  const n = normalizeRelease(release, "Arnold Bax / Arthur Bliss");
+  assert.deepEqual(n.tracks.map((t) => t.wi), [1, 1, 1, 2, 2, 2]);
+  assert.equal(n.tracks[0].wby, "Arnold Bax");
+  assert.equal(n.tracks[3].wby, "Arthur Bliss");
+  assert.equal(n.tracks[3].wdur, "21:29");
+  const bax = n.credits.find((c) => c.name === "Arnold Bax");
+  assert.ok(bax.leader && bax.roles.includes("Composed By"));
+});
+
+test("single-track pieces keep their composer and notes (The Virtuoso Oboe)", () => {
+  // Shaped after Vanguard HM 40 SD: each piece is one track, credited on the track itself.
+  const tr = (position, title, composer, more = []) => ({ type_: "track", position, title, duration: "",
+    extraartists: [...more, { id: composer[0], name: composer[1], anv: composer[1], role: "Composed By" }] });
+  const release = { id: 2, title: "The Virtuoso Oboe",
+    artists: [{ id: 1, name: "André Lardrot", join: "," }, { id: 2, name: "Felix Prohaska", join: "," }, { id: 3, name: "Chamber Orchestra Of The Vienna State Opera" }],
+    tracklist: [
+      tr("A1", "Concerto For Oboe And Orchestra In C, K. 314", [95, "Wolfgang Amadeus Mozart"], [{ id: 7, name: "Raymond Meylan", role: "Cadenza" }]),
+      tr("A2", "Oboe Concerto No. 8 In B Flat", [96, "Georg Friedrich Händel"]),
+      tr("B1", "Quartet For Oboe And Strings In F, K. 370", [95, "Wolfgang Amadeus Mozart"]),
+      tr("B2", "Oboe Concerto In D, Op. 7 No. 6", [97, "Tomaso Albinoni"]),
+    ] };
+  const n = normalizeRelease(release, "André Lardrot, Felix Prohaska, Chamber Orchestra Of The Vienna State Opera");
+  assert.deepEqual(n.tracks[0], { pos: "A1", title: "Concerto For Oboe And Orchestra In C, K. 314", dur: "", by: "Wolfgang Amadeus Mozart", note: "Cadenza: Raymond Meylan" });
+  assert.deepEqual(n.tracks.map((t) => t.by), ["Wolfgang Amadeus Mozart", "Georg Friedrich Händel", "Wolfgang Amadeus Mozart", "Tomaso Albinoni"]);
+  assert.ok(n.tracks.every((t) => !t.work), "no pieces invented");
+  const mozart = n.credits.find((c) => c.name === "Wolfgang Amadeus Mozart");
+  assert.deepEqual(mozart.tracks, ["A1", "B1"]);
+});
+
+test("jazz: track-level performers are not shown as composers", () => {
+  const n = normalizeRelease({ id: 3, tracklist: [{ type_: "track", position: "A1", title: "Blue", extraartists: [{ id: 1, name: "Ron Carter", role: "Bass" }, { id: 2, name: "Wayne Shorter", role: "Written-By" }] }] }, "x");
+  assert.deepEqual(n.tracks[0], { pos: "A1", title: "Blue", dur: undefined, by: "Wayne Shorter" });
 });

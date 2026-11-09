@@ -1,5 +1,5 @@
 import { createStore, cache, outbox } from "./store.js";
-import { buildIndex, search, personKey, roleLabel, creditsFor, fold } from "./search.js";
+import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold } from "./search.js";
 
 // ---------- helpers ----------
 const $ = (s, el = document) => el.querySelector(s);
@@ -212,9 +212,7 @@ function renderResults() {
   if (res.people.length) {
     html += `<section><h2>People <span>${res.people.length}</span></h2><div class="rows">` +
       res.people.map((p) => {
-        const lead = p.items.filter((i) => i.leader).length;
-        const plays = p.items.length - lead;
-        const bits = [lead && `leader on ${lead}`, plays && `plays on ${plays}`].filter(Boolean).join(", ");
+        const bits = personSummary(p.items).toLowerCase();
         return `<a class="row person-row" href="#/person/${encodeURIComponent(p.key)}">
           <span class="stack">${p.items.slice(0, 3).map((i) => thumb(i.album, "mini")).join("")}</span>
           <span class="row-text"><span class="row-title">${esc(p.name)}</span>
@@ -226,7 +224,7 @@ function renderResults() {
   if (res.songs.length) {
     html += `<section><h2>Songs <span>${res.songs.length}</span></h2><div class="rows">` +
       res.songs.map((s) => row(s.album, s.tracks.slice(0, 3).map((t) =>
-        `<span class="pos">${esc(t.pos)}</span> ${esc(t.title)}${t.work && !t.isWork ? ` <span class="on">in ${esc(t.work)}</span>` : ""}`).join("<br>"))).join("") +
+        `<span class="pos">${esc(t.pos)}</span> ${esc(t.title)}${t.isWork && t.wby ? ` <span class="on">by ${esc(t.wby)}</span>` : ""}${t.work && !t.isWork ? ` <span class="on">in ${esc(t.work)}</span>` : ""}`).join("<br>"))).join("") +
       `</div></section>`;
   }
   if (!html) {
@@ -316,15 +314,18 @@ function trackList(tracks) {
   const groups = [];
   for (const t of tracks) {
     const last = groups[groups.length - 1];
-    if (t.work && last && last.work === t.work) last.items.push(t);
-    else groups.push({ work: t.work || null, items: [t] });
+    // Group by the piece itself (wi), so two pieces with the same title stay separate.
+    const key = t.work ? (t.wi ?? t.work) : null;
+    if (key != null && last && last.key === key) last.items.push(t);
+    else groups.push({ key, work: t.work || null, by: t.wby || "", items: [t] });
   }
-  const li = (t, cls = "") => `<li${cls ? ` class="${cls}"` : ""}><span class="pos">${esc(t.pos)}</span><span class="tt">${esc(t.title)}</span><span class="dur">${esc(t.dur || "")}</span></li>`;
+  const sub = (t) => [t.by, t.note].filter(Boolean).map((x) => `<span class="by">${esc(x)}</span>`).join("");
+  const li = (t, cls = "") => `<li${cls ? ` class="${cls}"` : ""}><span class="pos">${esc(t.pos)}</span><span class="tt">${esc(t.title)}${sub(t)}</span><span class="dur">${esc(t.dur || "")}</span></li>`;
   return `<ol class="tracks">${groups.map((g) => {
     if (!g.work) return g.items.map((t) => li(t)).join("");
     const secs = g.items.map((t) => seconds(t.dur));
     const total = g.items[0].wdur || (secs.every((x) => x != null) ? clock(secs.reduce((a, b) => a + b, 0)) : "");
-    return `<li class="work"><span class="tt">${esc(g.work)}</span><span class="dur">${total}</span></li>${g.items.map((t) => li(t, "mvt")).join("")}`;
+    return `<li class="work"><span class="tt">${esc(g.work)}${g.by ? `<span class="by">${esc(g.by)}</span>` : ""}</span><span class="dur">${total}</span></li>${g.items.map((t) => li(t, "mvt")).join("")}`;
   }).join("")}</ol>`;
 }
 
@@ -343,8 +344,9 @@ function renderAlbum(id) {
   const a = byId(id);
   if (!a) return hideOverlay();
   const credits = creditsFor(a);
-  const players = credits.filter((c) => c.kind === "musician" || c.leader);
-  const others = credits.filter((c) => !(c.kind === "musician" || c.leader));
+  const order = { leader: 0, player: 1, composer: 2 };
+  const players = credits.filter((c) => creditKind(c) in order).sort((x, y) => order[creditKind(x)] - order[creditKind(y)]);
+  const others = credits.filter((c) => !(creditKind(c) in order));
   const allPos = new Set((a.tracks || []).map((t) => t.pos));
   const trackNote = (c) => c.tracks && c.tracks.length && c.tracks.length < allPos.size ? `<span class="on">on ${c.tracks.map(esc).join(", ")}</span>` : "";
   const credit = (c) => `<li><a href="#/person/${encodeURIComponent(personKey(c.name))}">
@@ -419,8 +421,8 @@ function renderAlbum(id) {
       ${fix}
 
       <div class="footer-actions">
-        ${a.discogs_url ? `<a class="btn" href="${esc(a.discogs_url)}" target="_blank" rel="noopener">View on Discogs</a>` : ""}
-        ${canEnrich ? `<button class="btn" id="fix-open">${a.discogs_id ? "Wrong album? Fix match" : "Find on Discogs"}</button>` : ""}
+        ${a.discogs_url ? `<a class="btn" href="${esc(a.discogs_url)}" target="_blank" rel="noopener">${a.discogs_id ? "View on Discogs" : "View on Bandcamp"}</a>` : ""}
+        ${canEnrich ? `<button class="btn" id="fix-open">${a.discogs_url ? "Wrong album? Fix match" : "Find on Discogs or Bandcamp"}</button>` : ""}
         ${canEnrich && a.discogs_id ? `<button class="btn" id="refresh">Refresh details</button>` : ""}
         ${!state.editing ? `<button class="btn" id="edit-open">Edit details</button>` : ""}
         <button class="btn danger" id="delete">${a.status === "want" ? "Remove from want list" : "Delete record"}</button>
@@ -497,9 +499,9 @@ function renderFix(a) {
       : `<p class="note">No results. Try different words, or paste a link to the album's Discogs page.</p>`
     : "";
   return `<section class="block fix" id="fix">
-    <h3>Fix the Discogs match</h3>
+    <h3>Fix the match</h3>
     <form id="fix-form" class="fix-form">
-      <input id="fix-q" placeholder="Search Discogs, or paste a Discogs link" value="${esc(f.lastQuery || `${a.artist} ${a.title}`)}">
+      <input id="fix-q" placeholder="Search Discogs, or paste a Discogs or Bandcamp link" value="${esc(f.lastQuery || `${a.artist} ${a.title}`)}">
       <button class="btn primary" ${f.busy ? "disabled" : ""}>${f.busy ? "Searching…" : "Search"}</button>
     </form>
     ${f.error ? `<p class="note warn">${esc(f.error)}</p>` : ""}
@@ -512,6 +514,7 @@ function wireFix(panel, a) {
     e.preventDefault();
     const v = $("#fix-q").value.trim();
     if (/discogs\.com\/.*(release|master)\/\d+/i.test(v) || /^\[?[rm]?\d+\]?$/i.test(v)) return applyRef(a, v);
+    if (/^https?:\/\//i.test(v)) return applyBandcamp(a, v);   // any other link: Bandcamp (artists can use their own domains)
     runFixSearch(a, v);
   });
   panel.querySelectorAll("[data-ref]").forEach((b) => b.addEventListener("click", () => applyRef(a, b.dataset.ref)));
@@ -527,6 +530,30 @@ async function runFixSearch(a, q) {
     state.fix = { ...state.fix, busy: false, error: e.message };
   }
   renderOverlay();
+}
+
+async function bandcampApi(url) {
+  const token = await state.store.token();
+  const res = await fetch(`/api/bandcamp?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401) throw new Error("Your session expired. Sign in again.");
+  if (!res.ok) throw new Error(body.error || `Couldn't read that page (${res.status})`);
+  return body;
+}
+
+async function applyBandcamp(a, url) {
+  state.fix = { ...state.fix, busy: true, error: "" };
+  renderOverlay();
+  try {
+    const r = await bandcampApi(url);
+    state.fix = null;
+    await updateAlbum(a.id, releasePatch(a, r.release, "matched"));
+    const now = byId(a.id);
+    toast(`Details from Bandcamp: ${now.title}, ${now.artist}`);
+  } catch (e) {
+    state.fix = { ...state.fix, busy: false, error: e.message };
+    renderOverlay();
+  }
 }
 
 async function applyRef(a, ref) {
@@ -657,22 +684,29 @@ function resizeImage(blob, max, square) {
 }
 
 // ---------- person ----------
+// "Leader on 2, plays on 5, composer on 3"
+function personSummary(items) {
+  const n = { leader: 0, player: 0, composer: 0, other: 0 };
+  for (const i of items) n[creditKind(i)]++;
+  const parts = [n.leader && `leader on ${n.leader}`, n.player && `plays on ${n.player}`, n.composer && `composer on ${n.composer}`, n.other && `credited on ${n.other}`].filter(Boolean);
+  const text = parts.join(", ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function renderPerson(key) {
   const p = state.index.people.get(key);
   if (!p) return hideOverlay();
-  const lead = p.items.filter((i) => i.leader);
-  const side = p.items.filter((i) => !i.leader);
+  const kinds = { leader: [], player: [], composer: [], other: [] };
+  for (const i of p.items) kinds[creditKind(i)].push(i);
   const wanted = p.items.filter((i) => i.album.status === "want").length;
   const discogsId = p.items.map((i) => creditsFor(i.album).find((c) => personKey(c.name) === key)?.id).find(Boolean);
   const allTracks = (a) => (a.tracks || []).length;
   const itemRow = (i) => {
     const on = i.tracks.length && i.tracks.length < allTracks(i.album) ? ` <span class="on">on ${i.tracks.map(esc).join(", ")}</span>` : "";
-    return row(i.album, `<span class="${i.leader ? "role lead" : "role"}">${esc(roleLabel(i))}</span>${on}`);
+    return row(i.album, `<span class="${creditKind(i) === "leader" ? "role lead" : "role"}">${esc(roleLabel(i))}</span>${on}`);
   };
-  const summary = [
-    lead.length && `Leader on ${lead.length}`,
-    side.length && `${lead.length ? "plays" : "Plays"} on ${side.length}`,
-  ].filter(Boolean).join(", ") + (wanted ? `. ${wanted} on your want list.` : ".");
+  const summary = personSummary(p.items) + (wanted ? `. ${wanted} on your want list.` : ".");
+  const section = (title, items) => (items.length ? `<section><h3>${title}</h3><div class="rows">${items.map(itemRow).join("")}</div></section>` : "");
 
   openPanel(`
     <div class="panel-bar">
@@ -681,8 +715,10 @@ function renderPerson(key) {
     <article class="person">
       <h2 class="person-name">${esc(p.name)}</h2>
       <p class="person-sum">${summary}</p>
-      ${lead.length ? `<section><h3>Their records</h3><div class="rows">${lead.map(itemRow).join("")}</div></section>` : ""}
-      ${side.length ? `<section><h3>${lead.length ? "As a player" : "Records"}</h3><div class="rows">${side.map(itemRow).join("")}</div></section>` : ""}
+      ${section("Their records", kinds.leader)}
+      ${section(kinds.leader.length || kinds.composer.length ? "As a player" : "Records", kinds.player)}
+      ${section("Their music, played by others", kinds.composer)}
+      ${section("Other credits", kinds.other)}
       ${discogsId ? `<p class="footer-actions"><a class="btn" href="https://www.discogs.com/artist/${discogsId}" target="_blank" rel="noopener">See full discography on Discogs</a></p>` : ""}
     </article>`, "person");
 }
@@ -706,6 +742,7 @@ function renderAdd(prefill) {
       <details class="add-more">
         <summary>More details</summary>
         <label><span>Catalogue no.<span class="hint">helps find the exact pressing</span></span><input name="catno" placeholder="BLP 4003"></label>
+        <label><span>Bandcamp link<span class="hint">if it isn't on Discogs</span></span><input name="bandcamp" type="url" inputmode="url" placeholder="https://artist.bandcamp.com/album/…"></label>
         <label><span>Note<span class="hint">optional</span></span><input name="notes" placeholder="Heard it at the café, the blue pressing…"></label>
       </details>
       <button class="btn primary big" type="submit" id="add-submit">${label(toCollection ? "owned" : "want")}</button>
@@ -721,6 +758,8 @@ function renderAdd(prefill) {
       artist: f.get("artist").trim(), title: f.get("title").trim(), status: f.get("status"),
       catno: (f.get("catno") || "").trim() || null, notes: (f.get("notes") || "").trim() || null,
     };
+    const bandcamp = (f.get("bandcamp") || "").trim();
+    if (bandcamp && !/^https?:\/\//i.test(bandcamp)) { toast("Paste the full Bandcamp link, starting with https://"); return; }
     const dupe = state.albums.find((a) => fold(a.artist) === fold(row.artist) && fold(a.title) === fold(row.title));
     if (dupe && !confirm(dupe.status === "want" ? "That's already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
     $("#add-submit").disabled = true;
@@ -733,7 +772,7 @@ function renderAdd(prefill) {
       if (state.store.canEnrich) state.lookingUp.add(saved.id);
       location.replace(`#/album/${encodeURIComponent(saved.id)}`);
       if (state.store.canEnrich) {
-        enrichOne(saved).then(renderAll).catch(() => {
+        (bandcamp ? lookUpBandcamp(saved, bandcamp) : enrichOne(saved)).then(renderAll).catch(() => {
           state.lookingUp.delete(saved.id); renderAll();
           toast("Couldn't look up details right now. Try “Find on Discogs” later.");
         });
@@ -789,7 +828,7 @@ function renderTools() {
             <button class="btn" id="vinyl">Switch ${noSides.length === 1 ? "it" : "them"} to the vinyl LP</button>
           </div>` : ""}
           ${flatClassical.length ? `<div class="vinyl-fix">
-            <p class="hint">${plural(flatClassical.length, "classical record")} ${flatClassical.length === 1 ? "was" : "were"} fetched before pieces were shown above their movements. This keeps the pressing you have and only updates the details.</p>
+            <p class="hint">${plural(flatClassical.length, "classical record")} can show ${flatClassical.length === 1 ? "its" : "their"} pieces and composers better. This keeps the pressing you have and only updates the details.</p>
             <button class="btn" id="works">Update ${flatClassical.length === 1 ? "its" : "their"} track ${flatClassical.length === 1 ? "list" : "lists"}</button>
           </div>` : ""}`
         : ""}
@@ -839,6 +878,7 @@ function releasePatch(a, rel, status) {
     if (rel.discogs_title) patch.title = rel.discogs_title;
   }
   if (!a.catno && rel.label_catno) patch.catno = rel.label_catno;
+  if (rel.credits_text && !a.notes) patch.notes = `Credits from Bandcamp:\n${rel.credits_text}`;
   if (!(a.genres || []).length && (rel.discogs_genres || []).length) patch.genres = rel.discogs_genres;
   return patch;
 }
@@ -869,6 +909,14 @@ async function enrichOnce(a) {
   return r.rateRemaining;
 }
 
+async function lookUpBandcamp(a, url) {
+  state.lookingUp.add(a.id);
+  try {
+    const r = await bandcampApi(url);
+    await updateAlbum(a.id, releasePatch(a, r.release, "matched"));
+  } finally { state.lookingUp.delete(a.id); }
+}
+
 // ---------- vinyl repair ----------
 // Vinyl track lists have sides (A1, B2…); CD ones are numbered 1, 2, 3.
 const VINYL_CHECKED = "vinylChecked";
@@ -880,12 +928,12 @@ function fromCDListing(a) {
 }
 
 // Classical records fetched before movements were grouped under their pieces.
-const WORKS_CHECKED = "worksChecked2";  // v2: earlier tries may have hit the old server code
+const WORKS_CHECKED = "worksChecked4";  // v4: composers on single-track pieces
 const CLASSICAL = /classical|opera|baroque|chamber|orchestral|choral|symphon|concert|romantic|renaissance|contemporary classical/i;
 function needsWorks(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (!(a.genres || []).some((g) => CLASSICAL.test(g))) return false;
-  if (a.tracks.some((t) => t.work)) return false;
+  if (a.tracks.some((t) => t.by || t.wby)) return false;   // already has pieces and composers
   return !new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))).has(a.id);
 }
 
@@ -894,7 +942,7 @@ async function refetchSamePressing(a) {
   if (!r || !r.release) return r ? r.rateRemaining : 0;
   // Only count it as done when the server that answered knows about pieces;
   // otherwise (an older deploy still serving) it stays in the list to try again.
-  if ((r.release.parser || 0) >= 2) {
+  if ((r.release.parser || 0) >= 4) {
     const done = new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))); done.add(a.id); pref.set(WORKS_CHECKED, JSON.stringify([...done]));
   }
   await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));

@@ -144,6 +144,9 @@ export function buildCredits(release, albumArtist = "") {
   return list.sort((a, b) => rank(a) - rank(b));
 }
 
+const COMPOSER_ROLE = /compos|written|music by|^music\b/i;
+const TRACK_NOTE_ROLE = /cadenza|arranged|orchestrat|transcri|libretto|lyrics|words by|text by/i;
+
 // Headings that only mark a side or disc ("Side A", "LP 2", "B"), not a piece of music.
 const SIDE_HEADING = /^(side|disc|disk|cd|lp|record|vinyl|platte|seite|face)\b[\s\w.-]{0,8}$|^[a-h]$|^(side )?(one|two|three|four)$/i;
 
@@ -152,25 +155,44 @@ const SIDE_HEADING = /^(side|disc|disk|cd|lp|record|vinyl|platte|seite|face)\b[\
 // Either way each movement keeps its piece as `work`.
 export function flattenTracks(tl) {
   const out = [];
-  let heading = null;
+  let heading = null, headingId = 0, pieces = 0;
+  // A track's own "Composed By" / "Written-By" credit.
+  const composedBy = (t) => {
+    const c = (t.extraartists || []).filter((e) => COMPOSER_ROLE.test(e.role || ""));
+    return [...new Set(c.map((e) => cleanName(e.name)))].join(", ");
+  };
+  // Who wrote a piece: the artist on the piece row (how Discogs credits classical pieces), else its composer credit.
+  const pieceBy = (t) => ((t.artists || []).length ? artistLine(t.artists) : composedBy(t));
+  // Other track-level credits worth showing beside the music: "Cadenza: Raymond Meylan", "Arranged By: …".
+  const trackNote = (t) => (t.extraartists || [])
+    .filter((e) => TRACK_NOTE_ROLE.test(e.role || ""))
+    .map((e) => `${(e.role || "").replace(/\s*\[.*?\]/g, "").trim()}: ${cleanName(e.name)}`)
+    .join("; ");
   for (const t of tl) {
     if (t.type_ === "heading") {
       const h = (t.title || "").trim();
-      if (h && !SIDE_HEADING.test(h)) heading = h;
+      if (h && !SIDE_HEADING.test(h)) { heading = h; headingId = ++pieces; }
       continue;
     }
     if (t.type_ === "index") {
       const work = (t.title || "").trim() || heading;
+      const wi = ++pieces;                 // each piece row is its own piece, even when titles repeat
+      const wby = pieceBy(t);
       (t.sub_tracks || []).forEach((sub, i) => out.push({
         pos: sub.position || (t.position ? `${t.position}${String.fromCharCode(97 + i)}` : ""),
-        title: sub.title, dur: sub.duration, work,
-        // The piece's own running time (Discogs shows it on the piece row), kept on its first movement.
+        title: sub.title, dur: sub.duration, work, wi,
+        ...(composedBy(sub) && composedBy(sub) !== wby ? { by: composedBy(sub) } : {}),
+        ...(trackNote(sub) ? { note: trackNote(sub) } : {}),
+        // The piece's own running time and composer, kept on its first movement.
         ...(i === 0 && t.duration ? { wdur: t.duration } : {}),
+        ...(i === 0 && wby ? { wby } : {}),
         _extra: [...(t.extraartists || []), ...(sub.extraartists || [])],
       }));
       continue;
     }
-    out.push({ pos: t.position, title: t.title, dur: t.duration, work: heading, _extra: t.extraartists });
+    // A single-track piece credits its composer on the track itself.
+    out.push({ pos: t.position, title: t.title, dur: t.duration, work: heading, wi: heading ? headingId : undefined,
+      ...(composedBy(t) ? { by: composedBy(t) } : {}), ...(trackNote(t) ? { note: trackNote(t) } : {}), _extra: t.extraartists });
   }
   return out;
 }
@@ -189,9 +211,13 @@ export function normalizeRelease(release, albumArtist, master) {
     thumb_url: img ? (img.uri150 || img.uri) : null,
     discogs_genres: genres,
     discogs_styles: release.styles || [],
-    tracks: flattenTracks(release.tracklist || []).map(({ pos, title, dur, work, wdur }) => (work ? { pos, title, dur, work, ...(wdur ? { wdur } : {}) } : { pos, title, dur })),
+    tracks: flattenTracks(release.tracklist || []).map(({ pos, title, dur, work, wi, wdur, wby, by, note }) => ({
+      pos, title, dur,
+      ...(work ? { work, wi } : {}), ...(wdur ? { wdur } : {}), ...(wby ? { wby } : {}),
+      ...(by ? { by } : {}), ...(note ? { note } : {}),
+    })),
     // Lets the app tell details from this version of the parser apart from older ones.
-    parser: 2,
+    parser: 4,
     credits: buildCredits(release, albumArtist),
     discogs_title: (release.title || "").trim(),
     format: (release.formats || []).map((f) => [f.qty && f.qty !== "1" ? `${f.qty}×` : "", f.name, ...(f.descriptions || [])].filter(Boolean).join(" ")).join(", "),

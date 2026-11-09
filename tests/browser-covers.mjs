@@ -23,6 +23,41 @@ const cdRecord = demo.find((r) => r.artist === "Ahmad Jamal") || demo[40];
 Object.assign(cdRecord, { discogs_id: 55, enrich_status: "matched", cover_url: "/t/e.png", thumb_url: "/t/e.png", cover_locked: true,
   tracks: [{ pos: "1", title: "But Not For Me", dur: "3:32" }, { pos: "2", title: "Surrey With The Fringe On Top", dur: "2:01" }] });
 const fetchLog = [];
+// Bax/Bliss: two pieces with the same title, by different composers.
+const oboe = demo.find((r) => r.title === "Oboe Quintets");
+const QOBOE = "Quintet For Oboe And String Quartet";
+Object.assign(oboe, { discogs_id: 3521, enrich_status: "matched", title: "Two English Oboe Quintets", artist: "Arnold Bax / Arthur Bliss - Bert Lucarelli, The Manhattan String Quartet",
+  tracks: [
+    { pos: "A1", title: "1. Tempo Molto Moderato - Allegro Moderato", dur: "6:11", work: QOBOE, wi: 1, wdur: "17:11", wby: "Arnold Bax" },
+    { pos: "A2", title: "2. Lento Expressivo", dur: "6:10", work: QOBOE, wi: 1 },
+    { pos: "B1", title: "1. Assai Sostenuto", dur: "7:56", work: QOBOE, wi: 2, wdur: "21:29", wby: "Arthur Bliss" },
+    { pos: "B2", title: "2. Andante Con Moto", dur: "7:30", work: QOBOE, wi: 2 },
+  ],
+  credits: [
+    { name: "Arnold Bax", id: 10, roles: ["Composed By"], tracks: ["A1", "A2"], leader: true, kind: "musician" },
+    { name: "Arthur Bliss", id: 11, roles: ["Composed By"], tracks: ["B1", "B2"], leader: true, kind: "musician" },
+    { name: "Bert Lucarelli", id: 12, roles: ["Oboe"], tracks: [], leader: true, kind: "musician" },
+  ] });
+const bandcampRelease = { source: "bandcamp", discogs_id: null, discogs_url: "https://kitdownes.bandcamp.com/album/smoke-mirrors", year: 2023, label: "Edition Records", label_catno: null,
+  cover_url: "/t/e.png", thumb_url: "/t/e.png", discogs_genres: [], tracks: [{ pos: "1", title: "Sea Shanty", dur: "4:12" }, { pos: "2", title: "Ghost", dur: "6:01" }],
+  credits: [{ name: "Kit Downes Trio", id: null, roles: [], tracks: [], leader: true, kind: "musician" }, { name: "Petter Eldh", id: null, roles: ["Double bass"], tracks: [], leader: false, kind: "musician" }],
+  credits_text: "Kit Downes – piano\nPetter Eldh - double bass", discogs_title: "Smoke & Mirrors", discogs_artist: "Kit Downes Trio", parser: 3 };
+const bandcampLog = [];
+// The Virtuoso Oboe: one track per piece, composer credited on each track.
+const vOboe = demo.find((r) => /Virtuoso Oboe/.test(r.title));
+Object.assign(vOboe, { discogs_id: 40, enrich_status: "matched", title: "The Virtuoso Oboe", artist: "André Lardrot, Felix Prohaska, Chamber Orchestra Of The Vienna State Opera",
+  tracks: [
+    { pos: "A1", title: "Concerto For Oboe And Orchestra In C, K. 314", dur: "", by: "Wolfgang Amadeus Mozart", note: "Cadenza: Raymond Meylan" },
+    { pos: "A2", title: "Oboe Concerto No. 8 In B Flat", dur: "", by: "Georg Friedrich Händel" },
+    { pos: "B1", title: "Quartet For Oboe And Strings In F, K. 370", dur: "", by: "Wolfgang Amadeus Mozart" },
+  ],
+  credits: [
+    { name: "André Lardrot", id: 1, roles: ["Oboe"], tracks: [], leader: true, kind: "musician" },
+    { name: "Wolfgang Amadeus Mozart", id: 95, roles: ["Composed By"], tracks: ["A1", "B1"], leader: false, kind: "credit" },
+    { name: "Georg Friedrich Händel", id: 96, roles: ["Composed By"], tracks: ["A2"], leader: false, kind: "credit" },
+    { name: "Raymond Meylan", id: 7, roles: ["Cadenza"], tracks: ["A1"], leader: false, kind: "musician" },
+    { name: "Seymour Solomon", id: 8, roles: ["Producer"], tracks: [], leader: false, kind: "credit" },
+  ] });
 // A classical record already fetched the old way (movements only), and the grouped version Discogs now gives.
 const quartets = demo.find((r) => (r.genres || []).includes("Classical") && r.artist.startsWith("J.S. Bach")) || demo.find((r) => (r.genres || []).includes("Classical"));
 const Q1 = "String Quartet No. 1 In C Major, Op. 49", Q2 = "String Quartet No. 2 In A Major, Op. 68";
@@ -70,7 +105,7 @@ const server = http.createServer(async (rq, res) => {
       if (ref === "release/77") {
         const answer = oldServer
           ? { ...release("x", "x"), discogs_id: 77, discogs_artist: "Shostakovich, Borodin Quartet", discogs_title: "The Complete String Quartets Vol. 1 (Nos. 1-5)", tracks: grouped.map(({ work, wdur, ...t }) => t) }
-          : { ...release("x", "x"), discogs_id: 77, discogs_artist: "Shostakovich, Borodin Quartet", discogs_title: "The Complete String Quartets Vol. 1 (Nos. 1-5)", tracks: grouped, parser: 2 };
+          : { ...release("x", "x"), discogs_id: 77, discogs_artist: "Shostakovich, Borodin Quartet", discogs_title: "The Complete String Quartets Vol. 1 (Nos. 1-5)", tracks: grouped.map((t, i) => ({ ...t, wi: t.work === Q1 ? 1 : 2, ...(i === 0 ? { wby: "Dmitri Shostakovich" } : {}) })), parser: 4 };
         oldServer = false;
         return send(200, "application/json", JSON.stringify({ status: "matched", release: answer }));
       }
@@ -82,6 +117,12 @@ const server = http.createServer(async (rq, res) => {
       { type: "release", id: 900, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "1975", country: "US", format: "Vinyl, LP", thumb: "/t/e.png" },
     ] }));
     return send(400, "application/json", "{}");
+  }
+  if (u.pathname === "/api/bandcamp") {
+    bandcampLog.push(u.searchParams.get("url"));
+    if (!/bandcamp/.test(u.searchParams.get("url"))) return send(422, "application/json", JSON.stringify({ error: "That page doesn't look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }));
+    await new Promise((r) => setTimeout(r, 500));
+    return send(200, "application/json", JSON.stringify({ status: "matched", release: bandcampRelease }));
   }
   if (u.pathname.startsWith("/api/")) return send(404, "text/plain", "");
   const f = path.join(ROOT, u.pathname === "/" ? "index.html" : u.pathname);
@@ -196,7 +237,8 @@ await p.goto(BASE); await p.waitForSelector(".row");
 
 // --- classical records: re-pull the same pressing so movements sit under their pieces
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
-check((await p.textContent(".tools")).includes("1 classical record was fetched before pieces"), "Collection screen finds the flat classical record");
+const toolsText = await p.textContent(".tools");
+check(toolsText.includes("1 classical record can show its pieces and composers better"), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
 await p.click("#works");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
 check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn't count as done; button stays");
@@ -221,6 +263,71 @@ await p.fill("#q", "recitative"); await p.waitForTimeout(250);
 check((await p.textContent("#results")).includes("in " + Q2), "a movement hit says which piece it's from");
 await shot("c13-classical-search");
 await p.fill("#q", "");
+
+// --- two pieces with the same title stay apart; composers are labelled as composers
+await p.goto(BASE + "#/album/" + oboe.id); await p.waitForSelector(".tracks");
+check(await p.locator(".tracks li.work").count() === 2, "same-title pieces shown as two pieces");
+check((await p.textContent(".tracks li.work >> nth=0")).includes("Arnold Bax") && (await p.textContent(".tracks li.work >> nth=1")).includes("Arthur Bliss"), "each piece shows its composer");
+check((await p.textContent(".tracks li.work >> nth=1")).includes("21:29"), "second piece keeps its own time");
+const pers = await p.textContent(".credits");
+check(pers.includes("Composer") && !/Arnold Bax\s*Leader/.test(pers), "composers labelled Composer, not Leader");
+check(/Bert Lucarelli\s*Leader, Oboe/.test(pers), "performer still shown as leader with instrument");
+await p.locator(".tracks").scrollIntoViewIfNeeded();
+await shot("c14-same-title-pieces");
+await p.goto(BASE); await p.waitForSelector(".row");
+await p.fill("#q", "quintet for oboe"); await p.waitForTimeout(250);
+const qhits = await p.textContent("#results");
+check(qhits.includes("by Arnold Bax") && qhits.includes("by Arthur Bliss"), "search lists both pieces, each with its composer");
+await p.fill("#q", "");
+
+// --- composers credited on single tracks
+await p.goto(BASE + "#/album/" + vOboe.id); await p.waitForSelector(".tracks");
+const vt = await p.textContent(".tracks");
+check(vt.includes("Wolfgang Amadeus Mozart") && vt.includes("Cadenza: Raymond Meylan") && vt.includes("Georg Friedrich Händel"), "composer and cadenza shown under each track");
+check(!(await p.locator(".tracks li.work").count()), "no piece headers invented for single-track pieces");
+const vp = await p.textContent(".credits");
+check(/Wolfgang Amadeus Mozart\s*Composer\s*on A1, B1/.test(vp), "Mozart in personnel as Composer on A1, B1");
+check(/Raymond Meylan\s*Cadenza/.test(vp) && !vp.includes("Seymour Solomon"), "cadenza player in personnel; producer stays in other credits");
+await p.locator(".tracks").scrollIntoViewIfNeeded();
+await shot("c17-composers-on-tracks");
+await p.click('.credits a:has-text("Wolfgang Amadeus Mozart")'); await p.waitForSelector(".person-name");
+const mp = await p.textContent(".person");
+check(mp.includes("Their music, played by others") && mp.includes("Composer on 1"), "Mozart's page groups records as composer");
+await shot("c18-composer-page");
+await p.goto(BASE); await p.waitForSelector(".row");
+await p.fill("#q", "lardrot"); await p.waitForTimeout(250);
+check((await p.textContent(".person-row")).includes("leader on 1"), "search summary for a performer");
+await p.fill("#q", "");
+
+// --- Bandcamp: fix a record from a pasted Bandcamp link
+const bcRec = demo.find((r) => r.artist === "Kit Downes, Petter Eldh, James Maddren");
+await p.goto(BASE + "#/album/" + bcRec.id); await p.waitForSelector(".album-title");
+await p.click("#fix-open"); await p.waitForSelector("#fix-q");
+await p.fill("#fix-q", "https://example.com/some-page"); await p.click("#fix-form button");
+await p.waitForSelector("#fix .note.warn");
+check((await p.textContent("#fix")).includes("doesn't look like a Bandcamp album"), "a non-Bandcamp link gets a clear message");
+await p.fill("#fix-q", "https://kitdownes.bandcamp.com/album/smoke-mirrors"); await p.click("#fix-form button");
+await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);
+check((await p.textContent(".album-title")) === "Smoke & Mirrors" && (await p.textContent(".album-artist")) === "Kit Downes Trio", "Bandcamp names applied");
+check((await p.textContent(".tracks")).includes("Sea Shanty"), "Bandcamp tracks applied");
+check((await p.textContent(".credits")).includes("Petter Eldh"), "players from Bandcamp credits listed");
+check((await p.inputValue("#notes")).startsWith("Credits from Bandcamp:"), "full credits text kept in notes");
+check((await p.textContent(".footer-actions")).includes("View on Bandcamp"), "link says Bandcamp");
+check(!(await p.locator("#refresh").count()), "no Discogs refresh for a Bandcamp record");
+await shot("c15-bandcamp-fixed");
+await p.goto(BASE); await p.waitForSelector(".row");
+
+// --- Bandcamp: add a new record with a Bandcamp link
+await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('label:has-text("Collection")');
+await p.fill('input[name="artist"]', "kit downes"); await p.fill('input[name="title"]', "smoke and mirrors");
+await p.click(".add-more summary");
+await p.fill('input[name="bandcamp"]', "https://kitdownes.bandcamp.com/album/smoke-mirrors");
+await shot("c16-add-bandcamp");
+const bcBefore = bandcampLog.length;
+await p.click("#add-submit"); await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);
+check(bandcampLog.length === bcBefore + 1 && (await p.textContent(".album-title")) === "Smoke & Mirrors", "Add with a Bandcamp link fills from Bandcamp, not Discogs");
+await p.goto(BASE); await p.waitForSelector(".row");
 
 // --- a quick lowercase add gets Discogs' spelling
 await p.click(".fab"); await p.waitForSelector("#add-form");

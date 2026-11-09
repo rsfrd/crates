@@ -19,9 +19,23 @@ export function sortKey(a) {
 const MUSICAL_SKIP = /produc|engineer|record|mix|master|lacquer|liner|photo|design|art|cover|layout|written|composed|lyrics|music by|words by|executive|notes|supervis|coordinat|transfer|edit|illustrat|publish|technician|assistant|compiled|sleeve|direction|licens|manufactur|distribut|market|cut by/i;
 
 // What a person did on an album, in plain words.
+const COMPOSER = /compos|written|music by|^music$/i;
+
+// What kind of credit this is: "leader", "player", "composer" or "other".
+export function creditKind(entry) {
+  const roles = entry.roles || [];
+  const musical = roles.filter((r) => !MUSICAL_SKIP.test(r));
+  if (!musical.length && roles.some((r) => COMPOSER.test(r))) return "composer";
+  if (entry.leader) return "leader";
+  if (musical.length || entry.kind === "musician") return "player";
+  return "other";
+}
+
 export function roleLabel(entry) {
   const musical = entry.roles.filter((r) => !MUSICAL_SKIP.test(r));
   const other = entry.roles.filter((r) => MUSICAL_SKIP.test(r));
+  // Composers (often named as album artists on classical records) are composers, not band leaders.
+  if (creditKind(entry) === "composer") return "Composer";
   if (entry.leader) return musical.length ? `Leader, ${musical.join(", ")}` : "Leader";
   if (musical.length) return musical.join(", ");
   if (other.length) return other.join(", ");
@@ -52,7 +66,7 @@ export function buildIndex(albums) {
     return {
       album: a,
       hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" ")].join(" ")),
-      tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title) })),
+      tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
       sort: sortKey(a),
     };
   });
@@ -85,7 +99,14 @@ export function search(index, query, filters = {}) {
   const songs = [];
   if (q.length >= 2) {
     for (const e of visible) {
-      const hits = e.tracks.filter((x) => matchesAll(x.f, words)).map((x) => x.t);
+      // A search that names a piece ("quartet no 3") lists the piece once, not every movement.
+      const hits = [], works = new Set();
+      for (const x of e.tracks) {
+        if (x.w && matchesAll(x.w, words)) {
+          const key = x.t.wi ?? x.t.work;
+          if (!works.has(key)) { works.add(key); hits.push({ pos: x.t.pos, title: x.t.work, isWork: true, wby: x.t.wby }); }
+        } else if (matchesAll(x.f, words) || (x.w && matchesAll(x.fw, words))) hits.push(x.t);
+      }
       if (hits.length) songs.push({ album: e.album, tracks: hits });
     }
   }
