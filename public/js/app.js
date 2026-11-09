@@ -1000,7 +1000,8 @@ function renderPerson(key) {
     return row(i.album, `<span class="${creditKind(i) === "leader" ? "role lead" : "role"}">${esc(roleLabel(i))}</span>${on}`);
   };
   const summary = personSummary(p.items) + (wanted ? `. ${wanted} on your want list.` : ".");
-  const section = (title, items) => (items.length ? `<section><h3>${title}</h3><div class="rows">${items.map(itemRow).join("")}</div></section>` : "");
+  // Their own records need no role line; the record page has the detail.
+  const section = (title, items, plain = false) => (items.length ? `<section><h3>${title}</h3><div class="rows">${items.map((i) => (plain ? row(i.album) : itemRow(i))).join("")}</div></section>` : "");
 
   openPanel(`
     <div class="panel-bar">
@@ -1009,7 +1010,7 @@ function renderPerson(key) {
     <article class="person">
       <h2 class="person-name">${esc(p.name)}</h2>
       <p class="person-sum">${summary}</p>
-      ${section("Their records", kinds.leader)}
+      ${section("Their records", kinds.leader, true)}
       ${section(kinds.leader.length || kinds.composer.length ? "As a player" : "Records", kinds.player)}
       ${section("Their music, played by others", kinds.composer)}
       ${section("Other credits", kinds.other)}

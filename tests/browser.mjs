@@ -102,6 +102,8 @@ await p.click("button[data-close]"); await p.waitForTimeout(200);
 await p.fill("#q", "charles mingus"); await p.waitForTimeout(250);
 await p.click(".person-row"); await p.waitForSelector(".person-name");
 check((await p.textContent(".person")).includes("Their records"), "Mingus page groups his own records");
+const leadSection = p.locator(".person section").filter({ hasText: "Their records" });
+check(await leadSection.locator(".row").count() > 0 && await leadSection.locator(".row-extra").count() === 0, "his own records show no role line");
 await shot(p, "04-person-leader");
 await p.click("button[data-close]"); await p.waitForTimeout(200);
 
