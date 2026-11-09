@@ -21,6 +21,8 @@ const ICON = {
   list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
   grid: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"/><rect x="13.5" y="4" width="6.5" height="6.5"/><rect x="4" y="13.5" width="6.5" height="6.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5"/></svg>',
   tools: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  select: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>',
   // Hollow record = not on the shelf yet
   want: '<svg viewBox="0 0 16 16" aria-hidden="true" class="glyph"><circle cx="8" cy="8" r="6.25" fill="none" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.4" fill="none"/></svg>',
 };
@@ -29,11 +31,16 @@ const ICON = {
 const state = {
   store: null,
   albums: [],
-  index: { list: [], people: new Map(), genres: [] },
+  index: { list: [], people: new Map(), genres: [], crates: [] },
   q: "",
   status: pref.get("status", "all"),
   genre: "",
+  crate: "",
   view: pref.get("view", "list"),
+  select: null,      // Set of album ids while choosing records, else null
+  selPanel: null,    // "add" | "remove" while the selection bar is open for crates
+  visibleIds: [],    // albums in the current results, for "Select all"
+  crateAdd: null,    // album id whose "Add to crate" box is open
   enrich: { running: false, stop: false, done: 0, total: 0, current: "", note: "" },
   editing: false,
   fix: null, // { albumId, candidates, busy, error }
@@ -88,8 +95,11 @@ function tags(a) {
 
 function sub(a) { return esc(a.artist) + (a.year ? `, ${a.year}` : ""); }
 
+const picked = (a) => (state.select && state.select.has(a.id) ? " is-selected" : "");
+const pickMark = `<span class="pick" aria-hidden="true">${ICON.check}</span>`;
+
 function row(a, extra = "") {
-  return `<a class="row" href="#/album/${encodeURIComponent(a.id)}">
+  return `<a class="row${picked(a)}" href="#/album/${encodeURIComponent(a.id)}" data-id="${esc(a.id)}">${pickMark}
     ${thumb(a)}
     <span class="row-text">
       <span class="row-title">${esc(a.title)}</span>
@@ -101,8 +111,8 @@ function row(a, extra = "") {
 }
 
 function tile(a) {
-  return `<a class="tile" href="#/album/${encodeURIComponent(a.id)}">
-    ${thumb(a, "tile-art")}
+  return `<a class="tile${picked(a)}" href="#/album/${encodeURIComponent(a.id)}" data-id="${esc(a.id)}">
+    ${thumb(a, "tile-art")}${pickMark}
     <span class="tile-title">${esc(a.title)}</span>
     <span class="tile-sub">${esc(a.artist)}</span>
     ${tags(a)}
@@ -131,6 +141,7 @@ function renderShell() {
         <p class="count" id="count"></p>
       </div>
       <div class="top-actions">
+        <button class="icon-btn" id="select-toggle" aria-label="Select records">${ICON.select}</button>
         <button class="icon-btn" id="view-toggle" aria-label="Switch layout"></button>
         <a class="icon-btn" href="#/tools" aria-label="Collection tools">${ICON.tools}</a>
       </div>
@@ -147,11 +158,13 @@ function renderShell() {
           ${[["all", "All"], ["owned", "Owned"], ["want", "Want"], ["sale", "For sale"]]
             .map(([v, l]) => `<button role="radio" data-status="${v}" aria-checked="${state.status === v}">${l}</button>`).join("")}
         </div>
+        <select id="crate" aria-label="Crate" hidden></select>
         <select id="genre" aria-label="Genre"></select>
       </div>
     </div>
     <main id="results" aria-live="polite"></main>
     <a class="fab" href="#/add">${ICON.plus}<span>Add</span></a>
+    <div id="selbar" class="selbar" hidden></div>
     <div id="overlay" hidden></div>
     <div id="toast" role="status" aria-live="polite"></div>`;
 
@@ -170,6 +183,19 @@ function renderShell() {
     renderResults();
   });
   $("#genre").addEventListener("change", (e) => { state.genre = e.target.value; renderResults(); });
+  $("#crate").addEventListener("change", (e) => { state.crate = e.target.value; renderResults(); });
+  $("#select-toggle").addEventListener("click", () => (state.select ? endSelect() : startSelect()));
+  // While selecting, tapping a record ticks it instead of opening it.
+  $("#results").addEventListener("click", (e) => {
+    if (!state.select) return;
+    const a = e.target.closest("a[data-id]");
+    if (!a) { if (e.target.closest("a")) e.preventDefault(); return; }
+    e.preventDefault();
+    const id = a.dataset.id;
+    if (state.select.has(id)) state.select.delete(id); else state.select.add(id);
+    a.classList.toggle("is-selected", state.select.has(id));
+    renderSelbar();
+  });
   $("#view-toggle").addEventListener("click", () => {
     state.view = state.view === "list" ? "grid" : "list"; pref.set("view", state.view); renderResults();
   });
@@ -185,22 +211,31 @@ function renderHeader() {
   const sel = $("#genre");
   sel.innerHTML = `<option value="">All genres</option>` +
     state.index.genres.map((g) => `<option ${g === state.genre ? "selected" : ""}>${esc(g)}</option>`).join("");
+  const cs = $("#crate");
+  cs.hidden = !state.index.crates.length && !state.crate;
+  cs.innerHTML = `<option value="">All crates</option>` +
+    state.index.crates.map((c) => `<option value="${esc(c.name)}" ${c.name === state.crate ? "selected" : ""}>${esc(c.name)} (${c.count})</option>`).join("");
+  $("#select-toggle").classList.toggle("on", !!state.select);
   const vt = $("#view-toggle");
   vt.innerHTML = state.view === "list" ? ICON.grid : ICON.list;
   vt.setAttribute("aria-label", state.view === "list" ? "Show covers as a grid" : "Show as a list");
 }
 
 function renderResults() {
-  const res = search(state.index, state.q, { status: state.status, genre: state.genre });
+  const res = search(state.index, state.q, { status: state.status, genre: state.genre, crate: state.crate });
   $("#clear").hidden = !state.q;
   const el = $("#results");
+  el.classList.toggle("selecting", !!state.select);
+  state.visibleIds = res.albums.filter((a) => !a._pending).map((a) => a.id);
   renderHeader();
+  renderSelbar();
 
   if (!res.query) {
     if (!res.albums.length) {
       el.innerHTML = emptyState(state.status === "want"
         ? "Your want list is empty. Add an album you heard and it'll be here when you're in the store."
         : state.status === "sale" ? "Nothing is marked for sale. Open a record and turn on “For sale” to queue it."
+        : state.crate ? `Nothing in “${esc(state.crate)}” matches these filters.`
         : "Nothing here yet.");
       return;
     }
@@ -243,6 +278,156 @@ function renderAll() {
   const active = document.activeElement;
   if (active && active.closest?.("#overlay") && /input|textarea/i.test(active.tagName)) return;
   renderOverlay();
+}
+
+// ---------- crates ----------
+const SETUP_CRATES = "Crates aren't set up yet. Run supabase/004_crates.sql in Supabase, then try again.";
+const crateError = (e) => (/crates/i.test((e && e.message) || "") ? SETUP_CRATES : (e && e.message) || "Couldn't save that change.");
+const cleanCrate = (s) => String(s || "").replace(/\s+/g, " ").trim().slice(0, 60);
+
+function startSelect() { state.select = new Set(); state.selPanel = null; renderResults(); }
+function endSelect() { state.select = null; state.selPanel = null; renderResults(); }
+
+function renderSelbar() {
+  const bar = $("#selbar"); if (!bar) return;
+  const fab = $(".fab");
+  if (!state.select) { bar.hidden = true; bar.innerHTML = ""; if (fab) fab.hidden = false; return; }
+  if (fab) fab.hidden = true;
+  bar.hidden = false;
+  const n = state.select.size;
+  const all = state.visibleIds.length && state.visibleIds.every((id) => state.select.has(id));
+  const chosen = [...state.select].map(byId).filter(Boolean);
+  const inCrates = [...new Set(chosen.flatMap((a) => a.crates || []))].sort((a, b) => a.localeCompare(b));
+  let panel = "";
+  if (state.selPanel === "add") {
+    panel = `<div class="selpanel">
+      ${state.index.crates.length ? `<p class="hint">Add ${plural(n, "record")} to:</p><div class="chips">${state.index.crates.map((c) => `<button class="chip" data-add-crate="${esc(c.name)}">${esc(c.name)}</button>`).join("")}</div>` : ""}
+      <form id="new-crate" class="fix-form"><input id="new-crate-name" placeholder="New crate name, like Japanese" autocomplete="off" maxlength="60"><button class="btn primary">Add</button></form>
+    </div>`;
+  } else if (state.selPanel === "remove") {
+    panel = `<div class="selpanel">
+      ${inCrates.length ? `<p class="hint">Take ${plural(n, "record")} out of:</p><div class="chips">${inCrates.map((c) => `<button class="chip" data-remove-crate="${esc(c)}">${esc(c)}</button>`).join("")}</div>`
+        : `<p class="hint">None of the selected records are in a crate.</p>`}
+    </div>`;
+  }
+  bar.innerHTML = `${panel}
+    <div class="selrow">
+      <span class="selcount">${n ? `${plural(n, "record")} selected` : "Tap records to select them"}</span>
+      <button class="btn" id="sel-all">${all ? "Clear" : `Select all ${state.visibleIds.length}`}</button>
+      <button class="btn" id="sel-done">Done</button>
+    </div>
+    <div class="selrow">
+      <button class="btn primary" id="sel-add" ${n ? "" : "disabled"}>Add to crate</button>
+      <button class="btn" id="sel-remove" ${n ? "" : "disabled"}>Remove from crate</button>
+    </div>`;
+  bar.querySelector("#sel-all").addEventListener("click", () => {
+    state.select = all ? new Set() : new Set(state.visibleIds); renderResults();
+  });
+  bar.querySelector("#sel-add").addEventListener("click", () => { state.selPanel = state.selPanel === "add" ? null : "add"; renderSelbar(); $("#new-crate-name")?.focus(); });
+  bar.querySelector("#sel-remove").addEventListener("click", () => { state.selPanel = state.selPanel === "remove" ? null : "remove"; renderSelbar(); });
+  bar.querySelector("#sel-done").addEventListener("click", endSelect);
+  const addTo = async (name) => {
+    name = cleanCrate(name); if (!name) return;
+    const ids = [...state.select];
+    const changed = await changeCrates(ids, (cs) => (cs.includes(name) ? cs : [...cs, name]));
+    if (changed != null) { toast(`Added ${plural(changed, "record")} to ${name}`); endSelect(); }
+  };
+  bar.querySelectorAll("[data-add-crate]").forEach((b) => b.addEventListener("click", () => addTo(b.dataset.addCrate)));
+  bar.querySelector("#new-crate")?.addEventListener("submit", (e) => { e.preventDefault(); addTo($("#new-crate-name").value); });
+  bar.querySelectorAll("[data-remove-crate]").forEach((b) => b.addEventListener("click", async () => {
+    const name = b.dataset.removeCrate;
+    const changed = await changeCrates([...state.select], (cs) => cs.filter((c) => c !== name));
+    if (changed != null) { toast(`Took ${plural(changed, "record")} out of ${name}`); endSelect(); }
+  }));
+}
+
+// Changes the crates on many records at once. Returns how many changed, or null if saving failed.
+async function changeCrates(ids, fn) {
+  const changes = [];
+  for (const id of ids) {
+    const a = byId(id); if (!a || a._pending) continue;
+    const before = a.crates || [];
+    const next = [...new Set(fn(before))];
+    if (next.length !== before.length || next.some((c, i) => c !== before[i])) changes.push({ id, before, next });
+  }
+  if (!changes.length) return 0;
+  // Show the change right away, then save.
+  const nextById = new Map(changes.map((c) => [c.id, c.next]));
+  setAlbums(state.albums.map((a) => (nextById.has(a.id) ? { ...a, crates: nextById.get(a.id) } : a)));
+  renderAll();
+  const failed = [];
+  let firstError = null;
+  for (let i = 0; i < changes.length; i += 6) {
+    await Promise.all(changes.slice(i, i + 6).map(async (c) => {
+      try { const saved = await state.store.update(c.id, { crates: c.next }); replaceAlbum(saved); }
+      catch (e) { failed.push(c); firstError = firstError || e; }
+    }));
+  }
+  if (failed.length) {
+    const back = new Map(failed.map((c) => [c.id, c.before]));
+    setAlbums(state.albums.map((a) => (back.has(a.id) ? { ...a, crates: back.get(a.id) } : a)));
+    renderAll();
+    toast(failed.length === changes.length ? crateError(firstError) : `${plural(failed.length, "record")} couldn't be saved. ${crateError(firstError)}`);
+    return null;
+  }
+  renderAll();
+  return changes.length;
+}
+
+function renameCrate(from) {
+  const to = cleanCrate(prompt(`Rename “${from}” to:`, from));
+  if (!to || to === from) return;
+  const ids = state.albums.filter((a) => (a.crates || []).includes(from)).map((a) => a.id);
+  changeCrates(ids, (cs) => cs.map((c) => (c === from ? to : c))).then((n) => {
+    if (n != null) { if (state.crate === from) state.crate = to; toast(`Renamed to ${to}`); renderAll(); }
+  });
+}
+
+function deleteCrate(name) {
+  const ids = state.albums.filter((a) => (a.crates || []).includes(name)).map((a) => a.id);
+  if (!confirm(`Delete the crate “${name}”? The ${plural(ids.length, "record")} in it stay in your collection.`)) return;
+  changeCrates(ids, (cs) => cs.filter((c) => c !== name)).then((n) => {
+    if (n != null) { if (state.crate === name) state.crate = ""; toast(`Deleted ${name}`); renderAll(); }
+  });
+}
+
+function crateBlock(a) {
+  const crates = a.crates || [];
+  const open = state.crateAdd === a.id;
+  const others = state.index.crates.filter((c) => !crates.includes(c.name));
+  return `<section class="block crates-block">
+    <h3>Crates</h3>
+    <div class="chips">
+      ${crates.map((c) => `<span class="crate-chip"><button class="chip" data-crate-go="${esc(c)}">${esc(c)}</button><button class="chip-x" data-crate-rm="${esc(c)}" aria-label="Take out of ${esc(c)}">${ICON.close}</button></span>`).join("")}
+      ${a._pending ? "" : `<button class="chip add-chip" id="crate-add-open">${ICON.plus}Add to crate</button>`}
+    </div>
+    ${open ? `<form id="crate-add" class="fix-form crate-add">
+        <input id="crate-add-name" list="crate-names" placeholder="Crate name" autocomplete="off" maxlength="60">
+        <datalist id="crate-names">${others.map((c) => `<option value="${esc(c.name)}">`).join("")}</datalist>
+        <button class="btn primary">Add</button>
+      </form>
+      ${others.length ? `<div class="chips quick">${others.map((c) => `<button class="chip" data-crate-quick="${esc(c.name)}">${esc(c.name)}</button>`).join("")}</div>` : ""}` : ""}
+  </section>`;
+}
+
+function wireCrates(panel, a) {
+  panel.querySelectorAll("[data-crate-go]").forEach((b) => b.addEventListener("click", () => {
+    state.crate = b.dataset.crateGo; state.genre = ""; setQuery("");
+  }));
+  panel.querySelectorAll("[data-crate-rm]").forEach((b) => b.addEventListener("click", async () => {
+    const name = b.dataset.crateRm;
+    if ((await changeCrates([a.id], (cs) => cs.filter((c) => c !== name))) != null) toast(`Taken out of ${name}`);
+  }));
+  panel.querySelector("#crate-add-open")?.addEventListener("click", () => {
+    state.crateAdd = state.crateAdd === a.id ? null : a.id; renderOverlay(); $("#crate-add-name")?.focus();
+  });
+  const add = async (name) => {
+    name = cleanCrate(name); if (!name) return;
+    state.crateAdd = null;
+    if ((await changeCrates([a.id], (cs) => [...cs, name])) != null) toast(`Added to ${name}`);
+  };
+  panel.querySelector("#crate-add")?.addEventListener("submit", (e) => { e.preventDefault(); add($("#crate-add-name").value); });
+  panel.querySelectorAll("[data-crate-quick]").forEach((b) => b.addEventListener("click", () => add(b.dataset.crateQuick)));
 }
 
 // ---------- overlays ----------
@@ -290,7 +475,7 @@ function route() {
 
 function renderOverlay() {
   const r = route();
-  if (r.name !== "album") { state.editing = false; state.fix = null; state.cover = null; }
+  if (r.name !== "album") { state.editing = false; state.fix = null; state.cover = null; state.crateAdd = null; }
   if (r.name === "album") return renderAlbum(r.arg);
   if (r.name === "person") return renderPerson(r.arg);
   if (r.name === "add") return renderAdd(r.params.get("q") || "");
@@ -403,6 +588,8 @@ function renderAlbum(id) {
 
       ${statusBlock}
 
+      ${crateBlock(a)}
+
       ${(a.tracks || []).length ? `<section class="block"><h3>Tracks</h3>${trackList(a.tracks)}</section>` : ""}
 
       ${players.length ? `<section class="block"><h3>Personnel</h3><ul class="credits">${players.map(credit).join("")}</ul></section>` : ""}
@@ -483,6 +670,7 @@ function renderAlbum(id) {
   });
   wireFix(panel, a);
   wireCover(panel, a);
+  wireCrates(panel, a);
 }
 
 function renderFix(a) {
@@ -742,6 +930,7 @@ function renderAdd(prefill) {
       <details class="add-more">
         <summary>More details</summary>
         <label><span>Catalogue no.<span class="hint">helps find the exact pressing</span></span><input name="catno" placeholder="BLP 4003"></label>
+        <label><span>Crate<span class="hint">optional</span></span><input name="crate" list="add-crate-names" value="${esc(state.crate)}" placeholder="Japanese" autocomplete="off" maxlength="60"><datalist id="add-crate-names">${state.index.crates.map((c) => `<option value="${esc(c.name)}">`).join("")}</datalist></label>
         <label><span>Bandcamp link<span class="hint">if it isn't on Discogs</span></span><input name="bandcamp" type="url" inputmode="url" placeholder="https://artist.bandcamp.com/album/…"></label>
         <label><span>Note<span class="hint">optional</span></span><input name="notes" placeholder="Heard it at the café, the blue pressing…"></label>
       </details>
@@ -759,12 +948,22 @@ function renderAdd(prefill) {
       catno: (f.get("catno") || "").trim() || null, notes: (f.get("notes") || "").trim() || null,
     };
     const bandcamp = (f.get("bandcamp") || "").trim();
+    const crate = cleanCrate(f.get("crate"));
+    if (crate) row.crates = [crate];
     if (bandcamp && !/^https?:\/\//i.test(bandcamp)) { toast("Paste the full Bandcamp link, starting with https://"); return; }
     const dupe = state.albums.find((a) => fold(a.artist) === fold(row.artist) && fold(a.title) === fold(row.title));
     if (dupe && !confirm(dupe.status === "want" ? "That's already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
     $("#add-submit").disabled = true;
     try {
-      const saved = await state.store.insert(row);
+      let saved;
+      try { saved = await state.store.insert(row); }
+      catch (e) {
+        // Crates not set up yet: save the record anyway, without its crate.
+        if (!row.crates || !/crates/i.test(e.message || "")) throw e;
+        delete row.crates;
+        saved = await state.store.insert(row);
+        setTimeout(() => toast(SETUP_CRATES), 2800);
+      }
       setAlbums([...state.albums, saved]);
       renderResults();
       toast(row.status === "want" ? "Added to want list" : "Added to collection");
@@ -840,6 +1039,16 @@ function renderTools() {
       </section>` : ""}
 
       <section class="block">
+        <h3>Crates</h3>
+        ${state.index.crates.length ? `<ul class="crate-list">${state.index.crates.map((c) => `<li>
+            <button class="crate-name" data-crate-open="${esc(c.name)}">${esc(c.name)} <span>${c.count}</span></button>
+            <button class="btn" data-crate-rename="${esc(c.name)}">Rename</button>
+            <button class="btn danger" data-crate-delete="${esc(c.name)}">Delete</button>
+          </li>`).join("")}</ul>`
+        : `<p class="hint">Crates are your own groupings, like “Japanese” or “Late night”. Tap the select button at the top of the main screen, pick some records, and choose “Add to crate”.</p>`}
+      </section>
+
+      <section class="block">
         <h3>Backup</h3>
         <button class="btn" id="export">Download a copy (CSV)</button>
       </section>
@@ -852,6 +1061,9 @@ function renderTools() {
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
+  panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
+  panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
+  panel.querySelectorAll("[data-crate-delete]").forEach((b) => b.addEventListener("click", () => deleteCrate(b.dataset.crateDelete)));
   panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
 }
 
@@ -989,7 +1201,7 @@ async function runQueue(queue, worker, finished) {
 }
 
 function exportCSV() {
-  const cols = ["artist", "title", "status", "for_sale", "year", "label", "catno", "genres", "notes", "discogs_url"];
+  const cols = ["artist", "title", "status", "for_sale", "year", "label", "catno", "genres", "crates", "notes", "discogs_url"];
   const cell = (v) => { const s = Array.isArray(v) ? v.join("/") : v ?? ""; return /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s); };
   const lines = [cols.join(","), ...state.index.list.map(({ album }) => cols.map((c) => cell(album[c])).join(","))];
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });

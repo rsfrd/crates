@@ -65,7 +65,7 @@ export function buildIndex(albums) {
     }
     return {
       album: a,
-      hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" ")].join(" ")),
+      hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
       tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
       sort: sortKey(a),
     };
@@ -75,14 +75,18 @@ export function buildIndex(albums) {
     p.items.sort((x, y) => (x.leader !== y.leader ? (x.leader ? -1 : 1) : sortKey(x.album) < sortKey(y.album) ? -1 : 1));
   }
   const genres = [...new Set(albums.flatMap((a) => a.genres || []))].sort((a, b) => a.localeCompare(b));
-  return { list, people, genres };
+  const crateCounts = new Map();
+  for (const a of albums) for (const c of a.crates || []) crateCounts.set(c, (crateCounts.get(c) || 0) + 1);
+  const crates = [...crateCounts].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+  return { list, people, genres, crates };
 }
 
-export function passes(album, { status = "all", genre = "" } = {}) {
+export function passes(album, { status = "all", genre = "", crate = "" } = {}) {
   if (status === "owned" && album.status !== "owned") return false;
   if (status === "want" && album.status !== "want") return false;
   if (status === "sale" && !(album.status === "owned" && album.for_sale)) return false;
   if (genre && !(album.genres || []).includes(genre)) return false;
+  if (crate && !(album.crates || []).includes(crate)) return false;
   return true;
 }
 

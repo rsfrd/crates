@@ -7,6 +7,7 @@ create table if not exists public.albums (
   title           text not null,
   catno           text,
   genres          text[]  not null default '{}',
+  crates          text[]  not null default '{}',   -- your own groupings, e.g. 'Japanese'
 
   -- 'owned' = in the collection, 'want' = on the want list
   status          text    not null default 'owned' check (status in ('owned', 'want')),

@@ -288,3 +288,51 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .album-sub { display: block; margin-top: 10px; font-size: 17px; line-height: 1.3; font-weight: 600; font-stretch: 100%; letter-spacing: 0; text-wrap: pretty; }
 @media (min-width: 560px) { .album-sub { font-size: 18px; } }
 .tracks .by { display: block; font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 1px; }
+
+/* ---------- crates ---------- */
+#crate { flex: none; height: 36px; padding: 0 30px 0 12px; border: 1px solid var(--ink); border-radius: 999px; background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2361676C' stroke-width='2'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 8px center / 16px; appearance: none; font-size: 14px; font-weight: 600; max-width: 200px; }
+#crate[hidden] { display: none; }
+.icon-btn.on { background: var(--ink); color: var(--paper); }
+
+/* selecting records */
+.row .pick, .tile .pick { display: none; }
+.selecting .row .pick { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line); color: transparent; }
+.selecting .row.is-selected .pick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.selecting .tile .pick { display: grid; place-items: center; position: absolute; top: 6px; right: 6px; z-index: 2; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #fff; background: rgba(0,0,0,.25); color: transparent; }
+.selecting .tile.is-selected .pick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.selecting .tile.is-selected .tile-art { outline: 3px solid var(--accent); outline-offset: 2px; }
+.pick svg { width: 16px; height: 16px; stroke-width: 2.4; }
+.selecting .row:active { opacity: 1; }
+.selecting .person-row { opacity: .45; pointer-events: none; }
+
+.selbar { position: fixed; z-index: 8; left: 50%; transform: translateX(-50%); bottom: calc(12px + var(--safe-b)); width: min(788px, calc(100vw - 24px)); padding: 12px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.selbar[hidden] { display: none; }
+.selrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.selcount { flex: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+.selpanel { display: flex; flex-direction: column; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.selpanel .hint { margin: 0; }
+.selbar .btn:disabled { opacity: .45; }
+.selecting ~ .selbar ~ #toast, #selbar:not([hidden]) ~ #toast { bottom: calc(150px + var(--safe-b)); }
+
+/* crates on a record */
+.crates-block .chips { margin-top: 0; }
+.crate-chip { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 999px; }
+.crate-chip .chip { border: 0; padding-right: 4px; font-weight: 600; }
+.chip-x { display: grid; place-items: center; width: 26px; height: 26px; margin-right: 2px; border: 0; background: none; border-radius: 50%; color: var(--muted); }
+.chip-x svg { width: 14px; height: 14px; }
+.chip-x:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.add-chip { display: inline-flex; align-items: center; gap: 4px; border-style: dashed; color: var(--muted); }
+.add-chip svg { width: 15px; height: 15px; }
+.crate-add { margin-top: 12px; }
+.chips.quick { margin-top: 10px; }
+
+/* managing crates */
+.crate-list { list-style: none; margin: 0; padding: 0; }
+.crate-list li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.crate-name { flex: 1; text-align: left; border: 0; background: none; padding: 6px 0; font-weight: 600; font-size: 15.5px; }
+.crate-name span { color: var(--muted); font-weight: 400; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.crate-list .btn { min-height: 34px; padding: 0 12px; font-size: 13.5px; }
+.fab[hidden] { display: none; }
+#results.selecting { padding-bottom: 90px; }
+.selrow .btn { min-height: 38px; padding: 0 14px; }
+.selrow .btn.primary, .selrow #sel-remove { flex: 1 1 0; }
