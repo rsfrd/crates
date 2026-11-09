@@ -225,7 +225,8 @@ function renderResults() {
   if (res.albums.length) html += `<section><h2>Albums <span>${res.albums.length}</span></h2>${albumBlock(res.albums)}</section>`;
   if (res.songs.length) {
     html += `<section><h2>Songs <span>${res.songs.length}</span></h2><div class="rows">` +
-      res.songs.map((s) => row(s.album, s.tracks.slice(0, 3).map((t) => `<span class="pos">${esc(t.pos)}</span> ${esc(t.title)}`).join("<br>"))).join("") +
+      res.songs.map((s) => row(s.album, s.tracks.slice(0, 3).map((t) =>
+        `<span class="pos">${esc(t.pos)}</span> ${esc(t.title)}${t.work && !t.isWork ? ` <span class="on">in ${esc(t.work)}</span>` : ""}`).join("<br>"))).join("") +
       `</div></section>`;
   }
   if (!html) {
@@ -299,6 +300,44 @@ function renderOverlay() {
   hideOverlay();
 }
 
+// ---------- track lists ----------
+function seconds(d) {
+  const p = String(d || "").split(":").map(Number);
+  if (!d || p.some((n) => !Number.isFinite(n))) return null;
+  return p.reduce((acc, n) => acc * 60 + n, 0);
+}
+function clock(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Movements are listed under the piece they belong to, with the piece's total time.
+function trackList(tracks) {
+  const groups = [];
+  for (const t of tracks) {
+    const last = groups[groups.length - 1];
+    if (t.work && last && last.work === t.work) last.items.push(t);
+    else groups.push({ work: t.work || null, items: [t] });
+  }
+  const li = (t, cls = "") => `<li${cls ? ` class="${cls}"` : ""}><span class="pos">${esc(t.pos)}</span><span class="tt">${esc(t.title)}</span><span class="dur">${esc(t.dur || "")}</span></li>`;
+  return `<ol class="tracks">${groups.map((g) => {
+    if (!g.work) return g.items.map((t) => li(t)).join("");
+    const secs = g.items.map((t) => seconds(t.dur));
+    const total = secs.every((x) => x != null) ? clock(secs.reduce((a, b) => a + b, 0)) : "";
+    return `<li class="work"><span class="tt">${esc(g.work)}</span><span class="dur">${total}</span></li>${g.items.map((t) => li(t, "mvt")).join("")}`;
+  }).join("")}</ol>`;
+}
+
+// Long titles: split at a colon into title + subtitle, and step the size down as they grow.
+function albumTitle(t) {
+  const i = t.indexOf(": ");
+  const split = i >= 3 && t.length - i > 4;
+  const main = split ? t.slice(0, i) : t;
+  const sub = split ? t.slice(i + 2) : "";
+  const size = main.length > 60 ? " is-xlong" : main.length > 30 ? " is-long" : "";
+  return `<h2 class="album-title${size}">${esc(main)}${sub ? `<span class="album-sub">${esc(sub)}</span>` : ""}</h2>`;
+}
+
 // ---------- album ----------
 function renderAlbum(id) {
   const a = byId(id);
@@ -348,7 +387,7 @@ function renderAlbum(id) {
       <div class="album-head">
         ${thumb(a, "large")}
         <div class="album-id">
-          <h2 class="album-title">${esc(a.title)}</h2>
+          ${albumTitle(a.title)}
           <p class="album-artist"><a href="#" data-search="${esc(a.artist)}">${esc(a.artist)}</a></p>
           ${meta ? `<p class="album-meta">${meta}</p>` : ""}
           ${(a.genres || []).length ? `<p class="chips">${a.genres.map((g) => `<button class="chip" data-genre="${esc(g)}">${esc(g)}</button>`).join("")}</p>` : ""}
@@ -362,9 +401,7 @@ function renderAlbum(id) {
 
       ${statusBlock}
 
-      ${(a.tracks || []).length ? `<section class="block"><h3>Tracks</h3><ol class="tracks">
-        ${a.tracks.map((t) => `<li><span class="pos">${esc(t.pos)}</span><span class="tt">${esc(t.title)}</span><span class="dur">${esc(t.dur || "")}</span></li>`).join("")}
-      </ol></section>` : ""}
+      ${(a.tracks || []).length ? `<section class="block"><h3>Tracks</h3>${trackList(a.tracks)}</section>` : ""}
 
       ${players.length ? `<section class="block"><h3>Personnel</h3><ul class="credits">${players.map(credit).join("")}</ul></section>` : ""}
       ${others.length ? `<details class="block more"><summary>Production and other credits <span>${others.length}</span></summary><ul class="credits">${others.map(credit).join("")}</ul></details>` : ""}
@@ -717,6 +754,7 @@ function renderTools() {
   const by = (s) => state.albums.filter((a) => a._pending ? false : a.enrich_status === s);
   const pending = by("pending"), review = by("review"), missing = by("not_found"), errors = by("error"), done = by("matched");
   const noSides = state.albums.filter(fromCDListing);
+  const flatClassical = state.albums.filter(needsWorks);
   const e = state.enrich;
   const mode = state.store.mode;
   const pct = e.total ? Math.round((e.done / e.total) * 100) : 0;
@@ -749,6 +787,10 @@ function renderTools() {
           ${noSides.length ? `<div class="vinyl-fix">
             <p class="hint">${plural(noSides.length, "record")} ${noSides.length === 1 ? "has" : "have"} a track list without sides, which usually means it came from a CD.</p>
             <button class="btn" id="vinyl">Switch ${noSides.length === 1 ? "it" : "them"} to the vinyl LP</button>
+          </div>` : ""}
+          ${flatClassical.length ? `<div class="vinyl-fix">
+            <p class="hint">${plural(flatClassical.length, "classical record")} ${flatClassical.length === 1 ? "was" : "were"} fetched before pieces were shown above their movements. This keeps the pressing you have and only updates the details.</p>
+            <button class="btn" id="works">Update ${flatClassical.length === 1 ? "its" : "their"} track ${flatClassical.length === 1 ? "list" : "lists"}</button>
           </div>` : ""}`
         : ""}
       </section>
@@ -767,6 +809,7 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
+  panel.querySelector("#works")?.addEventListener("click", () => runQueue(state.albums.filter(needsWorks), refetchSamePressing, "Finished updating classical track lists"));
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
@@ -834,6 +877,24 @@ function fromCDListing(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
   return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
+}
+
+// Classical records fetched before movements were grouped under their pieces.
+const WORKS_CHECKED = "worksChecked";
+const CLASSICAL = /classical|opera|baroque|chamber|orchestral|choral|symphon|concert|romantic|renaissance|contemporary classical/i;
+function needsWorks(a) {
+  if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
+  if (!(a.genres || []).some((g) => CLASSICAL.test(g))) return false;
+  if (a.tracks.some((t) => t.work)) return false;
+  return !new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))).has(a.id);
+}
+
+async function refetchSamePressing(a) {
+  const r = await politeApi({ op: "fetch", ref: `release/${a.discogs_id}`, artist: a.artist, exact: "1" });
+  const done = new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))); done.add(a.id); pref.set(WORKS_CHECKED, JSON.stringify([...done]));
+  if (!r || !r.release) return r ? r.rateRemaining : 0;
+  await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));
+  return r.rateRemaining;
 }
 
 async function refetchVinyl(a) {

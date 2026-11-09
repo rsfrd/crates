@@ -159,7 +159,13 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .thumb.large.is-want { box-shadow: none; outline-width: 2px; }
 .thumb.large .thumb-glyph { width: 30px; height: 30px; right: 10px; bottom: 10px; }
 .thumb.large .thumb-glyph svg { width: 22px; height: 22px; }
-@media (min-width: 560px) { .album-head { flex-direction: row; align-items: flex-end; } .thumb.large { width: 260px; } }
+@media (min-width: 560px) {
+  /* Cover pinned to the top; a short title sits at the cover's base, a tall one runs down beside it. */
+  .album-head { flex-direction: row; align-items: flex-start; }
+  .album-head .album-id { align-self: flex-end; min-width: 0; }
+  .album-head:has(.album-title.is-long, .album-title.is-xlong, .album-sub) .album-id { align-self: flex-start; }
+  .thumb.large { width: 260px; }
+}
 .album-title { margin: 0; font-size: clamp(36px, 9.4vw, 56px); line-height: .96; font-weight: 800; font-stretch: 72%; letter-spacing: -.01em; text-wrap: balance; }
 .album-artist { margin: 8px 0 0; font-size: 19px; font-weight: 500; }
 .album-artist a { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
@@ -269,3 +275,15 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 
 .vinyl-fix { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .vinyl-fix .hint { margin: 0 0 10px; }
+
+/* classical: a piece above its movements */
+.tracks li.work { grid-template-columns: 1fr auto; padding: 16px 0 6px; border-bottom: 0; font-weight: 600; line-height: 1.3; }
+.tracks li.work:first-child { padding-top: 4px; }
+.tracks li.mvt .tt { padding-left: 2px; }
+.tracks li.mvt + li:not(.mvt) { margin-top: 0; }
+
+/* long album titles */
+.album-title.is-long { font-size: clamp(30px, 7.6vw, 44px); line-height: 1; }
+.album-title.is-xlong { font-size: clamp(26px, 6.4vw, 36px); line-height: 1.02; }
+.album-sub { display: block; margin-top: 10px; font-size: 17px; line-height: 1.3; font-weight: 600; font-stretch: 100%; letter-spacing: 0; text-wrap: pretty; }
+@media (min-width: 560px) { .album-sub { font-size: 18px; } }
