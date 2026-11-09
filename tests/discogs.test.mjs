@@ -195,3 +195,69 @@ test("automatic match ends on the vinyl LP and searches catalogue numbers among 
   assert.equal(r.release.discogs_id, 200);
   assert.ok(calls.some((c) => c.includes("catno=CL+1355") && c.includes("format=Vinyl")));
 });
+
+import { flattenTracks } from "../netlify/lib/discogs.mjs";
+
+test("classical: index tracks keep their piece with each movement", () => {
+  const tl = [
+    { type_: "heading", title: "Side A", position: "" },
+    { type_: "index", position: "", title: "String Quartet No. 1 In C Major, Op. 49", duration: "",
+      extraartists: [{ id: 50, name: "Dmitri Shostakovich", role: "Composed By" }],
+      sub_tracks: [
+        { type_: "track", position: "A1", title: "Moderato", duration: "4:38" },
+        { type_: "track", position: "A2", title: "Moderato", duration: "4:51" },
+      ] },
+    { type_: "index", position: "", title: "String Quartet No. 2 In A Major, Op. 68", sub_tracks: [
+        { type_: "track", position: "A3", title: "Overture: Moderato Con Moto", duration: "8:02" },
+    ] },
+  ];
+  const t = flattenTracks(tl);
+  assert.deepEqual(t.map((x) => [x.pos, x.title, x.work]), [
+    ["A1", "Moderato", "String Quartet No. 1 In C Major, Op. 49"],
+    ["A2", "Moderato", "String Quartet No. 1 In C Major, Op. 49"],
+    ["A3", "Overture: Moderato Con Moto", "String Quartet No. 2 In A Major, Op. 68"],
+  ]);
+  assert.equal(t[0]._extra[0].name, "Dmitri Shostakovich", "piece-level composer credit flows to movements");
+});
+
+test("classical: heading rows label the movements below them; side headings don't", () => {
+  const tl = [
+    { type_: "heading", title: "Symphony No. 5 In C Minor, Op. 67" },
+    { type_: "track", position: "A1", title: "Allegro Con Brio" },
+    { type_: "track", position: "A2", title: "Andante Con Moto" },
+    { type_: "heading", title: "Side B" },
+    { type_: "track", position: "B1", title: "Allegro" },
+    { type_: "heading", title: "Egmont Overture, Op. 84" },
+    { type_: "track", position: "B2", title: "Sostenuto, Ma Non Troppo" },
+  ];
+  assert.deepEqual(flattenTracks(tl).map((x) => x.work), [
+    "Symphony No. 5 In C Minor, Op. 67", "Symphony No. 5 In C Minor, Op. 67", "Symphony No. 5 In C Minor, Op. 67", "Egmont Overture, Op. 84",
+  ]);
+});
+
+test("ordinary albums are unchanged: no work on plain tracks", () => {
+  const n = normalizeRelease({ id: 1, tracklist: [{ type_: "heading", title: "Side One" }, { type_: "track", position: "A1", title: "So What", duration: "9:22" }] }, "");
+  assert.deepEqual(n.tracks, [{ pos: "A1", title: "So What", dur: "9:22" }]);
+});
+
+test("the Borodin Quartet release, as Discogs lists it", () => {
+  // Shaped after discogs.com/release/5892349: pieces are index rows with their own time,
+  // movements are sub-tracks, and most movements have no time of their own.
+  const piece = (title, duration, subs) => ({ type_: "index", position: "", title, duration, sub_tracks: subs.map(([position, t, d = ""]) => ({ type_: "track", position, title: t, duration: d })) });
+  const release = { id: 5892349, title: "The Complete String Quartets, Vol. 1 (Nos. 1-5)", formats: [{ name: "Vinyl", qty: "3", descriptions: ["LP"] }],
+    artists: [{ id: 1, name: "Shostakovich*", join: "," }, { id: 2, name: "The Borodin Quartet*" }],
+    tracklist: [
+      piece("Quartet No. 1 In C, Op. 49", "13:50", [["A1", "I. Moderato"], ["A2", "II. Moderato, Theme And Variations"], ["A3", "III. Allegro Molto, Scherzo"], ["A4", "IV. Allegro"]]),
+      piece("Quartet No. 2 In A, Op. 68", "", [["A5", "I. Overture: Moderato Con Moto", "8:05"], ["B1", "II. Recitative And Romance: Adagio"], ["B2", "III. Valse: Allegretto"], ["B3", "IV. Theme With Variations"]]),
+      piece("Quartet No. 3 In F, Op. 73", "", [["C1", "I. Allegretto", "16:10"], ["C2", "II. Moderato Con Moto"], ["C3", "III. Allegro Non Troppo"], ["D1", "IV. Adagio, Passacaglia", "16:35"]]),
+      piece("Quartet No. 4 In D, Op. 83", "24:55", [["E1", "I. Allegretto"], ["E2", "II. Andantino"]]),
+    ] };
+  const n = normalizeRelease(release, "Shostakovich");
+  assert.equal(n.parser, 2);
+  assert.equal(n.discogs_artist, "Shostakovich, The Borodin Quartet");
+  assert.equal(n.tracks.length, 14);
+  assert.deepEqual([...new Set(n.tracks.map((t) => t.work))], ["Quartet No. 1 In C, Op. 49", "Quartet No. 2 In A, Op. 68", "Quartet No. 3 In F, Op. 73", "Quartet No. 4 In D, Op. 83"]);
+  assert.equal(n.tracks[0].wdur, "13:50");
+  assert.equal(n.tracks[1].wdur, undefined);
+  assert.deepEqual(n.tracks[4], { pos: "A5", title: "I. Overture: Moderato Con Moto", dur: "8:05", work: "Quartet No. 2 In A, Op. 68" });
+});

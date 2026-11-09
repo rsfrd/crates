@@ -144,15 +144,33 @@ export function buildCredits(release, albumArtist = "") {
   return list.sort((a, b) => rank(a) - rank(b));
 }
 
-function flattenTracks(tl) {
+// Headings that only mark a side or disc ("Side A", "LP 2", "B"), not a piece of music.
+const SIDE_HEADING = /^(side|disc|disk|cd|lp|record|vinyl|platte|seite|face)\b[\s\w.-]{0,8}$|^[a-h]$|^(side )?(one|two|three|four)$/i;
+
+// Flattens a Discogs track list. Classical releases group movements under a piece in two ways:
+// an "index" track whose sub_tracks are the movements, or a "heading" row above them.
+// Either way each movement keeps its piece as `work`.
+export function flattenTracks(tl) {
   const out = [];
+  let heading = null;
   for (const t of tl) {
-    if (t.type_ === "heading") continue;
-    if (t.type_ === "index" && Array.isArray(t.sub_tracks)) {
-      for (const s of t.sub_tracks) out.push({ pos: s.position, title: s.title, dur: s.duration, _extra: s.extraartists });
+    if (t.type_ === "heading") {
+      const h = (t.title || "").trim();
+      if (h && !SIDE_HEADING.test(h)) heading = h;
       continue;
     }
-    out.push({ pos: t.position, title: t.title, dur: t.duration, _extra: t.extraartists });
+    if (t.type_ === "index") {
+      const work = (t.title || "").trim() || heading;
+      (t.sub_tracks || []).forEach((sub, i) => out.push({
+        pos: sub.position || (t.position ? `${t.position}${String.fromCharCode(97 + i)}` : ""),
+        title: sub.title, dur: sub.duration, work,
+        // The piece's own running time (Discogs shows it on the piece row), kept on its first movement.
+        ...(i === 0 && t.duration ? { wdur: t.duration } : {}),
+        _extra: [...(t.extraartists || []), ...(sub.extraartists || [])],
+      }));
+      continue;
+    }
+    out.push({ pos: t.position, title: t.title, dur: t.duration, work: heading, _extra: t.extraartists });
   }
   return out;
 }
@@ -171,7 +189,9 @@ export function normalizeRelease(release, albumArtist, master) {
     thumb_url: img ? (img.uri150 || img.uri) : null,
     discogs_genres: genres,
     discogs_styles: release.styles || [],
-    tracks: flattenTracks(release.tracklist || []).map(({ pos, title, dur }) => ({ pos, title, dur })),
+    tracks: flattenTracks(release.tracklist || []).map(({ pos, title, dur, work, wdur }) => (work ? { pos, title, dur, work, ...(wdur ? { wdur } : {}) } : { pos, title, dur })),
+    // Lets the app tell details from this version of the parser apart from older ones.
+    parser: 2,
     credits: buildCredits(release, albumArtist),
     discogs_title: (release.title || "").trim(),
     format: (release.formats || []).map((f) => [f.qty && f.qty !== "1" ? `${f.qty}×` : "", f.name, ...(f.descriptions || [])].filter(Boolean).join(" ")).join(", "),

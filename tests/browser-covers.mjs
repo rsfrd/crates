@@ -23,6 +23,16 @@ const cdRecord = demo.find((r) => r.artist === "Ahmad Jamal") || demo[40];
 Object.assign(cdRecord, { discogs_id: 55, enrich_status: "matched", cover_url: "/t/e.png", thumb_url: "/t/e.png", cover_locked: true,
   tracks: [{ pos: "1", title: "But Not For Me", dur: "3:32" }, { pos: "2", title: "Surrey With The Fringe On Top", dur: "2:01" }] });
 const fetchLog = [];
+// A classical record already fetched the old way (movements only), and the grouped version Discogs now gives.
+const quartets = demo.find((r) => (r.genres || []).includes("Classical") && r.artist.startsWith("J.S. Bach")) || demo.find((r) => (r.genres || []).includes("Classical"));
+const Q1 = "String Quartet No. 1 In C Major, Op. 49", Q2 = "String Quartet No. 2 In A Major, Op. 68";
+const grouped = [
+  { pos: "A1", title: "Moderato", dur: "4:38", work: Q1, wdur: "13:50" }, { pos: "A2", title: "Moderato", dur: "4:51", work: Q1 },
+  { pos: "A3", title: "Allegro Molto", dur: "2:00", work: Q1 }, { pos: "A4", title: "Allegro", dur: "2:12", work: Q1 },
+  { pos: "B1", title: "Overture: Moderato Con Moto", dur: "8:02", work: Q2 }, { pos: "B2", title: "Recitative And Romance: Adagio", dur: "10:31", work: Q2 },
+];
+let oldServer = true;   // first answer comes from a not-yet-updated deploy
+Object.assign(quartets, { discogs_id: 77, enrich_status: "matched", tracks: grouped.map(({ work, ...t }) => t) });
 
 const calls = [];
 const titleCase = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -57,6 +67,13 @@ const server = http.createServer(async (rq, res) => {
     }
     if (op === "fetch") {
       const ref = u.searchParams.get("ref"); fetchLog.push(`${ref}${u.searchParams.get("exact") === "1" ? " exact" : ""}`);
+      if (ref === "release/77") {
+        const answer = oldServer
+          ? { ...release("x", "x"), discogs_id: 77, discogs_artist: "Shostakovich, Borodin Quartet", discogs_title: "The Complete String Quartets Vol. 1 (Nos. 1-5)", tracks: grouped.map(({ work, wdur, ...t }) => t) }
+          : { ...release("x", "x"), discogs_id: 77, discogs_artist: "Shostakovich, Borodin Quartet", discogs_title: "The Complete String Quartets Vol. 1 (Nos. 1-5)", tracks: grouped, parser: 2 };
+        oldServer = false;
+        return send(200, "application/json", JSON.stringify({ status: "matched", release: answer }));
+      }
       const rel = ref === "release/900" ? { ...release("Oscar Peterson", "À Salle Pleyel"), discogs_id: 900, discogs_artist: "Oscar Peterson & Joe Pass", discogs_title: "À Salle Pleyel" }
         : { ...release("Charles Mingus", "x"), discogs_artist: "Charles Mingus", discogs_title: "The Black Saint And The Sinner Lady" };
       return send(200, "application/json", JSON.stringify({ status: "matched", release: rel }));
@@ -176,6 +193,34 @@ await p.goto(BASE + "#/album/" + cdRecord.id); await p.waitForSelector(".tracks"
 check((await p.textContent(".tracks")).includes("A1"), "track list now has sides");
 check((await p.getAttribute(".thumb.large img", "src")) === "/t/e.png", "a cover you chose survives the switch");
 await p.goto(BASE); await p.waitForSelector(".row");
+
+// --- classical records: re-pull the same pressing so movements sit under their pieces
+await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
+check((await p.textContent(".tools")).includes("1 classical record was fetched before pieces"), "Collection screen finds the flat classical record");
+await p.click("#works");
+await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
+check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn't count as done; button stays");
+await p.waitForTimeout(3200);
+await p.evaluate(() => { document.querySelector("#toast").textContent = ""; });
+await p.click("#works");
+await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
+check(fetchLog.includes("release/77 exact"), "classical update keeps the same pressing (exact)");
+check(!(await p.locator("#works").count()), "classical button goes away once updated");
+await p.goto(BASE + "#/album/" + quartets.id); await p.waitForSelector(".tracks");
+check(await p.locator(".tracks li.work").count() === 2, "two pieces shown as headers");
+check((await p.textContent(".tracks li.work >> nth=0")).includes(Q1) && (await p.textContent(".tracks li.work >> nth=0")).includes("13:50"), "piece header shows Discogs' time for the piece");
+check((await p.textContent(".tracks li.work >> nth=1")).includes("18:33"), "piece without its own time adds up its movements");
+check(await p.locator(".tracks li.mvt").count() === 6, "all six movements listed under their pieces");
+await p.locator(".tracks").scrollIntoViewIfNeeded();
+await shot("c12-classical");
+await p.goto(BASE); await p.waitForSelector(".row");
+await p.fill("#q", "quartet no 2"); await p.waitForTimeout(250);
+const songs = await p.textContent("#results");
+check(songs.includes(Q2) && !songs.includes("Overture"), "searching a piece lists the piece once, not each movement");
+await p.fill("#q", "recitative"); await p.waitForTimeout(250);
+check((await p.textContent("#results")).includes("in " + Q2), "a movement hit says which piece it's from");
+await shot("c13-classical-search");
+await p.fill("#q", "");
 
 // --- a quick lowercase add gets Discogs' spelling
 await p.click(".fab"); await p.waitForSelector("#add-form");

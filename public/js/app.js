@@ -323,7 +323,7 @@ function trackList(tracks) {
   return `<ol class="tracks">${groups.map((g) => {
     if (!g.work) return g.items.map((t) => li(t)).join("");
     const secs = g.items.map((t) => seconds(t.dur));
-    const total = secs.every((x) => x != null) ? clock(secs.reduce((a, b) => a + b, 0)) : "";
+    const total = g.items[0].wdur || (secs.every((x) => x != null) ? clock(secs.reduce((a, b) => a + b, 0)) : "");
     return `<li class="work"><span class="tt">${esc(g.work)}</span><span class="dur">${total}</span></li>${g.items.map((t) => li(t, "mvt")).join("")}`;
   }).join("")}</ol>`;
 }
@@ -880,7 +880,7 @@ function fromCDListing(a) {
 }
 
 // Classical records fetched before movements were grouped under their pieces.
-const WORKS_CHECKED = "worksChecked";
+const WORKS_CHECKED = "worksChecked2";  // v2: earlier tries may have hit the old server code
 const CLASSICAL = /classical|opera|baroque|chamber|orchestral|choral|symphon|concert|romantic|renaissance|contemporary classical/i;
 function needsWorks(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
@@ -891,8 +891,12 @@ function needsWorks(a) {
 
 async function refetchSamePressing(a) {
   const r = await politeApi({ op: "fetch", ref: `release/${a.discogs_id}`, artist: a.artist, exact: "1" });
-  const done = new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))); done.add(a.id); pref.set(WORKS_CHECKED, JSON.stringify([...done]));
   if (!r || !r.release) return r ? r.rateRemaining : 0;
+  // Only count it as done when the server that answered knows about pieces;
+  // otherwise (an older deploy still serving) it stays in the list to try again.
+  if ((r.release.parser || 0) >= 2) {
+    const done = new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))); done.add(a.id); pref.set(WORKS_CHECKED, JSON.stringify([...done]));
+  }
   await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));
   return r.rateRemaining;
 }
