@@ -4,7 +4,9 @@ Your vinyl collection and want list, searchable from your phone in a record stor
 
 - Search by artist, album, song, genre, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument.
 - Want list: tap **Add want**, type the artist and album, done. Want-list records show up in regular search with a dashed outline and a hollow record icon, so you can tell at a glance you don't own them yet.
+- Records are filed the way a record shop would: people by surname (Frank Zappa under Z, Dave Holland Quintet under H), bands by name ignoring "The". Someone counts as a person when Discogs credits them individually or your spreadsheet listed them in the personnel. For exceptions, set **File under** in Edit details; it applies to every record by that artist.
 - Mark records **For sale** and filter to just those.
+- **Want-list prices**: records on your want list show the lowest price on the Discogs marketplace (any seller, before shipping) with links to shop US sellers or all sellers, across every vinyl pressing of the album. Discogs' API doesn't share individual listings, so seller ratings and shipping are on Discogs itself when you follow the link.
 - **Pick for me**: the shuffle button beside **Add** picks a random record from your collection, optionally from one crate and/or genre, and avoids repeating recent picks.
 - **Crates**: your own groupings, like "Japanese" or "Late night", separate from genres. Tap the select button at the top, tick records (or **Select all** after a search), and choose **Add to crate**. Filter by crate from the menu beside the genres; rename or delete crates in the Collection screen.
 - Add records to your collection or want list with just an artist and title; the cover, year, label, tracks and personnel are looked up for you.
@@ -26,7 +28,7 @@ Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Disc
 1. Create a free account at supabase.com and click **New project**. Pick any name and a strong database password (you won't need it again).
 2. When the project is ready, open **SQL Editor → New query**. Paste the contents of `supabase/schema.sql` and click **Run**.
 3. New query again. Paste `supabase/seed.sql` (your 713 records) and **Run**.
-4. New query again. Paste `supabase/002_covers.sql` (lets you upload your own covers) and **Run**. Do the same with `supabase/004_crates.sql` (crates).
+4. New query again. Paste `supabase/002_covers.sql` (lets you upload your own covers) and **Run**. Do the same with `supabase/004_crates.sql` (crates) `supabase/005_prices.sql` (want-list prices) and `supabase/006_file_under.sql` (File under).
 5. Create your login: **Authentication → Users → Add user → Create new user**. Enter your email and a password, and tick **Auto Confirm User**.
 6. Lock it down: **Authentication → Sign In / Providers**, turn **off** "Allow new users to sign up", and save. Now only your account can ever see or change the data.
 7. Open **Project Settings → API** (sometimes labeled **Data API** / **API Keys**) and copy:
@@ -97,9 +99,11 @@ supabase/seed.sql       your 713 records
 supabase/002_covers.sql cover uploads (storage folder + "keep my cover" flag)
 supabase/003_fix_split_titles.sql one-time repair for 12 titles cut at a comma
 supabase/004_crates.sql crates
+supabase/005_prices.sql want-list prices
+supabase/006_file_under.sql "File under" for filing exceptions
 data/collection.json    your spreadsheet, cleaned up
 scripts/                how the spreadsheet was cleaned and turned into seed.sql
-tests/                  `node --test tests/discogs.test.mjs tests/images.test.mjs tests/bandcamp.test.mjs` (browser walkthroughs: `tests/browser*.mjs`)
+tests/                  `node --test tests/discogs.test.mjs tests/images.test.mjs tests/bandcamp.test.mjs tests/sorting.test.mjs` (browser walkthroughs: `tests/browser*.mjs`)
 ```
 
 The original spreadsheet had about 145 rows that split in the wrong places (titles with commas such as *Parsley, Sage, Rosemary and Thyme*, and a missing column on ~115 rows). Those were repaired in `scripts/clean.py`; a few genre cells that held an artist name instead were cleared.

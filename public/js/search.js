@@ -11,9 +11,51 @@ export function fold(s = "") {
 
 export function personKey(name) { return fold(name).replace(/\s+/g, "-"); }
 
-export function sortKey(a) {
-  const artist = fold(a.artist).replace(/^the /, "");
-  return `${artist}\u0000${String(a.year || 9999).padStart(4, "0")}\u0000${fold(a.title)}`;
+// ---------- filing order ----------
+// People are filed by surname ("Frank Zappa" under Z), bands by name ("The Cure" under C).
+// Someone counts as a person when the records say so: Discogs credits them individually
+// ("Frank Zappa – Guitar"), or the original spreadsheet lists them in the personnel.
+const GROUP = /\b(orchestra|orchester|quartet|quintet|sextet|septet|octet|trio|duo|ensemble|band|choir|chorus|players|singers|brothers|sisters|group|club|sound|soloists|philharmonic|symphony|sinfonia|consort|academy|collective|company|experience|project|crew|gang|family|boys|girls|kids|all stars|allstars|messengers|mothers|arkestra|machine|system|unit|combo|orkestra)\b/;
+const SUFFIX = new Set(["jr", "sr", "ii", "iii", "iv"]);
+
+export function knownPeople(albums) {
+  const people = new Set();
+  const add = (name) => {
+    const f = fold(name);
+    if (!f || GROUP.test(f) || /^(the|various) /.test(f) || f === "various") return;
+    people.add(f);
+  };
+  for (const a of albums) {
+    for (const c of a.credits || []) if ((c.roles || []).length) add(c.name);
+    for (const n of a.personnel_hint || []) if (fold(n).includes(" ")) add(n);
+  }
+  return people;
+}
+
+// "frank zappa" → "zappa frank"; "sammy davis jr" → "davis sammy jr"
+function bySurname(f) {
+  const t = f.split(" ");
+  let i = t.length - 1;
+  while (i > 0 && SUFFIX.has(t[i])) i--;
+  return [t[i], ...t.slice(0, i), ...t.slice(i + 1)].join(" ");
+}
+
+// How an artist name files: surname first for people (also at the start of
+// "Frank Zappa & The Mothers" or "Dave Holland Quintet"), else the name without a leading The/A.
+export function fileAs(artist, people = new Set(), sortAs = "") {
+  if (sortAs && sortAs.trim()) return `${fold(sortAs)} ${fold(artist)}`;
+  const f = fold(artist);
+  let best = "";
+  for (const p of people) {
+    if ((f === p || f.startsWith(p + " ")) && p.length > best.length) best = p;
+  }
+  if (best) return `${bySurname(best)}${f.slice(best.length)}`;
+  // "The Cure" files under C; "A Tribe Called Quest" under T (a lone "A" before one word stays).
+  return f.replace(/^the (?=\S)/, "").replace(/^a (?=\S+ \S)/, "");
+}
+
+export function sortKey(a, people) {
+  return `${fileAs(a.artist, people, a.sort_as)}\u0000${String(a.year || 9999).padStart(4, "0")}\u0000${fold(a.title)}`;
 }
 
 const MUSICAL_SKIP = /produc|engineer|record|mix|master|lacquer|liner|photo|design|art|cover|layout|written|composed|lyrics|music by|words by|executive|notes|supervis|coordinat|transfer|edit|illustrat|publish|technician|assistant|compiled|sleeve|direction|licens|manufactur|distribut|market|cut by/i;
@@ -53,6 +95,7 @@ export function creditsFor(album) {
 }
 
 export function buildIndex(albums) {
+  const individuals = knownPeople(albums);
   const people = new Map();
   const list = albums.map((a) => {
     const credits = creditsFor(a);
@@ -67,12 +110,12 @@ export function buildIndex(albums) {
       album: a,
       hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
       tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
-      sort: sortKey(a),
+      sort: sortKey(a, individuals),
     };
   });
   list.sort((x, y) => (x.sort < y.sort ? -1 : x.sort > y.sort ? 1 : 0));
   for (const p of people.values()) {
-    p.items.sort((x, y) => (x.leader !== y.leader ? (x.leader ? -1 : 1) : sortKey(x.album) < sortKey(y.album) ? -1 : 1));
+    p.items.sort((x, y) => (x.leader !== y.leader ? (x.leader ? -1 : 1) : sortKey(x.album, individuals) < sortKey(y.album, individuals) ? -1 : 1));
   }
   const genres = [...new Set(albums.flatMap((a) => a.genres || []))].sort((a, b) => a.localeCompare(b));
   const crateCounts = new Map();

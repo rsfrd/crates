@@ -3,7 +3,8 @@
 //   ?op=fetch&ref=<discogs url | id>&artist=…  a release/master, swapped for its vinyl LP unless &exact=1
 //   ?op=search&q=…                             Discogs candidates to pick from
 //   ?op=images&artist=…&title=…&discogs_id=…   alternative covers (Apple Music, Cover Art Archive, Discogs)
-import { makeClient, match, fetchByRef, parseDiscogsRef, search, RateLimited } from "../lib/discogs.mjs";
+//   ?op=price&id=<release id>[&master=1]       lowest marketplace price in USD + copies for sale
+import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, RateLimited } from "../lib/discogs.mjs";
 import { findImages } from "../lib/images.mjs";
 import { signedIn, json } from "../lib/auth.mjs";
 
@@ -26,6 +27,10 @@ export default async (req) => {
       body = release ? { status: "matched", release } : { status: "not_found", release: null };
     } else if (op === "search") {
       body = { candidates: await search(client, p.get("q") || "") };
+    } else if (op === "price") {
+      const id = Number(p.get("id"));
+      if (!Number.isInteger(id) || id <= 0) return json({ error: "Missing a Discogs release number" }, 400);
+      body = { price: await marketplace(client, id, { withMaster: p.get("master") === "1" }) };
     } else if (op === "images") {
       body = {
         images: await findImages(client, {

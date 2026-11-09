@@ -307,3 +307,26 @@ test("jazz: track-level performers are not shown as composers", () => {
   const n = normalizeRelease({ id: 3, tracklist: [{ type_: "track", position: "A1", title: "Blue", extraartists: [{ id: 1, name: "Ron Carter", role: "Bass" }, { id: 2, name: "Wayne Shorter", role: "Written-By" }] }] }, "x");
   assert.deepEqual(n.tracks[0], { pos: "A1", title: "Blue", dur: undefined, by: "Wayne Shorter" });
 });
+
+import { marketplace } from "../netlify/lib/discogs.mjs";
+
+test("marketplace: lowest price in USD, copies for sale, album family", async () => {
+  const calls = [];
+  const fake = async (url) => {
+    const u = new URL(url); calls.push(u.pathname + u.search);
+    if (u.pathname === "/marketplace/stats/200") return new Response(JSON.stringify({ lowest_price: { currency: "USD", value: 24.499999 }, num_for_sale: 7, blocked_from_sale: false }), { status: 200 });
+    if (u.pathname === "/releases/200") return new Response(JSON.stringify({ id: 200, master_id: 7 }), { status: 200 });
+    if (u.pathname === "/marketplace/stats/300") return new Response(JSON.stringify({ lowest_price: null, num_for_sale: null, blocked_from_sale: false }), { status: 200 });
+    return new Response("{}", { status: 404 });
+  };
+  const client = makeClient("t", fake);
+  assert.deepEqual(await marketplace(client, 200, { withMaster: true }), { value: 24.5, currency: "USD", for_sale: 7, blocked: false, master_id: 7 });
+  assert.ok(calls[0].includes("curr_abbr=USD"));
+  assert.deepEqual(await marketplace(client, 300), { value: null, currency: "USD", for_sale: 0, blocked: false, master_id: null });
+});
+
+test("matched releases remember their album family", () => {
+  assert.equal(normalizeRelease({ id: 1, master_id: 55 }, "").master_id, 55);
+  assert.equal(normalizeRelease({ id: 1 }, "", { id: 66, year: 1960 }).master_id, 66);
+  assert.equal(normalizeRelease({ id: 1 }, "").master_id, null);
+});

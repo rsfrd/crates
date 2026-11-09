@@ -203,6 +203,7 @@ export function normalizeRelease(release, albumArtist, master) {
   const genres = [...new Set((release.genres || []).flatMap((g) => g.split(/\s*\/\s*/)))];
   return {
     discogs_id: release.id,
+    master_id: release.master_id || (master && master.id) || null,
     discogs_url: release.uri || `https://www.discogs.com/release/${release.id}`,
     year: (master && master.year) || release.year || null,
     label: label ? cleanName(label.name) : null,
@@ -334,6 +335,25 @@ export async function match(client, { artist, title, catno }) {
   const release = await fetchByRef(client, top.type, top.id, artist);
   if (!release) return { status: "not_found", release: null, candidates };
   return { status: top.score >= 0.75 ? "matched" : "review", release, candidates, score: top.score };
+}
+
+// Marketplace figures for one release, in US dollars: the lowest listed price (any seller, before shipping)
+// and how many copies are for sale. Also the album family, when asked for.
+export async function marketplace(client, releaseId, { withMaster = false } = {}) {
+  const stats = await client.get(`/marketplace/stats/${releaseId}`, { curr_abbr: "USD" });
+  let masterId = null;
+  if (withMaster) {
+    const rel = await client.get(`/releases/${releaseId}`);
+    masterId = (rel && rel.master_id) || null;
+  }
+  const low = stats && stats.lowest_price;
+  return {
+    value: low && Number.isFinite(Number(low.value)) ? Math.round(Number(low.value) * 100) / 100 : null,
+    currency: (low && low.currency) || "USD",
+    for_sale: (stats && Number.isFinite(stats.num_for_sale)) ? stats.num_for_sale : 0,
+    blocked: !!(stats && stats.blocked_from_sale),
+    master_id: masterId,
+  };
 }
 
 export async function search(client, q) {

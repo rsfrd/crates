@@ -7,6 +7,8 @@ create table if not exists public.albums (
   title           text not null,
   catno           text,
   genres          text[]  not null default '{}',
+  crates          text[]  not null default '{}',   -- your own groupings, e.g. 'Japanese'
+  sort_as         text,                            -- "File under" override, e.g. 'Sun Ra'
 
   -- 'owned' = in the collection, 'want' = on the want list
   status          text    not null default 'owned' check (status in ('owned', 'want')),
@@ -21,6 +23,8 @@ create table if not exists public.albums (
   cover_locked    boolean not null default false,  -- true when you picked the cover yourself
   discogs_id      bigint,
   discogs_url     text,
+  master_id       bigint,                          -- Discogs album family (all pressings)
+  price           jsonb,                           -- last marketplace check for want-list records
   tracks          jsonb   not null default '[]',   -- [{pos, title, dur}]
   credits         jsonb   not null default '[]',   -- [{name, id, roles[], kind, leader, tracks}]
   personnel_hint  text[]  not null default '{}',   -- names from the original spreadsheet

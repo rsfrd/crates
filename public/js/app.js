@@ -1,5 +1,5 @@
 import { createStore, cache, outbox } from "./store.js";
-import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold } from "./search.js";
+import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople } from "./search.js";
 
 // ---------- helpers ----------
 const $ = (s, el = document) => el.querySelector(s);
@@ -48,6 +48,8 @@ const state = {
   cover: null, // { albumId, images, busy, error, note }
   lookingUp: new Set(), // album ids whose details are being fetched right now
   pick: null,        // { crate, genre, id } for "Pick for me"
+  pricing: new Set(), // want-list ids whose price is being checked right now
+  priceFailed: new Set(), // checks that failed this session; not retried automatically
 };
 
 function setAlbums(rows) {
@@ -90,6 +92,7 @@ function thumb(a, cls = "") {
 function tags(a) {
   let t = "";
   if (a.status === "want") t += `<span class="tag tag-want">${ICON.want}Want</span>`;
+  if (a.status === "want" && a.price && a.price.value != null) t += `<span class="tag tag-price">${money(a.price)}</span>`;
   if (a.status === "owned" && a.for_sale) t += `<span class="tag tag-sale">For sale</span>`;
   if (a._pending) t += `<span class="tag">Not synced</span>`;
   return t ? `<span class="tags">${t}</span>` : "";
@@ -516,6 +519,106 @@ function shuffleTo(panel, pool) {
   }, 65);
 }
 
+// ---------- filing ----------
+// The database has the "File under" column once 006_file_under.sql has run.
+function sortReady() {
+  if (state.store.mode !== "live") return true;
+  return state.albums.some((a) => !a._pending && Object.prototype.hasOwnProperty.call(a, "sort_as"));
+}
+// Shown as the placeholder: where the record files now, e.g. "Zappa".
+function fileUnderGuess(a) {
+  const f = fileAs(a.artist, knownPeople(state.albums));
+  const first = f.split(" ")[0] || "";
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+// ---------- want-list prices ----------
+const SETUP_PRICES = "Prices aren't set up yet. Run supabase/005_prices.sql in Supabase, then reload.";
+const PRICE_MAX_AGE = 12 * 3600 * 1000;
+
+// The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
+function pricesReady() {
+  if (state.store.mode !== "live") return true;
+  return state.albums.some((a) => !a._pending && Object.prototype.hasOwnProperty.call(a, "price"));
+}
+const priceable = () => state.albums.filter((a) => a.status === "want" && a.discogs_id && !a._pending);
+function priceStale(a) {
+  if (!a.discogs_id || !state.store.canEnrich || !pricesReady() || state.pricing.has(a.id) || state.priceFailed.has(a.id)) return false;
+  const t = a.price && Date.parse(a.price.checked_at);
+  return !t || Date.now() - t > PRICE_MAX_AGE;
+}
+
+function money(p, short = false) {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: p.currency || "USD", maximumFractionDigits: short && p.value >= 10 ? 0 : 2 }).format(p.value);
+  } catch { return `${p.value} ${p.currency || ""}`.trim(); }
+}
+
+function ago(iso) {
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (!Number.isFinite(m)) return "";
+  if (m < 2) return "just now";
+  if (m < 60) return `${m} minutes ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return h === 1 ? "an hour ago" : `${h} hours ago`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "yesterday" : `${d} days ago`;
+}
+
+// Discogs marketplace pages: every vinyl pressing of the album when we know its family, else this pressing.
+function marketLinks(a) {
+  const base = a.master_id
+    ? `https://www.discogs.com/sell/list?master_id=${a.master_id}&format=Vinyl&sort=price%2Casc`
+    : `https://www.discogs.com/sell/release/${a.discogs_id}?sort=price%2Casc`;
+  return { us: `${base}&ships_from=United+States`, all: base };
+}
+
+function priceBlock(a) {
+  if (!a.discogs_id) return "";
+  const p = a.price;
+  const links = marketLinks(a);
+  let line;
+  if (state.pricing.has(a.id) && !p) line = `<p class="price-line"><span class="hint">Checking Discogs…</span></p>`;
+  else if (p && p.value != null) line = `<p class="price-line"><strong>From ${money(p)}</strong><span class="hint">${plural(p.for_sale || 0, "copy", "copies")} of this pressing for sale, lowest price before shipping</span></p>`;
+  else if (p) line = `<p class="price-line"><span>No copies of this pressing for sale on Discogs right now.</span></p>`;
+  else line = "";
+  return `<section class="block price-block">
+    <h3>Buy on Discogs</h3>
+    ${line}
+    <div class="price-links">
+      <a class="btn" href="${esc(links.us)}" target="_blank" rel="noopener">Shop US sellers</a>
+      <a class="btn" href="${esc(links.all)}" target="_blank" rel="noopener">All sellers</a>
+    </div>
+    <p class="hint price-note">${a.master_id ? "The links show every vinyl pressing of this album, cheapest first. " : ""}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
+      ${state.store.canEnrich && pricesReady() && !state.pricing.has(a.id) ? `<button class="linkish" id="price-refresh">Check again</button>` : ""}</p>
+  </section>`;
+}
+
+// Asks Discogs for the current lowest price. `quiet` skips toasts (used when refreshing many).
+async function checkPrice(a, force = false, quiet = false) {
+  if (!a.discogs_id || state.pricing.has(a.id) || (!force && !priceStale(a))) return null;
+  if (!pricesReady()) { if (!quiet) toast(SETUP_PRICES); return null; }
+  state.pricing.add(a.id);
+  renderOverlay();
+  try {
+    state.priceFailed.delete(a.id);
+    const r = await politeApi({ op: "price", id: a.discogs_id, master: a.master_id ? "0" : "1" });
+    if (!r || !r.price) { state.priceFailed.add(a.id); return r ? r.rateRemaining : 0; }
+    const patch = { price: { value: r.price.value, currency: r.price.currency, for_sale: r.price.for_sale, checked_at: new Date().toISOString() } };
+    if (!a.master_id && r.price.master_id) patch.master_id = r.price.master_id;
+    state.pricing.delete(a.id);
+    await updateAlbum(a.id, patch).catch(() => {});
+    return r.rateRemaining;
+  } catch (e) {
+    state.priceFailed.add(a.id);
+    if (!quiet) toast(/session expired/i.test(e.message) ? e.message : "Couldn't check the price right now.");
+    return null;
+  } finally {
+    state.pricing.delete(a.id);
+    renderAll();
+  }
+}
+
 // ---------- overlays ----------
 let lastFocus = null;
 
@@ -661,6 +764,7 @@ function renderAlbum(id) {
         <label>Catalogue no.<input name="catno" value="${esc(a.catno || "")}"></label>
       </div>
       <label><span>Genres<span class="hint">separate with commas</span></span><input name="genres" value="${esc((a.genres || []).join(", "))}"></label>
+      ${sortReady() ? `<label><span>File under<span class="hint">leave empty to file people by surname; applies to every record by this artist</span></span><input name="sort_as" value="${esc(a.sort_as || "")}" placeholder="${esc(fileUnderGuess(a))}"></label>` : ""}
       <div class="actions"><button class="btn primary" type="submit">Save changes</button><button class="btn" type="button" id="edit-cancel">Cancel</button></div>
     </form>` : "";
 
@@ -689,6 +793,8 @@ function renderAlbum(id) {
       ${looking ? `<p class="note looking">Looking up the cover, tracks and personnel…</p>` : ""}
 
       ${statusBlock}
+
+      ${a.status === "want" ? priceBlock(a) : ""}
 
       ${crateBlock(a)}
 
@@ -745,6 +851,18 @@ function renderAlbum(id) {
       year: Number.isFinite(year) ? year : null, catno: f.get("catno").trim() || null,
       genres: f.get("genres").split(",").map((s) => s.trim()).filter(Boolean),
     }).catch(() => {});
+    // "File under" belongs to the artist, so it's set on every record by them.
+    if (f.has("sort_as")) {
+      const sortAs = f.get("sort_as").trim() || null;
+      if ((a.sort_as || null) !== sortAs) {
+        const artist = fold(f.get("artist"));
+        const ids = state.albums.filter((x) => !x._pending && fold(x.artist) === artist).map((x) => x.id);
+        await Promise.all(ids.map((id) => state.store.update(id, { sort_as: sortAs }).then(replaceAlbum).catch(() => {})));
+        renderAll();
+        toast(sortAs ? `Filed under “${sortAs}”` : "Filed by surname again");
+        return;
+      }
+    }
     toast("Changes saved");
   });
   panel.querySelector("#delete").addEventListener("click", async () => {
@@ -773,6 +891,9 @@ function renderAlbum(id) {
   wireFix(panel, a);
   wireCover(panel, a);
   wireCrates(panel, a);
+  panel.querySelector("#price-refresh")?.addEventListener("click", () => checkPrice(a, true));
+  // Want-list prices refresh themselves when the record is opened and the last check is old.
+  if (a.status === "want" && priceStale(a)) checkPrice(a);
 }
 
 function renderFix(a) {
@@ -1143,6 +1264,14 @@ function renderTools() {
         <div class="rows">${[...review, ...missing, ...errors].map((a) => row(a, a.enrich_status === "review" ? "Check match" : "Not found")).join("")}</div>
       </section>` : ""}
 
+      ${state.store.canEnrich ? `<section class="block">
+        <h3>Want-list prices</h3>
+        ${!pricesReady() ? `<p class="hint">${esc(SETUP_PRICES)}</p>`
+          : priceable().length ? `<p class="hint">Prices refresh when you open a want-list record. To update them all at once:</p>
+            <button class="btn" id="prices-all">Refresh prices for ${plural(priceable().length, "record")}</button>`
+          : `<p class="hint">Records on your want list that are matched on Discogs show their lowest marketplace price here and on the want list.</p>`}
+      </section>` : ""}
+
       <section class="block">
         <h3>Crates</h3>
         ${state.index.crates.length ? `<ul class="crate-list">${state.index.crates.map((c) => `<li>
@@ -1166,6 +1295,7 @@ function renderTools() {
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
+  panel.querySelector("#prices-all")?.addEventListener("click", () => runQueue(priceable(), (a) => checkPrice(a, true, true), "Prices updated"));
   panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
   panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
   panel.querySelectorAll("[data-crate-delete]").forEach((b) => b.addEventListener("click", () => deleteCrate(b.dataset.crateDelete)));
@@ -1191,6 +1321,7 @@ async function api(params) {
 function releasePatch(a, rel, status) {
   const patch = {
     discogs_id: rel.discogs_id, discogs_url: rel.discogs_url, year: rel.year, label: rel.label,
+    ...(pricesReady() ? { master_id: rel.master_id ?? null } : {}),
     cover_url: rel.cover_url, thumb_url: rel.thumb_url, tracks: rel.tracks, credits: rel.credits,
     enrich_status: status,
   };
