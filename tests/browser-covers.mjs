@@ -19,11 +19,17 @@ const photo = await art(160, 20, 1600, 1200); // a landscape "phone photo"
 const demo = JSON.parse(fs.readFileSync(path.join(ROOT, "demo.json"), "utf8"));
 const mingus = demo.find((r) => r.title.startsWith("The Black Saint"));
 Object.assign(mingus, { cover_url: "/t/cd.png", thumb_url: "/t/cd.png", discogs_id: 42, enrich_status: "matched", year: 1963 });
+const cdRecord = demo.find((r) => r.artist === "Ahmad Jamal") || demo[40];
+Object.assign(cdRecord, { discogs_id: 55, enrich_status: "matched", cover_url: "/t/e.png", thumb_url: "/t/e.png", cover_locked: true,
+  tracks: [{ pos: "1", title: "But Not For Me", dur: "3:32" }, { pos: "2", title: "Surrey With The Fringe On Top", dur: "2:01" }] });
+const fetchLog = [];
 
 const calls = [];
+const titleCase = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 const release = (artist, title) => ({
   discogs_id: 7, discogs_url: "https://www.discogs.com/release/7", year: 1961, label: "Impulse!", label_catno: "A-12",
   cover_url: "/t/b.png", thumb_url: "/t/b.png", discogs_genres: ["Jazz"], discogs_styles: [],
+  discogs_artist: titleCase(artist), discogs_title: titleCase(title),
   tracks: [{ pos: "A1", title: "Ezz-thetics", dur: "6:43" }, { pos: "A2", title: "Mr. Jones", dur: "7:01" }],
   credits: [{ name: artist, id: 1, roles: ["Alto Saxophone"], tracks: [], leader: true, kind: "musician" }, { name: "Elvin Jones", id: 2, roles: ["Drums"], tracks: [], leader: false, kind: "musician" }],
 });
@@ -49,7 +55,15 @@ const server = http.createServer(async (rq, res) => {
       await new Promise((r) => setTimeout(r, 900)); // long enough to see the "looking up" state
       return send(200, "application/json", JSON.stringify({ status: "matched", release: release(u.searchParams.get("artist"), u.searchParams.get("title")), rateRemaining: 50 }));
     }
-    if (op === "fetch") return send(200, "application/json", JSON.stringify({ status: "matched", release: release("Charles Mingus", "x") }));
+    if (op === "fetch") {
+      const ref = u.searchParams.get("ref"); fetchLog.push(`${ref}${u.searchParams.get("exact") === "1" ? " exact" : ""}`);
+      const rel = ref === "release/900" ? { ...release("Oscar Peterson", "À Salle Pleyel"), discogs_id: 900, discogs_artist: "Oscar Peterson & Joe Pass", discogs_title: "À Salle Pleyel" }
+        : { ...release("Charles Mingus", "x"), discogs_artist: "Charles Mingus", discogs_title: "The Black Saint And The Sinner Lady" };
+      return send(200, "application/json", JSON.stringify({ status: "matched", release: rel }));
+    }
+    if (op === "search") return send(200, "application/json", JSON.stringify({ candidates: [
+      { type: "release", id: 900, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "1975", country: "US", format: "Vinyl, LP", thumb: "/t/e.png" },
+    ] }));
     return send(400, "application/json", "{}");
   }
   if (u.pathname.startsWith("/api/")) return send(404, "text/plain", "");
@@ -131,6 +145,44 @@ await p.fill("#q", "elvin"); await p.waitForTimeout(250);
 check((await p.textContent(".person-row")).includes("Elvin Jones"), "new record's players are searchable");
 await p.click(".person-row"); await p.waitForSelector(".person-name");
 check((await p.textContent(".person")).includes("Out There") && (await p.textContent(".person")).includes("Drums"), "player page lists the new record with instrument");
+await p.click("button[data-close]"); await p.waitForTimeout(250);
+
+// --- fixing a match renames the record to what Discogs has
+const evans = demo.find((r) => r.artist === "Oscar Peterson, Joe Pass");
+await p.goto(BASE + "#/album/" + evans.id); await p.waitForSelector(".album-title");
+const before = await p.textContent(".album-title");
+await p.click("#fix-open"); await p.waitForSelector("[data-ref]");
+await p.click("[data-ref]"); await p.waitForTimeout(400);
+check((await p.textContent(".album-title")) === "À Salle Pleyel", `fix match sets the Discogs title (was "${before}")`);
+check((await p.textContent(".album-artist")) === "Oscar Peterson & Joe Pass", "fix match sets the Discogs artist line");
+check((await p.textContent("#toast")).includes("Match updated: À Salle Pleyel, Oscar Peterson & Joe Pass"), "toast says what it changed to");
+await shot("c10-fixed-names");
+await p.click("button[data-close]"); await p.waitForTimeout(250);
+await p.fill("#q", "peterson & joe"); await p.waitForTimeout(250);
+check((await p.textContent("#results")).includes("À Salle Pleyel"), "renamed record is searchable by its new artist");
+await p.fill("#q", "");
+
+check(fetchLog.includes("release/900 exact"), "a pressing picked in Fix match is used exactly");
+
+// --- records pulled from CD track listings can be switched to vinyl
+await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
+check((await p.textContent(".tools")).includes("1 record has a track list without sides"), "Collection screen finds the CD-listed record");
+await shot("c11-vinyl-fix");
+await p.click("#vinyl");
+await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished switching"), null, { timeout: 8000 });
+check(fetchLog.includes("release/55"), "re-fetch asks for the vinyl version (not exact)");
+check(!(await p.locator("#vinyl").count()), "button goes away once fixed");
+await p.goto(BASE + "#/album/" + cdRecord.id); await p.waitForSelector(".tracks");
+check((await p.textContent(".tracks")).includes("A1"), "track list now has sides");
+check((await p.getAttribute(".thumb.large img", "src")) === "/t/e.png", "a cover you chose survives the switch");
+await p.goto(BASE); await p.waitForSelector(".row");
+
+// --- a quick lowercase add gets Discogs' spelling
+await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('label:has-text("Collection")');
+await p.fill('input[name="artist"]', "freddie hubbard"); await p.fill('input[name="title"]', "hub-tones");
+await p.click("#add-submit"); await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);
+check((await p.textContent(".album-title")) === "Hub-Tones" && (await p.textContent(".album-artist")) === "Freddie Hubbard", "auto lookup uses Discogs' artist and title");
 await p.click("button[data-close]"); await p.waitForTimeout(250);
 
 // --- want list add still quick, from an empty search

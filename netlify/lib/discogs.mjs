@@ -95,6 +95,20 @@ export function isMusicalRole(r) {
 
 export function cleanName(n = "") { return n.replace(/\s*\(\d+\)\s*$/, "").replace(/\*$/, "").trim(); }
 
+// The artist line as Discogs shows it: "Oscar Peterson & Joe Pass", "Lambert, Hendricks & Ross".
+export function artistLine(artists = []) {
+  const names = artists.filter((x) => x && x.name);
+  if (!names.length) return "";
+  if (names.length === 1 && /^various$/i.test(cleanName(names[0].name))) return "Various Artists";
+  return names.map((x, i) => {
+    const name = cleanName(x.name);
+    if (i === names.length - 1) return name;
+    const j = (x.join || "").trim();
+    if (!j || j === ",") return name + ", ";
+    return `${name} ${j} `;
+  }).join("").replace(/\s+/g, " ").trim();
+}
+
 export function buildCredits(release, albumArtist = "") {
   const map = new Map();
   const leaderIds = new Set((release.artists || []).map((a) => a.id).filter(Boolean));
@@ -159,8 +173,10 @@ export function normalizeRelease(release, albumArtist, master) {
     discogs_styles: release.styles || [],
     tracks: flattenTracks(release.tracklist || []).map(({ pos, title, dur }) => ({ pos, title, dur })),
     credits: buildCredits(release, albumArtist),
-    discogs_title: release.title,
-    discogs_artist: (release.artists || []).map((a) => cleanName(a.name)).join(", "),
+    discogs_title: (release.title || "").trim(),
+    format: (release.formats || []).map((f) => [f.qty && f.qty !== "1" ? `${f.qty}×` : "", f.name, ...(f.descriptions || [])].filter(Boolean).join(" ")).join(", "),
+    country: release.country || null,
+    discogs_artist: artistLine(release.artists),
   };
 }
 
@@ -175,15 +191,52 @@ function toCandidate(r) {
   };
 }
 
-export async function fetchByRef(client, type, id, albumArtist) {
-  if (type === "master") {
-    const m = await client.get(`/masters/${id}`);
-    if (!m) return null;
-    const rel = await client.get(`/releases/${m.main_release}`);
-    return rel ? normalizeRelease(rel, albumArtist, m) : null;
-  }
+// ---------- vinyl pressings ----------
+
+export function isVinylRelease(rel) {
+  return (rel.formats || []).some((f) => f.name === "Vinyl");
+}
+
+// From a master's vinyl versions, the best stand-in for "the LP": a full-length LP,
+// officially released, earliest first.
+export function pickVinylVersion(versions = []) {
+  const vinyl = versions.filter((v) => {
+    const majors = v.major_formats || [];
+    const fmt = `${v.format || ""}`;
+    return (majors.includes("Vinyl") || /vinyl|LP/i.test(fmt)) && !/unofficial|test pressing|transcription/i.test(fmt) && (!v.status || v.status === "Accepted");
+  });
+  const year = (v) => { const m = String(v.released || "").match(/\d{4}/); return m ? Number(m[0]) : 9999; };
+  const rank = (v) => {
+    const fmt = `${v.format || ""}`;
+    let r = 0;
+    if (!/\bLP\b/.test(fmt)) r += 2;                      // 7"/10"/12" singles after full LPs
+    if (/\b(RE|RP|Reissue|Remastered)\b/.test(fmt)) r += 1;  // originals before reissues
+    return r;
+  };
+  return vinyl.sort((a, b) => rank(a) - rank(b) || year(a) - year(b))[0] || null;
+}
+
+async function vinylFromMaster(client, masterId, albumArtist) {
+  const m = await client.get(`/masters/${masterId}`);
+  if (!m) return null;
+  const v = await client.get(`/masters/${masterId}/versions`, { format: "Vinyl", sort: "released", sort_order: "asc", per_page: 100 });
+  const pick = pickVinylVersion((v && v.versions) || []);
+  const rel = await client.get(`/releases/${pick ? pick.id : m.main_release}`);
+  return rel ? normalizeRelease(rel, albumArtist, m) : null;
+}
+
+// type "master": always resolves to a vinyl pressing when one exists.
+// type "release": that exact release, unless preferVinyl is on and it isn't vinyl,
+// in which case the vinyl LP of the same album is used instead.
+export async function fetchByRef(client, type, id, albumArtist, { preferVinyl = true } = {}) {
+  if (type === "master") return vinylFromMaster(client, id, albumArtist);
   const rel = await client.get(`/releases/${id}`);
-  return rel ? normalizeRelease(rel, albumArtist) : null;
+  if (!rel) return null;
+  if (preferVinyl && !isVinylRelease(rel) && rel.master_id) {
+    const vinyl = await vinylFromMaster(client, rel.master_id, albumArtist);
+    if (vinyl) return vinyl;
+  }
+  return normalizeRelease(rel, albumArtist);
 }
 
 export function parseDiscogsRef(input = "") {
@@ -210,7 +263,7 @@ export async function match(client, { artist, title, catno }) {
   const qArtist = /^various/i.test(artist) ? "Various" : artist;
 
   if (catno) {
-    const r = await client.get("/database/search", { type: "release", catno, per_page: 5 });
+    const r = await client.get("/database/search", { type: "release", catno, format: "Vinyl", per_page: 5 });
     consider(r && r.results);
     // A catalogue-number hit is strong evidence even if titles are worded differently.
     for (const c of seen.values()) if (c.score >= 0.45) c.score = Math.min(1, c.score + 0.2);
@@ -238,6 +291,9 @@ export async function match(client, { artist, title, catno }) {
 }
 
 export async function search(client, q) {
-  const r = await client.get("/database/search", { q, per_page: 10 });
-  return ((r && r.results) || []).filter((x) => x.type === "release" || x.type === "master").map(toCandidate);
+  const r = await client.get("/database/search", { q, per_page: 25 });
+  const all = ((r && r.results) || []).filter((x) => x.type === "release" || x.type === "master");
+  const vinylish = (x) => x.type === "master" || (x.format || []).includes("Vinyl");
+  const keep = all.some(vinylish) ? all.filter(vinylish) : all;
+  return keep.slice(0, 12).map(toCandidate);
 }

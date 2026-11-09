@@ -1,6 +1,6 @@
 // /api/discogs — signed-in lookups for album details and cover images.
 //   ?op=match&artist=…&title=…&catno=…        best Discogs match + alternatives
-//   ?op=fetch&ref=<discogs url | id>&artist=…  a specific release/master
+//   ?op=fetch&ref=<discogs url | id>&artist=…  a release/master, swapped for its vinyl LP unless &exact=1
 //   ?op=search&q=…                             Discogs candidates to pick from
 //   ?op=images&artist=…&title=…&discogs_id=…   alternative covers (Apple Music, Cover Art Archive, Discogs)
 import { makeClient, match, fetchByRef, parseDiscogsRef, search, RateLimited } from "../lib/discogs.mjs";
@@ -22,7 +22,7 @@ export default async (req) => {
     } else if (op === "fetch") {
       const ref = parseDiscogsRef(p.get("ref"));
       if (!ref) return json({ error: "That isn't a Discogs link or release number" }, 400);
-      const release = await fetchByRef(client, ref.type, ref.id, p.get("artist") || "");
+      const release = await fetchByRef(client, ref.type, ref.id, p.get("artist") || "", { preferVinyl: p.get("exact") !== "1" });
       body = release ? { status: "matched", release } : { status: "not_found", release: null };
     } else if (op === "search") {
       body = { candidates: await search(client, p.get("q") || "") };

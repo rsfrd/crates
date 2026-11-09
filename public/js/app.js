@@ -496,11 +496,12 @@ async function applyRef(a, ref) {
   state.fix = { ...state.fix, busy: true, error: "" };
   renderOverlay();
   try {
-    const r = await api({ op: "fetch", ref, artist: a.artist });
+    const r = await api({ op: "fetch", ref, artist: a.artist, exact: "1" });
     if (!r.release) throw new Error("That Discogs page couldn't be loaded. Check the link.");
     state.fix = null;
     await updateAlbum(a.id, releasePatch(a, r.release, "matched"));
-    toast("Match updated");
+    const now = byId(a.id);
+    toast(now && (now.artist !== a.artist || now.title !== a.title) ? `Match updated: ${now.title}, ${now.artist}` : "Match updated");
   } catch (e) {
     state.fix = { ...state.fix, busy: false, error: e.message };
     renderOverlay();
@@ -715,6 +716,7 @@ function renderAdd(prefill) {
 function renderTools() {
   const by = (s) => state.albums.filter((a) => a._pending ? false : a.enrich_status === s);
   const pending = by("pending"), review = by("review"), missing = by("not_found"), errors = by("error"), done = by("matched");
+  const noSides = state.albums.filter(fromCDListing);
   const e = state.enrich;
   const mode = state.store.mode;
   const pct = e.total ? Math.round((e.done / e.total) * 100) : 0;
@@ -742,8 +744,12 @@ function renderTools() {
           <button class="btn" id="stop">Stop</button>`
         : state.store.canEnrich ? `
           ${pending.length ? `<button class="btn primary" id="run">Fetch details for ${plural(pending.length, "record")}</button>
-            <p class="hint">Discogs allows about 60 lookups a minute, so this takes roughly ${Math.max(1, Math.round(pending.length * 3.2 / 60))} minutes. Keep this screen open; you can stop and pick up later.</p>` : ""}
-          ${missing.length + errors.length ? `<button class="btn" id="retry">Try the ${missing.length + errors.length} not found again</button>` : ""}`
+            <p class="hint">Discogs allows about 60 lookups a minute, so this takes roughly ${Math.max(1, Math.round(pending.length * 4 / 60))} minutes. Keep this screen open; you can stop and pick up later.</p>` : ""}
+          ${missing.length + errors.length ? `<button class="btn" id="retry">Try the ${missing.length + errors.length} not found again</button>` : ""}
+          ${noSides.length ? `<div class="vinyl-fix">
+            <p class="hint">${plural(noSides.length, "record")} ${noSides.length === 1 ? "has" : "have"} a track list without sides, which usually means it came from a CD.</p>
+            <button class="btn" id="vinyl">Switch ${noSides.length === 1 ? "it" : "them"} to the vinyl LP</button>
+          </div>` : ""}`
         : ""}
       </section>
 
@@ -761,6 +767,7 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
+  panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
   panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
@@ -783,6 +790,11 @@ function releasePatch(a, rel, status) {
     enrich_status: status,
   };
   if (a.cover_locked) { delete patch.cover_url; delete patch.thumb_url; }
+  // Use Discogs' artist and title, unless this is only a possible match waiting to be checked.
+  if (status !== "review") {
+    if (rel.discogs_artist) patch.artist = rel.discogs_artist;
+    if (rel.discogs_title) patch.title = rel.discogs_title;
+  }
   if (!a.catno && rel.label_catno) patch.catno = rel.label_catno;
   if (!(a.genres || []).length && (rel.discogs_genres || []).length) patch.genres = rel.discogs_genres;
   return patch;
@@ -793,27 +805,52 @@ async function enrichOne(a) {
   try { return await enrichOnce(a); } finally { state.lookingUp.delete(a.id); }
 }
 
-async function enrichOnce(a) {
+// Calls the lookup, waiting politely if Discogs says we're going too fast.
+async function politeApi(params) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await api({ op: "match", artist: a.artist, title: a.title, catno: a.catno || "" });
-    if (r.rateLimited) {
-      state.enrich.note = `Discogs asked us to slow down; waiting ${r.retryAfter}s.`;
-      renderOverlay();
-      await sleep(r.retryAfter * 1000);
-      state.enrich.note = "";
-      continue;
-    }
-    const patch = r.release ? releasePatch(a, r.release, r.status) : { enrich_status: "not_found" };
-    await updateAlbum(a.id, patch);
-    return r.rateRemaining;
+    const r = await api(params);
+    if (!r.rateLimited) return r;
+    state.enrich.note = `Discogs asked us to slow down; waiting ${r.retryAfter}s.`;
+    renderOverlay();
+    await sleep(r.retryAfter * 1000);
+    state.enrich.note = "";
   }
-  return 0;
+  return null;
 }
 
-async function runEnrich(statuses) {
+async function enrichOnce(a) {
+  const r = await politeApi({ op: "match", artist: a.artist, title: a.title, catno: a.catno || "" });
+  if (!r) return 0;
+  const patch = r.release ? releasePatch(a, r.release, r.status) : { enrich_status: "not_found" };
+  await updateAlbum(a.id, patch);
+  return r.rateRemaining;
+}
+
+// ---------- vinyl repair ----------
+// Vinyl track lists have sides (A1, B2…); CD ones are numbered 1, 2, 3.
+const VINYL_CHECKED = "vinylChecked";
+const vinylChecked = () => new Set(JSON.parse(pref.get(VINYL_CHECKED, "[]")));
+function fromCDListing(a) {
+  if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
+  if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
+  return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
+}
+
+async function refetchVinyl(a) {
+  const r = await politeApi({ op: "fetch", ref: `release/${a.discogs_id}`, artist: a.artist });
+  const tried = vinylChecked(); tried.add(a.id); pref.set(VINYL_CHECKED, JSON.stringify([...tried]));
+  if (!r || !r.release) return r ? r.rateRemaining : 0;
+  await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));
+  return r.rateRemaining;
+}
+
+function runEnrich(statuses) {
+  return runQueue(state.albums.filter((a) => !a._pending && statuses.includes(a.enrich_status)), enrichOne, "Finished fetching details");
+}
+
+async function runQueue(queue, worker, finished) {
   const e = state.enrich;
   if (e.running) return;
-  const queue = state.albums.filter((a) => !a._pending && statuses.includes(a.enrich_status));
   Object.assign(e, { running: true, stop: false, done: 0, total: queue.length, current: "", note: "" });
   let wakeLock = null;
   try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
@@ -823,7 +860,7 @@ async function runEnrich(statuses) {
     e.current = `${a.artist}, ${a.title}`;
     renderOverlay();
     let remaining = null;
-    try { remaining = await enrichOne(byId(a.id) || a); }
+    try { remaining = await worker(byId(a.id) || a); }
     catch (err) {
       if (/session expired/i.test(err.message)) { toast(err.message); break; }
       await updateAlbum(a.id, { enrich_status: "error" }).catch(() => {});
@@ -835,7 +872,7 @@ async function runEnrich(statuses) {
   Object.assign(e, { running: false, current: "", note: "" });
   try { await wakeLock?.release(); } catch {}
   renderAll();
-  toast(e.stop ? "Stopped. Pick up where you left off any time." : "Finished fetching details");
+  toast(e.stop ? "Stopped. Pick up where you left off any time." : finished);
 }
 
 function exportCSV() {
