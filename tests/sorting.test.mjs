@@ -18,6 +18,18 @@ const albums = [
   rec("Beck", "Odelay", [credit("Beck", ["Vocals"])]),
   rec("Arnold Bax / Arthur Bliss", "Two English Oboe Quintets", [credit("Arnold Bax", ["Composed By"])]),
   rec("Sun Ra", "Lanquidity", [credit("Sun Ra", ["Piano"])]),
+  // Bands that Discogs credits as a whole
+  rec("Queens Of The Stone Age", "Songs For The Deaf", [credit("Queens Of The Stone Age", ["Producer", "Written-By"])]),
+  rec("Simon & Garfunkel", "Bookends", [credit("Simon & Garfunkel", ["Producer"])]),
+  rec("Belle and Sebastian", "Tigermilk", [credit("Belle And Sebastian", ["Performer"])]),
+  rec("Arcade Fire", "Funeral", [credit("Arcade Fire", ["Written-By", "Producer"])]),
+  rec("Vampire Weekend", "Contra", [credit("Vampire Weekend", ["Performer"])]),
+  rec("Talking Heads", "Remain In Light", [credit("Talking Heads", ["Arranged By", "Instruments", "Music By", "Written-By", "Producer"]), credit("David Byrne", ["Vocals", "Guitar"])]),
+  rec("Bruce Springsteen", "Nebraska", [credit("Bruce Springsteen", ["Vocals", "Guitar", "Harmonica", "Producer"])]),
+  rec("Leonard Bernstein", "West Side Story", [credit("Leonard Bernstein", ["Conductor"])]),
+  // People with name particles
+  rec("Ludwig van Beethoven", "Symphony No. 9", [credit("Ludwig van Beethoven", ["Composed By"])]),
+  rec("Paco de Lucía", "Fuente Y Caudal", [credit("Paco de Lucía", ["Guitar"])]),
 ];
 
 test("people file by surname; bands by name", () => {
@@ -34,6 +46,20 @@ test("people file by surname; bands by name", () => {
   assert.equal(fileAs("The Cure", people), "cure");
   assert.equal(fileAs("A Tribe Called Quest", people), "tribe called quest");
   assert.equal(fileAs("Beck", people), "beck");
+});
+
+test("bands credited as a whole stay filed by name", () => {
+  const people = knownPeople(albums);
+  assert.equal(fileAs("Queens Of The Stone Age", people), "queens of the stone age");
+  assert.equal(fileAs("Simon & Garfunkel", people), "simon garfunkel");
+  assert.equal(fileAs("Belle and Sebastian", people), "belle and sebastian");
+  assert.equal(fileAs("Arcade Fire", people), "arcade fire", "a producer/songwriter credit doesn't make a band a person");
+  assert.equal(fileAs("Vampire Weekend", people), "vampire weekend");
+  assert.equal(fileAs("Talking Heads", people), "talking heads", "arranged/instruments/music-by credits don't make a band a person");
+  assert.equal(fileAs("Bruce Springsteen", people), "springsteen bruce");
+  assert.equal(fileAs("Leonard Bernstein", people), "bernstein leonard");
+  assert.equal(fileAs("Ludwig van Beethoven", people), "beethoven ludwig van");
+  assert.equal(fileAs("Paco de Lucía", people), "lucia paco de");
 });
 
 test("File under overrides the automatic choice", () => {

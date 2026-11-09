@@ -18,15 +18,25 @@ export function personKey(name) { return fold(name).replace(/\s+/g, "-"); }
 const GROUP = /\b(orchestra|orchester|quartet|quintet|sextet|septet|octet|trio|duo|ensemble|band|choir|chorus|players|singers|brothers|sisters|group|club|sound|soloists|philharmonic|symphony|sinfonia|consort|academy|collective|company|experience|project|crew|gang|family|boys|girls|kids|all stars|allstars|messengers|mothers|arkestra|machine|system|unit|combo|orkestra)\b/;
 const SUFFIX = new Set(["jr", "sr", "ii", "iii", "iv"]);
 
+// Wording that marks a band, not a person: "Queens Of The Stone Age", "Belle and Sebastian", "Simon & Garfunkel".
+// (Name particles like "van", "de", "da" are fine: "Ludwig van Beethoven", "Paco de Lucía".)
+const BAND_WORDS = /\b(of|the|and|with|in|on|at|to|for|from|my|your|our|his|her|their|is|are|we|you|i|me|no|not|all|some|one|two|three|x)\b/;
+const BAND_MARKS = /[&+\/]|\band\b/i;
+// Credits that say an individual played, sang, conducted or composed: a named instrument or voice.
+// Vaguer credits that Discogs often gives a whole band ("Arranged By", "Instruments", "Performer",
+// "Written-By", "Producer") don't count.
+const INDIVIDUAL_ROLE = /\b(guitar|bass|drums?|percussion|piano|keyboards?|organ|synth\w*|moog|mellotron|rhodes|clavinet|harpsichord|celesta|accordion|vocals?|voice|soprano|alto|tenor|baritone|mezzo|countertenor|contralto|saxophone|sax|trumpet|cornet|flugelhorn|trombone|horn|tuba|euphonium|clarinet|flute|piccolo|oboe|cor anglais|english horn|bassoon|recorder|harmonica|violin|viola|cello|violoncello|double bass|contrabass|fiddle|harp|banjo|mandolin|ukulele|sitar|koto|shamisen|shakuhachi|steel|lap steel|pedal steel|dobro|vibraphone|vibes|marimba|xylophone|glockenspiel|timpani|congas?|bongos?|tabla|turntables|sampler|electronics|theremin|whistl\w*|conductor|composed by|composer|rap|mc)\b/i;
+const individualRole = (r) => INDIVIDUAL_ROLE.test(r) && !/^(performer|featuring|band|ensemble|orchestra|choir|chorus|instruments)\b/i.test(r);
+
 export function knownPeople(albums) {
   const people = new Set();
   const add = (name) => {
     const f = fold(name);
-    if (!f || GROUP.test(f) || /^(the|various) /.test(f) || f === "various") return;
+    if (!f || GROUP.test(f) || BAND_MARKS.test(name) || BAND_WORDS.test(f) || f === "various" || f.split(" ").length > 4) return;
     people.add(f);
   };
   for (const a of albums) {
-    for (const c of a.credits || []) if ((c.roles || []).length) add(c.name);
+    for (const c of a.credits || []) if ((c.roles || []).some(individualRole)) add(c.name);
     for (const n of a.personnel_hint || []) if (fold(n).includes(" ")) add(n);
   }
   return people;
