@@ -24,6 +24,7 @@ const ICON = {
   select: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.5c2 0 3.2 1 4.3 2.7l2.4 4.6c1.1 1.7 2.3 2.7 4.3 2.7H20"/><path d="M4 17h3.5c1.4 0 2.4-.5 3.2-1.4M13.3 8.4c.8-.9 1.8-1.4 3.2-1.4H20"/><path d="m17.5 4.5 2.5 2.5-2.5 2.5M17.5 14.5l2.5 2.5-2.5 2.5"/></svg>',
+  wheel: '<svg viewBox="0 0 24 24" aria-hidden="true" class="wheel"><g class="wheel-spin"><path d="M12 14L12.00 6.50A7.5 7.5 0 0 1 17.30 8.70z M12 14L19.50 14.00A7.5 7.5 0 0 1 17.30 19.30z M12 14L12.00 21.50A7.5 7.5 0 0 1 6.70 19.30z M12 14L4.50 14.00A7.5 7.5 0 0 1 6.70 8.70z" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="7.5"/><circle cx="12" cy="14" r="1.6" fill="var(--paper, #fff)" stroke="currentColor" stroke-width="1.3"/></g><path d="M9.8 2.2h4.4L12 5.6z" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>',
   // Hollow record = not on the shelf yet
   want: '<svg viewBox="0 0 16 16" aria-hidden="true" class="glyph"><circle cx="8" cy="8" r="6.25" fill="none" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.4" fill="none"/></svg>',
 };
@@ -165,7 +166,7 @@ function renderShell() {
       </div>
     </div>
     <main id="results" aria-live="polite"></main>
-    <a class="fab fab-pick" href="#/pick" aria-label="Pick a record for me">${ICON.shuffle}</a>
+    <a class="fab fab-pick" href="#/pick" aria-label="Pick a record for me">${ICON.wheel}</a>
     <a class="fab" href="#/add">${ICON.plus}<span>Add</span></a>
     <div id="selbar" class="selbar" hidden></div>
     <div id="overlay" hidden></div>
@@ -486,7 +487,7 @@ function renderPick() {
         </a>
         <p class="hint pick-pool">${pool.length === 1 ? "The only record" : `One of ${plural(pool.length, "record")}`}${pk.crate || pk.genre ? ` in ${esc([pk.crate, pk.genre].filter(Boolean).join(" + "))}` : " in your collection"}.</p>
         <div class="pick-actions">
-          <button class="btn primary big" id="pick-again" ${pool.length > 1 ? "" : "disabled"}>${ICON.shuffle}Pick another</button>
+          <button class="btn primary big" id="pick-again" ${pool.length > 1 ? "" : "disabled"}>${ICON.wheel}Spin again</button>
           <a class="btn big" href="#/album/${encodeURIComponent(a.id)}">Open record</a>
         </div>`
       : `<div class="empty"><p>${pk.crate && pk.genre ? `Nothing in ${esc(pk.crate)} is tagged ${esc(pk.genre)}. Try just one of them.` : "There's nothing to pick from here yet."}</p></div>`}
@@ -506,6 +507,7 @@ function shuffleTo(panel, pool) {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!art || reduce || pool.length < 3) { pk.id = next.id; renderPick(); return; }
   panel.querySelector("#pick-again").disabled = true;
+  panel.querySelector("#pick-again").classList.add("spinning");
   let n = 0;
   const flick = setInterval(() => {
     const x = pool[Math.floor(Math.random() * pool.length)];

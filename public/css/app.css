@@ -345,8 +345,14 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .selrow .btn.primary, .selrow #sel-remove { flex: 1 1 0; }
 
 /* ---------- pick for me ---------- */
-.fab-pick { right: max(calc(var(--gutter) + 140px), calc(50vw - 410px + var(--gutter) + 140px)); width: 56px; padding: 0; justify-content: center; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
-.fab-pick svg { width: 24px; height: 24px; }
+/* The wheel sits at the bottom left, opposite Add. */
+.fab-pick { right: auto; left: max(var(--gutter), calc(50vw - 410px + var(--gutter))); width: 56px; padding: 0; justify-content: center; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.fab-pick svg { width: 28px; height: 28px; stroke-width: 1.5; }
+.wheel .wheel-spin { transform-origin: 12px 14px; transform-box: view-box; }
+.fab-pick:active .wheel-spin { transform: rotate(45deg); transition: transform .2s ease-out; }
+.spinning .wheel-spin { animation: wheel .45s cubic-bezier(.2,.7,.3,1); }
+@keyframes wheel { from { transform: rotate(0); } to { transform: rotate(405deg); } }
+@media (prefers-reduced-motion: reduce) { .spinning .wheel-spin, .fab-pick:active .wheel-spin { animation: none; transition: none; transform: none; } }
 .picker { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
 .pick-from { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 420px; }
 .pick-from label { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
