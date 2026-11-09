@@ -723,6 +723,7 @@ async function runFixSearch(a, q) {
 async function bandcampApi(url) {
   const token = await state.store.token();
   const res = await fetch(`/api/bandcamp?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!/json/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("bandcamp"));
   const body = await res.json().catch(() => ({}));
   if (res.status === 401) throw new Error("Your session expired. Sign in again.");
   if (!res.ok) throw new Error(body.error || `Couldn't read that page (${res.status})`);
@@ -829,6 +830,7 @@ function wireCover(panel, a) {
     try {
       const token = await state.store.token();
       const res = await fetch(`/api/image?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!/json|image/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("image"));
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't download that image.");
       await saveOwnImage(a, await res.blob(), setCover);
     } catch (err) { setCover({ busy: "", error: err.message }); }
@@ -1067,9 +1069,15 @@ function renderTools() {
   panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
 }
 
+// A reply that isn't from our function (Netlify's "page not found") means the server file isn't deployed.
+function missingFunction(name) {
+  return `The ${name} lookup isn't on your site yet. Check that netlify/functions/${name}.mjs is in your GitHub repo, then let Netlify redeploy.`;
+}
+
 async function api(params) {
   const token = await state.store.token();
   const res = await fetch(`/api/discogs?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!/json/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("discogs"));
   const body = await res.json().catch(() => ({}));
   if (res.status === 429) return { rateLimited: true, retryAfter: body.retryAfter || 30 };
   if (res.status === 401) throw new Error("Your session expired. Sign in again.");

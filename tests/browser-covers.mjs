@@ -118,6 +118,7 @@ const server = http.createServer(async (rq, res) => {
     ] }));
     return send(400, "application/json", "{}");
   }
+  if (u.pathname === "/api/bandcamp" && /missing-function/.test(u.searchParams.get("url"))) { res.writeHead(404, { "content-type": "text/html" }); return res.end("<html>Page not found</html>"); }
   if (u.pathname === "/api/bandcamp") {
     bandcampLog.push(u.searchParams.get("url"));
     if (!/bandcamp/.test(u.searchParams.get("url"))) return send(422, "application/json", JSON.stringify({ error: "That page doesn't look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }));
@@ -306,6 +307,9 @@ await p.click("#fix-open"); await p.waitForSelector("#fix-q");
 await p.fill("#fix-q", "https://example.com/some-page"); await p.click("#fix-form button");
 await p.waitForSelector("#fix .note.warn");
 check((await p.textContent("#fix")).includes("doesn't look like a Bandcamp album"), "a non-Bandcamp link gets a clear message");
+await p.fill("#fix-q", "https://x.bandcamp.com/album/missing-function"); await p.click("#fix-form button");
+await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("isn't on your site yet"), null, { timeout: 5000 });
+check((await p.textContent("#fix")).includes("netlify/functions/bandcamp.mjs"), "a missing server file is named in the message");
 await p.fill("#fix-q", "https://kitdownes.bandcamp.com/album/smoke-mirrors"); await p.click("#fix-form button");
 await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);
 check((await p.textContent(".album-title")) === "Smoke & Mirrors" && (await p.textContent(".album-artist")) === "Kit Downes Trio", "Bandcamp names applied");
