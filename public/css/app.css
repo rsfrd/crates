@@ -27,7 +27,7 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
   font: 400 16px/1.4 var(--font); font-stretch: 100%;
@@ -81,7 +81,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .row-title { font-weight: 600; font-size: 16px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.005em; }
 .row-sub { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row-extra { font-size: 14px; margin-top: 2px; color: var(--ink); line-height: 1.35; }
+.row-extra { font-size: 14px; margin-top: 2px; color: var(--ink); line-height: 1.35; overflow-wrap: anywhere; }
 .row-extra .role.lead { font-weight: 600; }
 .on { color: var(--muted); }
 .pos { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 2px; }
@@ -139,7 +139,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* ---------- overlay panels ---------- */
 .overlay { position: fixed; inset: 0; z-index: 20; }
 .scrim { position: absolute; inset: 0; background: rgba(12,14,16,.38); }
-.panel { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--paper); outline: none; padding: 0 var(--gutter) calc(40px + var(--safe-b)); }
+.panel { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; background: var(--paper); outline: none; padding: 0 var(--gutter) calc(40px + var(--safe-b)); }
 @media (min-width: 720px) {
   .panel { inset: 24px auto 0 50%; width: min(680px, 100vw - 48px); transform: translateX(-50%); border-radius: 18px 18px 0 0; box-shadow: var(--shadow); padding: 0 28px 48px; }
 }
@@ -188,13 +188,20 @@ input[role="switch"]:checked::after { transform: translateX(20px); }
 
 .block { margin-top: 26px; }
 .tracks { list-style: none; margin: 0; padding: 0; }
-.tracks li { display: grid; grid-template-columns: 2.6em 1fr auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 15.5px; }
+.tracks li { display: grid; grid-template-columns: 2.6em minmax(0, 1fr) auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 15.5px; }
+.tracks .tt, .tracks .pos { min-width: 0; overflow-wrap: anywhere; }
 .tracks .dur { color: var(--muted); font-variant-numeric: tabular-nums; }
 .credits { list-style: none; margin: 0; padding: 0; }
-.credits a { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: baseline; column-gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.credits .who { font-weight: 600; }
-.credits .r { white-space: nowrap; }
-.credits .what { color: var(--muted); text-align: right; text-wrap: pretty; }
+/* Phones: name on top, roles beneath. Wider screens: two columns. Nothing may push past the edge. */
+.credits a { display: flex; flex-direction: column; gap: 1px; padding: 9px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.credits .who { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.credits .what { color: var(--muted); min-width: 0; overflow-wrap: break-word; word-break: normal; line-height: 1.35; }
+/* A role stays on one line when it fits, and wraps inside itself when it doesn't. */
+.credits .r { display: inline-block; max-width: 100%; vertical-align: top; overflow-wrap: break-word; }
+@media (min-width: 560px) {
+  .credits a { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: baseline; column-gap: 16px; padding: 8px 0; }
+  .credits .what { text-align: right; }
+}
 .credits a:hover .who { text-decoration: underline; text-underline-offset: 3px; }
 .more summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--muted); padding: 4px 0; }
 .more[open] summary { margin-bottom: 6px; }
@@ -351,3 +358,8 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .pick-pool { margin: 10px 0 0; }
 .pick-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; margin-top: 20px; }
 .pick-actions .btn.primary svg { width: 20px; height: 20px; }
+
+/* long unbroken text anywhere on a record page wraps instead of widening the page */
+.album, .person, .picker, .tools { min-width: 0; overflow-wrap: anywhere; }
+.album-meta, .album-artist, .person-sum, .note, .cover-detail, .cands .row-title, .cands .row-sub { overflow-wrap: anywhere; }
+.album-head .album-id, .album-title { min-width: 0; }

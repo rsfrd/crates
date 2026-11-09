@@ -571,6 +571,20 @@ function renderOverlay() {
   hideOverlay();
 }
 
+// "Tenor Saxophone, Percussion (Congas, Bongos)" → one unbreakable-when-possible piece per role,
+// split only at commas outside brackets, each comma kept with the role before it.
+function roleSpans(label) {
+  const parts = []; let depth = 0, cur = "";
+  for (const ch of label) {
+    if (ch === "(" || ch === "[") depth++;
+    if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+    if (ch === "," && depth === 0) { parts.push(cur.trim()); cur = ""; continue; }
+    cur += ch;
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts.map((r, i) => `<span class="r">${esc(r)}${i < parts.length - 1 ? "," : ""}</span>`).join(" ");
+}
+
 // ---------- track lists ----------
 function seconds(d) {
   const p = String(d || "").split(":").map(Number);
@@ -624,7 +638,7 @@ function renderAlbum(id) {
   const trackNote = (c) => c.tracks && c.tracks.length && c.tracks.length < allPos.size ? `<span class="on">on ${c.tracks.map(esc).join(", ")}</span>` : "";
   const credit = (c) => `<li><a href="#/person/${encodeURIComponent(personKey(c.name))}">
       <span class="who">${esc(c.name)}</span>
-      <span class="what">${roleLabel(c).split(", ").map((r) => `<span class="r">${esc(r)}</span>`).join(", ")} ${trackNote(c)}</span></a></li>`;
+      <span class="what">${roleSpans(roleLabel(c))} ${trackNote(c)}</span></a></li>`;
   const meta = [a.year, a.label, a.catno].filter(Boolean).map(esc).join(", ");
   const canEnrich = state.store.canEnrich;
 
