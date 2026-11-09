@@ -37,6 +37,8 @@ const state = {
   enrich: { running: false, stop: false, done: 0, total: 0, current: "", note: "" },
   editing: false,
   fix: null, // { albumId, candidates, busy, error }
+  cover: null, // { albumId, images, busy, error, note }
+  lookingUp: new Set(), // album ids whose details are being fetched right now
 };
 
 function setAlbums(rows) {
@@ -125,7 +127,7 @@ function renderShell() {
   $("#app").innerHTML = `
     <header class="top">
       <div class="brand">
-        <h1>Crate</h1>
+        <h1>Garage Crates</h1>
         <p class="count" id="count"></p>
       </div>
       <div class="top-actions">
@@ -149,7 +151,7 @@ function renderShell() {
       </div>
     </div>
     <main id="results" aria-live="polite"></main>
-    <a class="fab" href="#/add">${ICON.plus}<span>Add want</span></a>
+    <a class="fab" href="#/add">${ICON.plus}<span>Add</span></a>
     <div id="overlay" hidden></div>
     <div id="toast" role="status" aria-live="polite"></div>`;
 
@@ -233,7 +235,7 @@ function renderResults() {
 }
 
 function emptyState(msg, offerAdd) {
-  return `<div class="empty"><p>${msg}</p>${offerAdd ? `<a class="btn" href="#/add?q=${encodeURIComponent(state.q)}">Add “${esc(state.q)}” to want list</a>` : ""}</div>`;
+  return `<div class="empty"><p>${msg}</p>${offerAdd ? `<a class="btn" href="#/add?q=${encodeURIComponent(state.q)}">Add “${esc(state.q)}”</a>` : ""}</div>`;
 }
 
 function renderAll() {
@@ -289,7 +291,7 @@ function route() {
 
 function renderOverlay() {
   const r = route();
-  if (r.name !== "album") { state.editing = false; state.fix = null; }
+  if (r.name !== "album") { state.editing = false; state.fix = null; state.cover = null; }
   if (r.name === "album") return renderAlbum(r.arg);
   if (r.name === "person") return renderPerson(r.arg);
   if (r.name === "add") return renderAdd(r.params.get("q") || "");
@@ -335,6 +337,8 @@ function renderAlbum(id) {
     </form>` : "";
 
   const fix = state.fix && state.fix.albumId === a.id ? renderFix(a) : "";
+  const coverOpen = state.cover && state.cover.albumId === a.id;
+  const looking = state.lookingUp.has(a.id);
 
   const panel = openPanel(`
     <div class="panel-bar">
@@ -350,6 +354,11 @@ function renderAlbum(id) {
           ${(a.genres || []).length ? `<p class="chips">${a.genres.map((g) => `<button class="chip" data-genre="${esc(g)}">${esc(g)}</button>`).join("")}</p>` : ""}
         </div>
       </div>
+      ${a._pending ? "" : coverOpen ? renderCover(a) : `<div class="cover-bar">
+        ${canEnrich ? `<button class="btn" id="cover-find">Find a better image</button>` : ""}
+        <button class="btn" id="cover-own">Use my own image</button>
+      </div>`}
+      ${looking ? `<p class="note looking">Looking up the cover, tracks and personnel…</p>` : ""}
 
       ${statusBlock}
 
@@ -360,7 +369,7 @@ function renderAlbum(id) {
       ${players.length ? `<section class="block"><h3>Personnel</h3><ul class="credits">${players.map(credit).join("")}</ul></section>` : ""}
       ${others.length ? `<details class="block more"><summary>Production and other credits <span>${others.length}</span></summary><ul class="credits">${others.map(credit).join("")}</ul></details>` : ""}
 
-      ${!a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
+      ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
       ${a.enrich_status === "review" ? `<p class="note warn">This was the closest Discogs match, but it might be the wrong album. Check the tracks, or fix the match below.</p>` : ""}
       ${a.enrich_status === "not_found" ? `<p class="note warn">No Discogs match found. Paste a Discogs link below to add details.</p>` : ""}
 
@@ -434,6 +443,7 @@ function renderAlbum(id) {
     runFixSearch(a, `${a.artist} ${a.title}`);
   });
   wireFix(panel, a);
+  wireCover(panel, a);
 }
 
 function renderFix(a) {
@@ -497,6 +507,117 @@ async function applyRef(a, ref) {
   }
 }
 
+// ---------- cover ----------
+function renderCover(a) {
+  const c = state.cover;
+  const imgs = c.images;
+  const grid = imgs
+    ? imgs.length
+      ? `<div class="cover-grid">${imgs.map((im, i) => `
+          <button class="cover-opt" data-pick="${i}" aria-label="Use this image from ${esc(im.source)}">
+            <span class="cover-img"><img src="${esc(im.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>
+            <span class="cover-src">${esc(im.source)}</span>
+            <span class="cover-detail">${esc(im.detail || "")}</span>
+          </button>`).join("")}</div>`
+      : `<p class="note">No other images turned up. Take a photo of the sleeve, or paste a link to one you find.</p>`
+    : "";
+  return `<section class="block cover-pick" id="cover">
+    <h3>Change the cover</h3>
+    ${c.busy ? `<p class="note looking">${esc(c.busy)}</p>` : ""}
+    ${c.error ? `<p class="note warn">${esc(c.error)}</p>` : ""}
+    ${grid}
+    <div class="cover-own">
+      <label class="btn" for="cover-file">Take a photo or choose a file</label>
+      <input type="file" id="cover-file" accept="image/*" class="visually-hidden">
+      <form id="cover-link" class="fix-form" novalidate>
+        <input id="cover-url" type="url" inputmode="url" placeholder="Paste an image link" autocomplete="off">
+        <button class="btn">Use link</button>
+      </form>
+    </div>
+    <div class="actions">
+      ${state.store.canEnrich && !imgs ? `<button class="btn" id="cover-find">Find a better image</button>` : ""}
+      <button class="btn" id="cover-done">Done</button>
+    </div>
+  </section>`;
+}
+
+function wireCover(panel, a) {
+  const setCover = (patch) => { state.cover = { albumId: a.id, images: null, ...(state.cover || {}), ...patch }; renderOverlay(); };
+  panel.querySelectorAll("#cover-find").forEach((b) => b.addEventListener("click", async () => {
+    setCover({ busy: "Searching Apple Music, Cover Art Archive and Discogs…", error: "" });
+    document.getElementById("cover")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    try {
+      const r = await api({ op: "images", artist: a.artist, title: a.title, discogs_id: a.discogs_id || "", current: a.cover_url || "" });
+      setCover({ busy: "", images: r.images || [] });
+    } catch (e) { setCover({ busy: "", error: e.message }); }
+  }));
+  panel.querySelector("#cover-own")?.addEventListener("click", () => setCover({ error: "" }));
+  panel.querySelector("#cover-done")?.addEventListener("click", () => { state.cover = null; renderOverlay(); });
+  // Hide options whose image doesn't exist (Cover Art Archive doesn't have every album).
+  panel.querySelectorAll(".cover-opt img").forEach((img) => img.addEventListener("error", () => img.closest(".cover-opt")?.remove()));
+  panel.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", async () => {
+    const im = state.cover.images[Number(b.dataset.pick)];
+    state.cover = null;
+    await updateAlbum(a.id, { cover_url: im.url, thumb_url: im.thumb || im.url, cover_locked: true }).then(() => toast("Cover updated")).catch(() => {});
+  }));
+  panel.querySelector("#cover-file")?.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) await saveOwnImage(a, file, setCover);
+  });
+  panel.querySelector("#cover-link")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const url = $("#cover-url").value.trim();
+    if (!/^https?:\/\//i.test(url)) return setCover({ error: "Paste a full link that starts with https://" });
+    if (state.store.mode !== "live") {           // demo: just point at the image
+      state.cover = null;
+      return updateAlbum(a.id, { cover_url: url, thumb_url: url, cover_locked: true }).then(() => toast("Cover updated")).catch(() => {});
+    }
+    setCover({ busy: "Downloading that image…", error: "" });
+    try {
+      const token = await state.store.token();
+      const res = await fetch(`/api/image?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't download that image.");
+      await saveOwnImage(a, await res.blob(), setCover);
+    } catch (err) { setCover({ busy: "", error: err.message }); }
+  });
+}
+
+async function saveOwnImage(a, blob, setCover) {
+  setCover({ busy: "Saving your image…", error: "" });
+  try {
+    const [full, small] = await Promise.all([resizeImage(blob, 1400, false), resizeImage(blob, 320, true)]);
+    const urls = await state.store.uploadCover(a.id, full, small);
+    state.cover = null;
+    await updateAlbum(a.id, { ...urls, cover_locked: true });
+    toast("Cover updated");
+  } catch (e) {
+    setCover({ busy: "", error: /decode|load/i.test(e.message) ? "That file isn't an image this browser can read. Try a JPEG or PNG." : e.message });
+  }
+}
+
+// Shrinks big phone photos before upload. `square` center-crops for list thumbnails.
+function resizeImage(blob, max, square) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth, h = img.naturalHeight;
+      let sx = 0, sy = 0, sw = w, sh = h;
+      if (square) { const s = Math.min(w, h); sx = (w - s) / 2; sy = (h - s) / 2; sw = sh = s; }
+      const scale = Math.min(1, max / Math.max(sw, sh));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(sw * scale); cv.height = Math.round(sh * scale);
+      const ctx = cv.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+      cv.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't load that image"))), "image/jpeg", 0.86);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't load that image")); };
+    img.src = url;
+  });
+}
+
 // ---------- person ----------
 function renderPerson(key) {
   const p = state.index.people.get(key);
@@ -528,41 +649,57 @@ function renderPerson(key) {
     </article>`, "person");
 }
 
-// ---------- add to want list ----------
+// ---------- add a record ----------
 function renderAdd(prefill) {
+  const toCollection = state.status === "owned" || state.status === "sale";
+  const label = (v) => (v === "want" ? "Add to want list" : "Add to collection");
   const panel = openPanel(`
     <div class="panel-bar">
-      <h2 class="panel-title">Add to want list</h2>
+      <h2 class="panel-title">Add a record</h2>
       <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
     </div>
     <form class="add" id="add-form" autocomplete="off">
+      <fieldset class="seg" role="radiogroup" aria-label="Add to">
+        <label><input type="radio" name="status" value="want" ${toCollection ? "" : "checked"}><span>Want list</span></label>
+        <label><input type="radio" name="status" value="owned" ${toCollection ? "checked" : ""}><span>Collection</span></label>
+      </fieldset>
       <label>Artist<input name="artist" id="add-artist" required value="${esc(prefill)}" autocapitalize="words"></label>
       <label>Album<input name="title" required autocapitalize="words"></label>
-      <label><span>Note<span class="hint">optional</span></span><input name="notes" placeholder="Heard it at the café, the blue pressing…"></label>
-      <fieldset class="seg" role="radiogroup" aria-label="Status">
-        <label><input type="radio" name="status" value="want" checked><span>I want it</span></label>
-        <label><input type="radio" name="status" value="owned"><span>I just bought it</span></label>
-      </fieldset>
-      <button class="btn primary big" type="submit" id="add-submit">Add to want list</button>
+      <details class="add-more">
+        <summary>More details</summary>
+        <label><span>Catalogue no.<span class="hint">helps find the exact pressing</span></span><input name="catno" placeholder="BLP 4003"></label>
+        <label><span>Note<span class="hint">optional</span></span><input name="notes" placeholder="Heard it at the café, the blue pressing…"></label>
+      </details>
+      <button class="btn primary big" type="submit" id="add-submit">${label(toCollection ? "owned" : "want")}</button>
+      ${state.store.canEnrich ? `<p class="hint">The cover, year, label, tracks and personnel are filled in for you.</p>` : ""}
     </form>`, "add");
   const form = panel.querySelector("#add-form");
-  form.addEventListener("change", () => {
-    $("#add-submit").textContent = form.status.value === "want" ? "Add to want list" : "Add to collection";
-  });
+  form.addEventListener("change", () => { $("#add-submit").textContent = label(form.status.value); });
   setTimeout(() => (prefill ? form.title : form.artist).focus(), 60);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(form);
-    const row = { artist: f.get("artist").trim(), title: f.get("title").trim(), notes: f.get("notes").trim() || null, status: f.get("status") };
+    const row = {
+      artist: f.get("artist").trim(), title: f.get("title").trim(), status: f.get("status"),
+      catno: (f.get("catno") || "").trim() || null, notes: (f.get("notes") || "").trim() || null,
+    };
     const dupe = state.albums.find((a) => fold(a.artist) === fold(row.artist) && fold(a.title) === fold(row.title));
     if (dupe && !confirm(dupe.status === "want" ? "That's already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
-    const label = row.status === "want" ? "Added to want list" : "Added to collection";
     $("#add-submit").disabled = true;
     try {
       const saved = await state.store.insert(row);
       setAlbums([...state.albums, saved]);
-      closeOverlay(); renderResults(); toast(label);
-      if (state.store.canEnrich) enrichOne(saved).then(renderAll).catch(() => {});
+      renderResults();
+      toast(row.status === "want" ? "Added to want list" : "Added to collection");
+      // Show the new record while its details are looked up.
+      if (state.store.canEnrich) state.lookingUp.add(saved.id);
+      location.replace(`#/album/${encodeURIComponent(saved.id)}`);
+      if (state.store.canEnrich) {
+        enrichOne(saved).then(renderAll).catch(() => {
+          state.lookingUp.delete(saved.id); renderAll();
+          toast("Couldn't look up details right now. Try “Find on Discogs” later.");
+        });
+      }
     } catch {
       // No signal: keep it on this phone and sync later.
       const pending = { ...row, id: "pending-" + Date.now(), _pending: true, genres: [], tracks: [], credits: [], personnel_hint: [], enrich_status: "pending", created_at: new Date().toISOString() };
@@ -645,12 +782,18 @@ function releasePatch(a, rel, status) {
     cover_url: rel.cover_url, thumb_url: rel.thumb_url, tracks: rel.tracks, credits: rel.credits,
     enrich_status: status,
   };
+  if (a.cover_locked) { delete patch.cover_url; delete patch.thumb_url; }
   if (!a.catno && rel.label_catno) patch.catno = rel.label_catno;
   if (!(a.genres || []).length && (rel.discogs_genres || []).length) patch.genres = rel.discogs_genres;
   return patch;
 }
 
 async function enrichOne(a) {
+  state.lookingUp.add(a.id);
+  try { return await enrichOnce(a); } finally { state.lookingUp.delete(a.id); }
+}
+
+async function enrichOnce(a) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await api({ op: "match", artist: a.artist, title: a.title, catno: a.catno || "" });
     if (r.rateLimited) {
@@ -700,7 +843,7 @@ function exportCSV() {
   const cell = (v) => { const s = Array.isArray(v) ? v.join("/") : v ?? ""; return /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s); };
   const lines = [cols.join(","), ...state.index.list.map(({ album }) => cols.map((c) => cell(album[c])).join(","))];
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `crate-${new Date().toISOString().slice(0, 10)}.csv` });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `garage-crates-${new Date().toISOString().slice(0, 10)}.csv` });
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
@@ -721,7 +864,7 @@ function toast(msg) {
 function renderLogin(error = "") {
   $("#app").innerHTML = `
     <main class="login">
-      <h1>Crate</h1>
+      <h1>Garage Crates</h1>
       <form id="login">
         <label>Email<input name="email" type="email" autocomplete="username" required></label>
         <label>Password<input name="password" type="password" autocomplete="current-password" required></label>

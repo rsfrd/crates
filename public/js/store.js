@@ -1,5 +1,5 @@
 // Data access: Supabase in production, browser storage in demo mode.
-// Both expose the same shape: { mode, session(), signIn(), signOut(), load(), insert(), update(), remove(), token() }
+// Both expose the same shape: { mode, session(), signIn(), signOut(), load(), insert(), update(), remove(), token(), uploadCover() }
 
 const CACHE_KEY = "crate.cache.v1";
 const OUTBOX_KEY = "crate.outbox.v1";
@@ -48,6 +48,17 @@ async function supabaseStore(cfg) {
     async insert(row) { return one(await sb.from("albums").insert(row).select().single()); },
     async update(id, patch) { return one(await sb.from("albums").update(patch).eq("id", id).select().single()); },
     async remove(id) { one(await sb.from("albums").delete().eq("id", id)); },
+    // Saves a full-size and a small copy; returns their public addresses.
+    async uploadCover(albumId, full, thumb) {
+      const base = `${albumId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const put = async (name, blob) => {
+        const r = await sb.storage.from("covers").upload(name, blob, { contentType: blob.type || "image/jpeg", cacheControl: "31536000", upsert: false });
+        if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Cover uploads aren't set up yet. Run supabase/002_covers.sql in Supabase." : r.error.message);
+        return sb.storage.from("covers").getPublicUrl(name).data.publicUrl;
+      };
+      const [cover_url, thumb_url] = await Promise.all([put(`${base}.jpg`, full), put(`${base}-thumb.jpg`, thumb)]);
+      return { cover_url, thumb_url };
+    },
     canEnrich: true,
   };
   return store;
@@ -64,6 +75,7 @@ function offlineStore() {
     async insert() { throw new Error("offline"); },
     async update() { throw new Error("You're offline. Changes will need a connection."); },
     async remove() { throw new Error("You're offline. Changes will need a connection."); },
+    async uploadCover() { throw new Error("You're offline. Changes will need a connection."); },
     canEnrich: false,
   };
 }
@@ -97,7 +109,14 @@ function demoStore() {
       rows[i] = { ...rows[i], ...patch }; save(rows); return rows[i];
     },
     async remove(id) { save(readLS(KEY, []).filter((r) => r.id !== id)); },
-    canEnrich: false,
+    // Demo mode keeps images in this browser only.
+    async uploadCover(albumId, full, thumb) {
+      const asData = (b) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(b); });
+      const t = await asData(thumb);
+      return { cover_url: t, thumb_url: t };
+    },
+    // "?demo&demoapi" lets the demo talk to a test server's lookup endpoints.
+    canEnrich: new URLSearchParams(location.search).has("demoapi"),
   };
 }
 

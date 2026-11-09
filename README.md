@@ -1,11 +1,12 @@
-# Crate
+# Garage Crates
 
 Your vinyl collection and want list, searchable from your phone in a record store.
 
 - Search by artist, album, song, genre, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument.
 - Want list: tap **Add want**, type the artist and album, done. Want-list records show up in regular search with a dashed outline and a hollow record icon, so you can tell at a glance you don't own them yet.
 - Mark records **For sale** and filter to just those.
-- Covers, track listings and personnel come from Discogs.
+- Add records to your collection or want list with just an artist and title; the cover, year, label, tracks and personnel are looked up for you.
+- Covers, track listings and personnel come from Discogs. If a cover is wrong (or a photo of the CD), open the record and tap **Find a better image** to choose from Apple Music, the Cover Art Archive and other vinyl pressings on Discogs, or use your own photo or an image link.
 - Works with a weak signal: the app opens with the last copy saved on your phone, and want-list adds made offline sync when you're back online.
 
 Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Discogs** supplies album details. Setup takes about 20 minutes, then fetching details for all ~700 records takes about 40 minutes in the background.
@@ -23,9 +24,10 @@ Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Disc
 1. Create a free account at supabase.com and click **New project**. Pick any name and a strong database password (you won't need it again).
 2. When the project is ready, open **SQL Editor → New query**. Paste the contents of `supabase/schema.sql` and click **Run**.
 3. New query again. Paste `supabase/seed.sql` (your 713 records) and **Run**.
-4. Create your login: **Authentication → Users → Add user → Create new user**. Enter your email and a password, and tick **Auto Confirm User**.
-5. Lock it down: **Authentication → Sign In / Providers**, turn **off** "Allow new users to sign up", and save. Now only your account can ever see or change the data.
-6. Open **Project Settings → API** (sometimes labeled **Data API** / **API Keys**) and copy:
+4. New query again. Paste `supabase/002_covers.sql` (lets you upload your own covers) and **Run**.
+5. Create your login: **Authentication → Users → Add user → Create new user**. Enter your email and a password, and tick **Auto Confirm User**.
+6. Lock it down: **Authentication → Sign In / Providers**, turn **off** "Allow new users to sign up", and save. Now only your account can ever see or change the data.
+7. Open **Project Settings → API** (sometimes labeled **Data API** / **API Keys**) and copy:
    - the **Project URL** (looks like `https://abcd1234.supabase.co`)
    - the **anon / publishable** key (the long public one, *not* the service-role secret)
 
@@ -56,11 +58,11 @@ Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Disc
 3. Discogs allows about 60 lookups a minute, so this takes roughly 40 minutes. Leave that screen open (on a laptop is easiest). You can stop and pick up later; it only fetches what's left.
 4. When it's done, check **Needs a look**. Those are records where the best match might be the wrong album or pressing, or where nothing matched. Open one, tap **Fix match**, and either pick from the search results or paste the record's Discogs page link.
 
-New want-list items get their details fetched automatically the moment you add them.
+Records you add later get their details fetched automatically the moment you add them.
 
 ## 6. Put it on your phone
 
-Open the site in Safari (iPhone) or Chrome (Android) and choose **Add to Home Screen**. It opens full-screen like an app and stays signed in.
+Open the site in Safari (iPhone) or Chrome (Android) and choose **Add to Home Screen**. (If you added it before the rename, delete the old icon and add it again to get the new name.) It opens full-screen like an app and stays signed in.
 
 ---
 
@@ -70,6 +72,7 @@ Open the site in Safari (iPhone) or Chrome (Android) and choose **Add to Home Sc
 - **Credits are per pressing.** If a match picked a reissue with thin credits, use **Fix match** to choose the original release.
 - **Supabase pauses idle free projects** after about a week. The site includes a small daily ping (`netlify/functions/keepalive.mjs`) to prevent that. If it ever does pause, the app still opens with the copy saved on your phone; restore the project from the Supabase dashboard.
 - **Backups:** Collection → **Download a copy (CSV)**.
+- **Your own covers** are stored in a Supabase Storage folder called `covers`. A cover you choose yourself is kept even when you refresh a record's details or fix its match.
 - **Preview without setup:** opening the site before the environment variables are set (or adding `?demo` to the address) runs a demo with your collection that saves only in that browser.
 
 ## What's in here
@@ -81,15 +84,17 @@ public/                 the website (plain HTML, CSS, JS; no build step)
   js/store.js           Supabase connection, offline copy, offline want-list queue
   demo.json             your collection, for demo mode
 netlify/functions/      small server functions
-  discogs.mjs           Discogs lookups (keeps your token off the public page)
+  discogs.mjs           Discogs lookups and cover image search (keeps your token off the public page)
+  image.mjs             downloads an image from a pasted link so the app can keep its own copy
   config.mjs            hands the site its Supabase settings
   keepalive.mjs         daily ping so Supabase doesn't pause
-netlify/lib/discogs.mjs matching and credit parsing
+netlify/lib/            Discogs matching and credit parsing, cover image search, sign-in check
 supabase/schema.sql     database table and access rules
 supabase/seed.sql       your 713 records
+supabase/002_covers.sql cover uploads (storage folder + "keep my cover" flag)
 data/collection.json    your spreadsheet, cleaned up
 scripts/                how the spreadsheet was cleaned and turned into seed.sql
-tests/                  `node --test tests/discogs.test.mjs`
+tests/                  `node --test tests/discogs.test.mjs tests/images.test.mjs`
 ```
 
 The original spreadsheet had about 145 rows that split in the wrong places (titles with commas such as *Parsley, Sage, Rosemary and Thyme*, and a missing column on ~115 rows). Those were repaired in `scripts/clean.py`; a few genre cells that held an artist name instead were cleared.

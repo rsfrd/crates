@@ -1,4 +1,4 @@
--- Crate: vinyl collection schema
+-- Garage Crates: vinyl collection schema
 -- Run this once in Supabase → SQL Editor → New query → Run.
 
 create table if not exists public.albums (
@@ -18,6 +18,7 @@ create table if not exists public.albums (
   label           text,
   cover_url       text,
   thumb_url       text,
+  cover_locked    boolean not null default false,  -- true when you picked the cover yourself
   discogs_id      bigint,
   discogs_url     text,
   tracks          jsonb   not null default '[]',   -- [{pos, title, dur}]
