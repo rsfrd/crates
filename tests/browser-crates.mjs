@@ -35,7 +35,7 @@ check(await p.locator("#crate").isHidden(), "no crate menu before any crates exi
 await p.fill("#q", "city pop"); await p.waitForTimeout(250);
 const cityPop = await p.locator("#results a.row[data-id]").count();
 await p.click("#select-toggle");
-check(await p.locator("#selbar").isVisible() && await p.locator(".fab").isHidden(), "select mode shows the selection bar instead of Add");
+check(await p.locator("#selbar").isVisible() && await p.locator('a.fab[href="#/add"]').isHidden(), "select mode shows the selection bar instead of Add");
 await p.locator("#results a.row[data-id]").first().click();
 check((await p.textContent(".selcount")).includes("1 record selected"), "tapping a record selects it (doesn't open it)");
 check(!(await p.evaluate(() => location.hash)), "record didn't open");
@@ -85,7 +85,7 @@ await p.click("[data-crate-go]"); await p.waitForTimeout(300);
 check((await p.inputValue("#crate")) === "Japanese" && !(await p.evaluate(() => location.hash)), "crate chip opens that crate");
 
 // add a new record while looking at the crate: crate is pre-filled
-await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.click(".add-more summary");
 check((await p.inputValue('input[name="crate"]')) === "Japanese", "new record defaults to the crate you're viewing");
 await p.fill('input[name="artist"]', "Hiroshi Yoshimura"); await p.fill('input[name="title"]', "Music For Nine Post Cards");
@@ -93,6 +93,42 @@ await p.click("#add-submit"); await p.waitForSelector(".crates-block");
 check((await p.textContent(".crates-block")).includes("Japanese"), "new record lands in the crate");
 await p.goto(BASE); await p.waitForSelector(".row");
 check((await p.textContent("#crate")).includes(`Japanese (${inCrate + 1})`), "crate count includes the new record, after reload");
+
+// pick for me
+const owned = () => p.evaluate(() => JSON.parse(localStorage.getItem("crate.demo.v1")).filter((r) => r.status === "owned"));
+await p.goto(BASE); await p.waitForSelector(".row");
+await p.click(".fab-pick"); await p.waitForSelector(".pick-card");
+check((await p.evaluate(() => location.hash)) === "#/pick", "Pick for me opens");
+const ownedTitles = new Set((await owned()).map((r) => r.title));
+const seen = [];
+for (let i = 0; i < 6; i++) {
+  seen.push(await p.textContent(".pick-title"));
+  await p.click("#pick-again"); await p.waitForFunction((t) => document.querySelector(".pick-title")?.textContent !== t && !document.querySelector("#pick-again")?.disabled, seen.at(-1), { timeout: 4000 });
+}
+seen.push(await p.textContent(".pick-title"));
+check(seen.every((t) => ownedTitles.has(t)), "picks only records you own (never the want list)");
+check(new Set(seen).size === seen.length, `seven picks in a row, no repeats (${seen.length})`);
+await shot("k07-pick");
+await p.selectOption("#pick-crate", "Japanese"); await p.waitForTimeout(200);
+const jp = new Set((await owned()).filter((r) => (r.crates || []).includes("Japanese")).map((r) => r.title));
+for (let i = 0; i < 4; i++) {
+  check(jp.has(await p.textContent(".pick-title")), "pick comes from the chosen crate");
+  await p.click("#pick-again"); await p.waitForTimeout(700);
+}
+check((await p.textContent(".pick-pool")).includes(`One of ${jp.size} records in Japanese`), "says how many it's picking from");
+await p.selectOption("#pick-genre", "Ambient"); await p.waitForTimeout(200);
+const both = (await owned()).filter((r) => (r.crates || []).includes("Japanese") && (r.genres || []).includes("Ambient"));
+check(both.length > 0 && both.map((r) => r.title).includes(await p.textContent(".pick-title")), "crate and genre combine");
+await shot("k08-pick-crate-genre");
+await p.selectOption("#pick-genre", "Classical"); await p.waitForTimeout(200);
+check((await p.textContent(".picker")).includes("Nothing in Japanese is tagged Classical"), "an empty combination says so");
+await p.selectOption("#pick-genre", ""); await p.waitForTimeout(200);
+const chosen = await p.textContent(".pick-title");
+await p.click("text=Open record"); await p.waitForSelector(".album-title");
+check((await p.textContent(".album-title")).trim() === chosen.trim() || (await p.textContent(".album-title")).includes(chosen.split(":")[0]), "Open record shows the pick");
+await p.click("button[data-close]"); await p.waitForSelector(".pick-card");
+check((await p.textContent(".pick-title")) === chosen, "back from the record returns to the same pick");
+await p.click("button[data-close]"); await p.waitForTimeout(300);
 
 // manage: rename and delete
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".crate-list");

@@ -145,7 +145,7 @@ const BASE = "http://localhost:5179/?demo&demoapi";
 await p.goto(BASE); await p.waitForSelector(".row");
 check((await p.textContent(".brand h1")) === "Garage Crates", "app is named Garage Crates");
 check((await p.title()) === "Garage Crates", "page title renamed");
-check((await p.textContent(".fab")).trim() === "Add", "add button reads Add");
+check((await p.textContent('a.fab[href="#/add"]')).trim() === "Add", "add button reads Add");
 
 // --- find a better image
 await p.goto(BASE + "#/album/" + mingus.id); await p.waitForSelector(".album-title");
@@ -183,7 +183,7 @@ check((await p.getAttribute(".thumb.large img", "src")) === "https://example.com
 await p.click("button[data-close]"); await p.waitForTimeout(250);
 
 // --- add a record to the collection, with lookup
-await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.click('label:has-text("Collection")');
 check((await p.textContent("#add-submit")) === "Add to collection", "button follows the collection choice");
 await p.fill('input[name="artist"]', "Eric Dolphy"); await p.fill('input[name="title"]', "Out There");
@@ -322,7 +322,7 @@ await shot("c15-bandcamp-fixed");
 await p.goto(BASE); await p.waitForSelector(".row");
 
 // --- Bandcamp: add a new record with a Bandcamp link
-await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.click('label:has-text("Collection")');
 await p.fill('input[name="artist"]', "kit downes"); await p.fill('input[name="title"]', "smoke and mirrors");
 await p.click(".add-more summary");
@@ -334,7 +334,7 @@ check(bandcampLog.length === bcBefore + 1 && (await p.textContent(".album-title"
 await p.goto(BASE); await p.waitForSelector(".row");
 
 // --- a quick lowercase add gets Discogs' spelling
-await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.click('label:has-text("Collection")');
 await p.fill('input[name="artist"]', "freddie hubbard"); await p.fill('input[name="title"]', "hub-tones");
 await p.click("#add-submit"); await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);

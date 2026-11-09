@@ -127,7 +127,7 @@ await shot(p, "08-for-sale");
 
 // Want list add
 await p.click('[data-status="want"]'); await p.waitForTimeout(150);
-await p.click(".fab"); await p.waitForSelector("#add-form");
+await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.fill('input[name="artist"]', "Yusef Lateef");
 await p.fill('input[name="title"]', "Eastern Sounds");
 await shot(p, "09-add");

@@ -23,6 +23,7 @@ const ICON = {
   tools: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></svg>',
   select: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.5c2 0 3.2 1 4.3 2.7l2.4 4.6c1.1 1.7 2.3 2.7 4.3 2.7H20"/><path d="M4 17h3.5c1.4 0 2.4-.5 3.2-1.4M13.3 8.4c.8-.9 1.8-1.4 3.2-1.4H20"/><path d="m17.5 4.5 2.5 2.5-2.5 2.5M17.5 14.5l2.5 2.5-2.5 2.5"/></svg>',
   // Hollow record = not on the shelf yet
   want: '<svg viewBox="0 0 16 16" aria-hidden="true" class="glyph"><circle cx="8" cy="8" r="6.25" fill="none" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.4" fill="none"/></svg>',
 };
@@ -46,6 +47,7 @@ const state = {
   fix: null, // { albumId, candidates, busy, error }
   cover: null, // { albumId, images, busy, error, note }
   lookingUp: new Set(), // album ids whose details are being fetched right now
+  pick: null,        // { crate, genre, id } for "Pick for me"
 };
 
 function setAlbums(rows) {
@@ -163,6 +165,7 @@ function renderShell() {
       </div>
     </div>
     <main id="results" aria-live="polite"></main>
+    <a class="fab fab-pick" href="#/pick" aria-label="Pick a record for me">${ICON.shuffle}</a>
     <a class="fab" href="#/add">${ICON.plus}<span>Add</span></a>
     <div id="selbar" class="selbar" hidden></div>
     <div id="overlay" hidden></div>
@@ -290,9 +293,9 @@ function endSelect() { state.select = null; state.selPanel = null; renderResults
 
 function renderSelbar() {
   const bar = $("#selbar"); if (!bar) return;
-  const fab = $(".fab");
-  if (!state.select) { bar.hidden = true; bar.innerHTML = ""; if (fab) fab.hidden = false; return; }
-  if (fab) fab.hidden = true;
+  const fabs = document.querySelectorAll(".fab");
+  if (!state.select) { bar.hidden = true; bar.innerHTML = ""; fabs.forEach((f) => (f.hidden = false)); return; }
+  fabs.forEach((f) => (f.hidden = true));
   bar.hidden = false;
   const n = state.select.size;
   const all = state.visibleIds.length && state.visibleIds.every((id) => state.select.has(id));
@@ -430,6 +433,89 @@ function wireCrates(panel, a) {
   panel.querySelectorAll("[data-crate-quick]").forEach((b) => b.addEventListener("click", () => add(b.dataset.crateQuick)));
 }
 
+// ---------- pick for me ----------
+const PICK_RECENT = "pickRecent";
+
+function pickPool(crate, genre) {
+  return state.albums.filter((a) => a.status === "owned" && !a._pending
+    && (!crate || (a.crates || []).includes(crate))
+    && (!genre || (a.genres || []).includes(genre)));
+}
+
+// A random record from the pool, avoiding the last few picks while there's enough to choose from.
+function choose(pool, avoidId) {
+  if (!pool.length) return null;
+  let recent = [];
+  try { recent = JSON.parse(pref.get(PICK_RECENT, "[]")); } catch {}
+  const keep = Math.min(recent.length, Math.max(0, pool.length - 3), 25);
+  const skip = new Set([...recent.slice(-keep), avoidId]);
+  const fresh = pool.filter((a) => !skip.has(a.id));
+  const from = fresh.length ? fresh : pool.filter((a) => a.id !== avoidId);
+  const a = (from.length ? from : pool)[Math.floor(Math.random() * (from.length ? from.length : pool.length))];
+  pref.set(PICK_RECENT, JSON.stringify([...recent.filter((id) => id !== a.id), a.id].slice(-40)));
+  return a;
+}
+
+function renderPick() {
+  if (!state.pick) state.pick = { crate: state.crate, genre: state.genre, id: null };
+  const pk = state.pick;
+  const pool = pickPool(pk.crate, pk.genre);
+  if (!pk.id || !pool.some((a) => a.id === pk.id)) pk.id = choose(pool)?.id || null;
+  const a = pk.id ? byId(pk.id) : null;
+  const genres = [...new Set(state.albums.filter((x) => x.status === "owned").flatMap((x) => x.genres || []))].sort((x, y) => x.localeCompare(y));
+
+  const panel = openPanel(`
+    <div class="panel-bar">
+      <h2 class="panel-title">Pick for me</h2>
+      <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
+    </div>
+    <div class="picker">
+      <div class="pick-from">
+        <label>Crate
+          <select id="pick-crate"><option value="">Any crate</option>${state.index.crates.map((c) => `<option value="${esc(c.name)}" ${c.name === pk.crate ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
+        </label>
+        <label>Genre
+          <select id="pick-genre"><option value="">Any genre</option>${genres.map((g) => `<option ${g === pk.genre ? "selected" : ""}>${esc(g)}</option>`).join("")}</select>
+        </label>
+      </div>
+      ${a ? `
+        <a class="pick-card" href="#/album/${encodeURIComponent(a.id)}" id="pick-card">
+          ${thumb(a, "large pick-art")}
+          <span class="pick-title">${esc(a.title)}</span>
+          <span class="pick-artist">${esc(a.artist)}${a.year ? `, ${a.year}` : ""}</span>
+        </a>
+        <p class="hint pick-pool">${pool.length === 1 ? "The only record" : `One of ${plural(pool.length, "record")}`}${pk.crate || pk.genre ? ` in ${esc([pk.crate, pk.genre].filter(Boolean).join(" + "))}` : " in your collection"}.</p>
+        <div class="pick-actions">
+          <button class="btn primary big" id="pick-again" ${pool.length > 1 ? "" : "disabled"}>${ICON.shuffle}Pick another</button>
+          <a class="btn big" href="#/album/${encodeURIComponent(a.id)}">Open record</a>
+        </div>`
+      : `<div class="empty"><p>${pk.crate && pk.genre ? `Nothing in ${esc(pk.crate)} is tagged ${esc(pk.genre)}. Try just one of them.` : "There's nothing to pick from here yet."}</p></div>`}
+    </div>`, "pick");
+
+  const reset = () => { pk.crate = panel.querySelector("#pick-crate").value; pk.genre = panel.querySelector("#pick-genre").value; pk.id = null; renderPick(); };
+  panel.querySelector("#pick-crate").addEventListener("change", reset);
+  panel.querySelector("#pick-genre").addEventListener("change", reset);
+  panel.querySelector("#pick-again")?.addEventListener("click", () => shuffleTo(panel, pool));
+}
+
+// A short flick through a few covers before landing, like thumbing through a crate.
+function shuffleTo(panel, pool) {
+  const pk = state.pick;
+  const next = choose(pool, pk.id);
+  const art = panel.querySelector(".pick-art");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!art || reduce || pool.length < 3) { pk.id = next.id; renderPick(); return; }
+  panel.querySelector("#pick-again").disabled = true;
+  let n = 0;
+  const flick = setInterval(() => {
+    const x = pool[Math.floor(Math.random() * pool.length)];
+    const src = x.cover_url || x.thumb_url;
+    art.innerHTML = src ? `<img src="${esc(src)}" alt="" referrerpolicy="no-referrer">` : `<span class="blank" style="--h:${hue(x.artist + x.title)}"><span class="disc"></span></span>`;
+    art.classList.toggle("is-want", false);
+    if (++n >= 7) { clearInterval(flick); pk.id = next.id; renderPick(); }
+  }, 65);
+}
+
 // ---------- overlays ----------
 let lastFocus = null;
 
@@ -476,10 +562,12 @@ function route() {
 function renderOverlay() {
   const r = route();
   if (r.name !== "album") { state.editing = false; state.fix = null; state.cover = null; state.crateAdd = null; }
+  if (r.name !== "pick" && r.name !== "album") state.pick = null;
   if (r.name === "album") return renderAlbum(r.arg);
   if (r.name === "person") return renderPerson(r.arg);
   if (r.name === "add") return renderAdd(r.params.get("q") || "");
   if (r.name === "tools") return renderTools();
+  if (r.name === "pick") return renderPick();
   hideOverlay();
 }
 
