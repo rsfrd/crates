@@ -97,9 +97,8 @@ check((await p.textContent("#crate")).includes(`Japanese (${inCrate + 1})`), "cr
 // pick for me
 const owned = () => p.evaluate(() => JSON.parse(localStorage.getItem("crate.demo.v1")).filter((r) => r.status === "owned"));
 await p.goto(BASE); await p.waitForSelector(".row");
-const fp = await p.locator(".fab-pick").boundingBox();
-check(fp.x < 390 / 2 && fp.x <= 20, `wheel button sits at the left (${Math.round(fp.x)}px)`);
-check(await p.locator(".fab-pick svg.wheel").count() === 1, "wheel icon shown");
+const fp = await p.locator(".fab-pick").boundingBox(), fa = await p.locator('a.fab[href="#/add"]').boundingBox();
+check(fp.x + fp.width > 390 / 2 && fp.x + fp.width < fa.x && fa.x - (fp.x + fp.width) < 60, `shuffle button sits just left of Add (${Math.round(fa.x - fp.x - fp.width)}px gap)`);
 await p.click(".fab-pick"); await p.waitForSelector(".pick-card");
 check((await p.evaluate(() => location.hash)) === "#/pick", "Pick for me opens");
 const ownedTitles = new Set((await owned()).map((r) => r.title));
