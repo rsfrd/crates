@@ -1504,7 +1504,7 @@ function renderTools() {
       </div>`)}
 
       ${sec(mode === "live" ? "Backup and account" : "Backup", "", `<div class="card">
-        <button class="list-row" id="export"><span><strong>Download a copy</strong><span>A CSV that imports straight back in</span></span>${ICON.download}</button>
+        <button class="list-row" id="export"><span><strong>Download a copy</strong><span>Get a CSV of all your albums</span></span>${ICON.download}</button>
         ${mode === "live" ? `<button class="list-row" id="signout"><span><strong>Sign out</strong></span>${ICON.signout}</button>` : ""}
       </div>`)}
     </div>`, "tools");
