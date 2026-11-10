@@ -401,7 +401,7 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .tools-sub { margin: -2px 0 -12px; color: var(--muted); font-size: 14px; }
 .sec { display: flex; flex-direction: column; gap: 10px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px; }
-.sec-head h3 { margin: 0; font-size: 21px; line-height: 1.1; font-weight: 800; font-stretch: 72%; letter-spacing: .01em; text-transform: uppercase; color: var(--ink); }
+.sec-head h3 { margin: 0; font-size: 25px; line-height: 1.1; font-weight: 800; font-stretch: 72%; letter-spacing: -.005em; color: var(--ink); }
 .sec-head span { font-size: 13px; color: var(--muted); text-align: right; }
 .card { background: var(--surface); border-radius: 16px; overflow: hidden; }
 .card > * + * { border-top: 1px solid var(--line); }
