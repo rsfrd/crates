@@ -583,15 +583,10 @@ function ago(iso) {
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
 
-// Discogs marketplace pages. The first two are this pressing, the one the price is for; the third is
-// every vinyl pressing of the album, when we know its family.
+// Discogs marketplace pages for this pressing, the one the price is for, cheapest first.
 function marketLinks(a) {
   const pressing = `https://www.discogs.com/sell/release/${a.discogs_id}?sort=price%2Casc`;
-  return {
-    us: `${pressing}&ships_from=United+States`,
-    all: pressing,
-    others: a.master_id ? `https://www.discogs.com/sell/list?master_id=${a.master_id}&format=Vinyl&sort=price%2Casc` : null,
-  };
+  return { us: `${pressing}&ships_from=United+States`, all: pressing };
 }
 
 const notVinyl = (a) => !!(a.price && a.price.vinyl === false && a.price.release === a.discogs_id);
@@ -612,9 +607,8 @@ function priceBlock(a) {
     <div class="price-links">
       ${notVinyl(a) ? "" : `<a class="btn" href="${esc(links.us)}" target="_blank" rel="noopener">US sellers</a>
       <a class="btn" href="${esc(links.all)}" target="_blank" rel="noopener">All sellers</a>`}
-      ${links.others ? `<a class="btn" href="${esc(links.others)}" target="_blank" rel="noopener">Other pressings</a>` : ""}
     </div>
-    <p class="hint price-note">${notVinyl(a) ? "" : "US sellers and All sellers show this pressing, the one the price is for. "}${links.others ? "Other pressings shows every vinyl version of the album, which can cost more or less. " : ""}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
+    <p class="hint price-note">${notVinyl(a) ? "" : "Both links show this pressing, the one the price is for. "}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
       ${state.store.canEnrich && pricesReady() && !state.pricing.has(a.id) ? `<button class="linkish" id="price-refresh">Check again</button>` : ""}</p>
   </section>`;
 }

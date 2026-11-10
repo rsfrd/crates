@@ -3,7 +3,7 @@
 Your vinyl collection and want list, searchable from your phone in a record store. Set up your own copy in about 20 minutes, on free accounts.
 
 - **Search everything**: artist, album, song, genre, crate, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument. Classical records show each piece above its movements, with its composer.
-- **Want list**: tap **Add**, type an artist and album, done. Wanted records show in search with a dashed outline, so you can tell at a glance you don't own them yet. Each one shows the lowest price for its pressing on the Discogs marketplace, with links to that pressing's US sellers or all sellers, and to every other vinyl pressing of the album.
+- **Want list**: tap **Add**, type an artist and album, done. Wanted records show in search with a dashed outline, so you can tell at a glance you don't own them yet. Each one shows the lowest price for its pressing on the Discogs marketplace, with links to that pressing's US sellers or all sellers.
 - **Import your records** from your Discogs collection (exact pressings, nothing to match) or from any spreadsheet saved as CSV.
 - **Covers, tracks and personnel** come from Discogs, always the vinyl pressing. For a release that isn't on Discogs, paste its Bandcamp link. If a cover is wrong, **Find a better image** offers alternatives, or use your own photo.
 - **Crates**: your own groupings, like "Japanese" or "Late night". **Pick for me** chooses something to play, from everything or one crate or genre.
