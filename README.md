@@ -95,7 +95,7 @@ The other files in `supabase/updates/` are earlier updates that `setup.sql` alre
 - **Personnel follows Discogs.** Classic jazz releases usually have full credits with instruments; some rock and newer releases only list the band. Credits are per pressing, so if a match picked a reissue with thin credits, **Fix match** to the original.
 - **Prices** are Discogs' lowest listed price for the pressing, before shipping. Discogs' API doesn't share individual listings, so seller ratings and shipping are on Discogs when you follow the links.
 - **Your own covers** are kept in a Supabase Storage folder called `covers`, and a cover you choose is never replaced by a refresh.
-- **Backups**: Collection → **Download a copy (CSV)**. That file imports straight back in.
+- **Backups**: on the Collection page, **Download a copy** gives a CSV of every album with its tracks, personnel and notes, to read in any spreadsheet (it also imports back in as a spreadsheet). **Download a backup** saves everything exactly as stored (JSON), and **Restore from a backup** brings back any albums from it that aren't in your collection, with nothing to fetch again. Your own cover photos stay in Supabase Storage; the backup keeps their links.
 - **Keys**: nothing secret lives in this repository. Your Supabase and Discogs settings are Netlify environment variables. The Supabase anon key is designed to be public; your data is protected by sign-in and the database rules in `setup.sql`.
 
 ## What's in here
@@ -105,6 +105,7 @@ public/                  the website (plain HTML, CSS, JS; no build step)
   js/app.js              screens and interactions
   js/search.js           search across albums, songs and people; filing order
   js/importer.js         reading spreadsheets for import
+  js/exporter.js         the CSV download and the JSON backup
   js/store.js            Supabase connection, offline copy, offline want-list queue
   demo.json              a small sample collection for demo mode
 netlify/functions/       small server functions (the site owner only)

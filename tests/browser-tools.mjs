@@ -11,6 +11,7 @@ albums.forEach((a, i) => {
   a.enrich_status = a.id === "r0064" ? "not_found" : a.id === "r0005" ? "review" : i > 700 ? "pending" : "matched";
   if (/^(Casiopea|Mariya Takeuchi|Tatsuro Yamashita|Taeko Ohnuki)/.test(a.artist)) a.crates = ["japanese"];
   if (/^(Arvo Pärt)/.test(a.artist)) a.crates = ["late night"];
+  if (a.id === "r0101") Object.assign(a, { notes: 'First pressing, "two-eye" label', tracks: [{ pos: "A1", title: "Better Git It In Your Soul", dur: "7:23" }], credits: [{ name: "Charles Mingus", roles: ["Bass"], tracks: [], leader: true, kind: "musician" }, { name: "Booker Ervin", roles: ["Tenor Saxophone"], tracks: [], leader: false, kind: "musician" }] });
 });
 const demo = JSON.stringify(albums);
 
@@ -127,6 +128,56 @@ check(await g.getAttribute("#keep-as-is", "aria-disabled") === "true", "guests c
   const shown = await p.evaluate(() => [...document.querySelectorAll("#results a.row")].filter((r) => { const b = r.getBoundingClientRect(); return b.bottom > 0 && b.top < innerHeight && b.height > 40; }).length);
   check(shown >= 6, `rows on screen are drawn after closing (${shown})`);
   await p.screenshot({ path: path.join(OUT, "after-close.png") });
+}
+
+// downloads: everything as CSV, and a backup that restores into another collection
+{
+  const p = await page("light");
+  await p.goto("http://localhost:5189/?demo&demoapi#/tools"); await p.waitForSelector("#backup");
+  const [csvDl] = await Promise.all([p.waitForEvent("download"), p.click("#export")]);
+  const csv = fs.readFileSync(await csvDl.path(), "utf8");
+  check(/\.csv$/.test(csvDl.suggestedFilename()) && csv.split("\n")[0].includes("Tracks,Personnel,Other credits,Notes"), "CSV download has tracks, personnel and notes columns: " + csvDl.suggestedFilename());
+  check(csv.includes("Booker Ervin: Tenor Saxophone") && csv.includes('""two-eye"" label'), "and fills them in");
+  const [jsonDl] = await Promise.all([p.waitForEvent("download"), p.click("#backup")]);
+  const backupPath = path.join(OUT, "backup.json"); await jsonDl.saveAs(backupPath);
+  const backup = JSON.parse(fs.readFileSync(backupPath, "utf8"));
+  check(backup.format === "garage-crates-backup" && backup.count === 713 && backup.albums.length === 713, "backup holds all 713 albums");
+
+  // a different, small collection: the public sample
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.route(/fonts\.|jsdelivr/, (r) => r.abort());
+  await ctx.route("**/demo.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: fs.readFileSync(new URL("../public/demo.json", import.meta.url)) }));
+  const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
+  await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector('a[href="#/import/backup"]');
+  const before = (await q.textContent(".tools-sub"));
+  await q.click('a[href="#/import/backup"]'); await q.waitForSelector('label[for="imp-file"]');
+  await q.setInputFiles("#imp-file", { name: "notes.csv", mimeType: "text/csv", buffer: Buffer.from("artist,title\nx,y") });
+  await q.waitForSelector(".importer .note.warn");
+  check((await q.textContent(".importer")).includes("isn't a Garage Crates backup"), "a CSV is turned away from the restore screen");
+  await q.setInputFiles("#imp-file", backupPath); await q.waitForSelector("#imp-save");
+  const offered = Number((await q.textContent("#imp-save")).match(/Restore (\d+) albums/)?.[1]);
+const overlap = (await q.textContent(".importer")).match(/(\d+) already here/)?.[1];
+check(offered + Number(overlap || 0) === 713 && Number(overlap) > 0, `the backup offers ${offered} albums, leaving the ${overlap} already here alone`);
+  await q.screenshot({ path: path.join(OUT, "t07-restore.png") });
+  await q.click("#imp-save"); await q.waitForSelector(".importer .note strong", { timeout: 15000 });
+  check((await q.textContent(".importer")).includes(`${offered} albums restored`), "restored all of them");
+  await q.goto("http://localhost:5189/?demo&demoapi"); await q.waitForSelector(".row");
+  await q.fill("#q", "Booker Ervin"); await q.waitForTimeout(300);
+  check((await q.textContent("#results")).includes("Booker Ervin"), "restored personnel is searchable straight away (no fetching)");
+await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
+  await q.locator('#results a.row[href^="#/album"]').first().click(); await q.waitForSelector(".album-title");
+  check((await q.inputValue("#notes")).includes('"two-eye" label') && (await q.textContent(".tracks")).includes("Better Git It In Your Soul"), "notes and tracks came back");
+  await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector(".tools-sub");
+  check((await q.textContent(".crate-list")).includes("late night") && (await q.textContent(".crate-list")).includes("japanese"), "crates came back");
+  // restoring again finds nothing new
+  await q.goto("http://localhost:5189/?demo&demoapi#/import/backup"); await q.waitForSelector('label[for="imp-file"]');
+  await q.setInputFiles("#imp-file", backupPath); await q.waitForSelector(".importer .note");
+  check((await q.textContent(".importer")).includes("Everything in this backup is already in your collection"), "restoring twice adds nothing");
+  await ctx.close();
+
+  // guests can download, not restore
+  const g = await page("light", "&guest");
+  check(await g.getAttribute("#backup", "aria-disabled") === null && await g.getAttribute('a[href="#/import/backup"]', "aria-disabled") === "true", "guests can download a backup but not restore one");
 }
 
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");

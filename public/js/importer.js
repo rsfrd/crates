@@ -41,6 +41,7 @@ export const FIELDS = [
   { key: "genres", label: "Genre", words: /^(genre|genres|style|styles|category)$/ },
   { key: "notes", label: "Notes", words: /^(notes|note|comments|comment|condition|description)$/ },
   { key: "personnel", label: "Players", words: /^(personnel|players|musicians|credits|lineup|line up|band members)$/ },
+  { key: "status", label: "Owned or wanted", words: /^(status|owned or wanted|owned\/wanted)$/ },
 ];
 
 const normHeader = (h) => fold(h).replace(/\s+/g, " ").trim();
@@ -74,14 +75,20 @@ export function recordsFromRows(rows, map, status = "owned") {
     const artist = get("artist"), title = get("title");
     if (!artist || !title) { skipped.push(i); return; }
     const y = get("year").match(/\b(1[89]\d{2}|20\d{2})\b/);
+    // A status column ("Owned", "Wanted") decides per row; otherwise everything goes where the import was pointed.
+    const st = get("status");
+    const rowStatus = /want|wish/i.test(st) ? "want" : /own|have|collection/i.test(st) ? "owned" : status;
+    // Personnel from a Garage Crates download is one person per line, "Name: roles"; keep just the names.
+    const people = get("personnel");
+    const names = /\n/.test(people) ? people.split(/\r?\n/).map((l) => l.replace(/:.*$/, "").trim()).filter(Boolean) : splitList(people, /\s*[,;|]\s*/);
     out.push({
-      artist, title, status,
+      artist, title, status: rowStatus,
       year: y ? Number(y[1]) : null,
       label: get("label") || null,
       catno: get("catno") || null,
       genres: splitList(get("genres"), /\s*[\/,;|]\s*/),
       notes: get("notes") || null,
-      personnel_hint: splitList(get("personnel"), /\s*[,;|]\s*/),
+      personnel_hint: names,
       enrich_status: "pending",
     });
   });

@@ -1,5 +1,6 @@
 import { createStore, cache, outbox } from "./store.js";
 import { parseCSV, FIELDS, looksLikeHeader, guessColumns, recordsFromRows, withoutDuplicates } from "./importer.js";
+import { collectionCSV, collectionBackup, readBackup } from "./exporter.js";
 import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople } from "./search.js";
 
 // ---------- helpers ----------
@@ -28,6 +29,7 @@ const ICON = {
   pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>',
   trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
   download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>',
   signout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>',
   disc: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
   sheet: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M3.5 14.5h17M10 4v16"/></svg>',
@@ -813,6 +815,72 @@ function renderImportCSV() {
   panel.querySelector("#imp-save")?.addEventListener("click", () => { imp.toSave = imp.fresh.length; saveImport(imp.fresh, imp.fileName); });
 }
 
+// The columns this site's database has. Older sites may lack some (crates, prices, file under), and a
+// backup from a newer site shouldn't stop a restore, so anything the database doesn't have is left out.
+function siteColumns() {
+  const sample = state.store.mode === "live" && state.albums.find((a) => !a._pending);
+  return sample ? new Set(Object.keys(sample).filter((k) => k !== "id" && k !== "updated_at")) : null;
+}
+
+function renderImportBackup() {
+  if (!state.owner) { viewOnly(); return closeOverlay(); }
+  const imp = state.imp || (state.imp = { kind: "backup" });
+  let body = "";
+  if (imp.done != null) body = `<div class="note"><p><strong>${plural(imp.done, "album")} restored</strong>, with their covers, tracks, personnel and notes.</p>
+    <p class="price-links"><button class="btn primary" data-close>Done</button></p></div>`;
+  else if (imp.saving) body = `<p class="note looking">Restoring ${imp.saved.toLocaleString()} of ${imp.toSave.toLocaleString()}…</p>`;
+  else if (imp.records) {
+    const { fresh, dupes } = withoutDuplicates(imp.records, state.albums);
+    imp.fresh = fresh;
+    const when = imp.savedAt ? new Date(imp.savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+    body = `
+      <p class="hint">${esc(imp.fileName)}${imp.site || when ? `: ${[imp.site && esc(imp.site), when && `saved ${when}`].filter(Boolean).join(", ")}` : ""}.</p>
+      <p class="hint">${[`${plural(fresh.length, "album")} to restore`, dupes.length && `${dupes.length.toLocaleString()} already here, left as they are`, imp.skipped && `${imp.skipped} unreadable, left out`].filter(Boolean).join(", ")}.</p>
+      ${fresh.length ? `<div class="rows import-preview">${fresh.slice(0, 5).map((r, i) => row({ ...r, id: "b" + i })).join("")}</div>
+        ${fresh.length > 5 ? `<p class="hint">…and ${(fresh.length - 5).toLocaleString()} more.</p>` : ""}
+        <button class="btn primary big" id="imp-save">Restore ${plural(fresh.length, "album")}</button>` : `<p class="note">Everything in this backup is already in your collection.</p>`}
+      <button class="btn" id="imp-again">Choose another file</button>`;
+  } else {
+    body = `
+      <p>Choose a backup file made with <strong>Download a backup</strong>. Albums that aren't in your collection come back exactly as they were saved, with covers, tracks, personnel, notes and crates. Albums you already have are left as they are.</p>
+      <label class="btn primary big" for="imp-file">Choose a backup file</label>
+      <input type="file" id="imp-file" accept=".json,application/json" class="visually-hidden">`;
+  }
+  const panel = openPanel(`
+    <div class="panel-bar">
+      <h2 class="panel-title">Restore from a backup</h2>
+      <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
+    </div>
+    <div class="importer">${imp.error ? `<p class="note warn">${esc(imp.error)}</p>` : ""}${body}</div>`, "import");
+
+  panel.querySelector("#imp-file")?.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try { Object.assign(imp, readBackup(await file.text()), { fileName: file.name, error: "" }); }
+    catch (err) { imp.error = err.message; }
+    renderOverlay();
+  });
+  panel.querySelector("#imp-again")?.addEventListener("click", () => { state.imp = null; renderOverlay(); });
+  panel.querySelector("#imp-save")?.addEventListener("click", async () => {
+    const cols = siteColumns();
+    const rows = imp.fresh.map((r) => cols ? Object.fromEntries(Object.entries(r).filter(([k]) => cols.has(k))) : r);
+    imp.toSave = rows.length;
+    imp.saving = true; imp.saved = 0; imp.error = "";
+    renderOverlay();
+    try {
+      const saved = await state.store.insertMany(rows, (n) => { imp.saved = n; renderOverlay(); });
+      setAlbums([...state.albums, ...saved]);
+      imp.saving = false; imp.done = saved.length;
+      renderAll();
+      toast(`Restored ${plural(saved.length, "album")}`);
+    } catch (err) {
+      imp.saving = false;
+      imp.error = /permission|row-level|policy/i.test(err.message) ? "This is a view-only copy. Only the owner can restore." : `Restoring stopped: ${err.message}`;
+      renderAll();
+    }
+  });
+}
+
 // ---------- overlays ----------
 let lastFocus = null;
 
@@ -871,7 +939,7 @@ function renderOverlay() {
   if (r.name === "person") return renderPerson(r.arg);
   if (r.name === "add") return renderAdd(r.params.get("q") || "");
   if (r.name === "tools") return renderTools();
-  if (r.name === "import") return r.arg === "csv" ? renderImportCSV() : renderImportDiscogs();
+  if (r.name === "import") return r.arg === "csv" ? renderImportCSV() : r.arg === "backup" ? renderImportBackup() : renderImportDiscogs();
   if (r.name === "pick") return renderPick();
   hideOverlay();
 }
@@ -1504,7 +1572,9 @@ function renderTools() {
       </div>`)}
 
       ${sec(mode === "live" ? "Backup and account" : "Backup", "", `<div class="card">
-        <button class="list-row" id="export"><span><strong>Download a copy</strong><span>Get a CSV of all your albums</span></span>${ICON.download}</button>
+        <button class="list-row" id="export"><span><strong>Download a copy</strong><span>Get a CSV of all your albums, with tracks, personnel and notes</span></span>${ICON.download}</button>
+        <button class="list-row" id="backup"><span><strong>Download a backup</strong><span>A complete copy that restores everything exactly (JSON)</span></span>${ICON.download}</button>
+        <a class="list-row" href="#/import/backup" data-import><span><strong>Restore from a backup</strong><span>Bring back albums from a backup file</span></span>${ICON.upload}</a>
         ${mode === "live" ? `<button class="list-row" id="signout"><span><strong>Sign out</strong></span>${ICON.signout}</button>` : ""}
       </div>`)}
     </div>`, "tools");
@@ -1515,6 +1585,7 @@ function renderTools() {
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
+  panel.querySelector("#backup").addEventListener("click", exportBackup);
   panel.querySelector("#prices-all")?.addEventListener("click", () => runQueue(priceable(), (a) => checkPrice(a, true, true), "Prices updated"));
   panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
   panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
@@ -1665,13 +1736,22 @@ async function runQueue(queue, worker, finished) {
   toast(e.stop ? "Stopped. Pick up where you left off any time." : finished);
 }
 
+function download(name, text, type) {
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([text], { type })), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const fileDate = () => new Date().toISOString().slice(0, 10);
+const fileSlug = () => (state.settings.siteName || "garage-crates").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "garage-crates";
+
+// Every album with its tracks, personnel and notes, one row each, in the order the list shows them.
 function exportCSV() {
-  const cols = ["artist", "title", "status", "for_sale", "year", "label", "catno", "genres", "crates", "notes", "discogs_url"];
-  const cell = (v) => { const s = Array.isArray(v) ? v.join("/") : v ?? ""; return /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s); };
-  const lines = [cols.join(","), ...state.index.list.map(({ album }) => cols.map((c) => cell(album[c])).join(","))];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `garage-crates-${new Date().toISOString().slice(0, 10)}.csv` });
-  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  download(`${fileSlug()}-${fileDate()}.csv`, collectionCSV(state.index.list.map(({ album }) => album)), "text/csv;charset=utf-8");
+}
+
+// Everything, exactly as stored, for restoring later.
+function exportBackup() {
+  download(`${fileSlug()}-backup-${fileDate()}.json`, JSON.stringify(collectionBackup(state.albums, state.settings.siteName), null, 1), "application/json");
 }
 
 // ---------- misc ----------
