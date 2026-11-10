@@ -215,7 +215,7 @@ await p.goto(BASE + "#/album/" + evans.id); await p.waitForSelector(".album-titl
 const before = await p.textContent(".album-title");
 await p.click("#fix-open"); await p.waitForSelector("[data-ref]");
 const cands = await p.textContent(".cands");
-check(cands.includes("1975 · US · Pablo 2625 705") && cands.includes("2 × Vinyl, LP, Album, Reissue, 180g, Clear") && cands.includes("812 collectors have this") && cands.includes("Any pressing: uses the original LP"), "Fix match rows show year, country, label, catalogue number, format details and how common it is");
+check(cands.includes("1975 · US · Pablo 2625 705") && cands.includes("2 × Vinyl, LP, Album, Reissue, 180g, Clear") && !cands.includes("collectors") && cands.includes("Any pressing: uses the original LP"), "Fix match rows show year, country, label, catalogue number, and format details, without collector counts");
 check(searchLog.at(-1) === "0" && (await p.textContent("#fix")).includes("Showing vinyl only."), "Fix match searches vinyl only");
 await p.locator("#fix").scrollIntoViewIfNeeded(); await p.screenshot({ path: path.join(OUT, "fix-list.png") });
 await p.click("#fix-any"); await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("Showing every format."));

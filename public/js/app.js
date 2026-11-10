@@ -1199,8 +1199,7 @@ function renderFix(a) {
             ${c.type === "master"
               ? `<span class="cand-line">${esc([c.year, "Any pressing: uses the original LP"].filter(Boolean).join(" · "))}</span>`
               : `<span class="cand-line">${esc([c.year, c.country, [c.label, c.catno].filter(Boolean).join(" ")].filter(Boolean).join(" · "))}</span>
-                 ${c.format ? `<span class="cand-format">${esc(c.format)}</span>` : ""}
-                 ${c.have ? `<span class="cand-line">${Number(c.have).toLocaleString()} ${c.have === 1 ? "collector has" : "collectors have"} this</span>` : ""}`}</span>
+                 ${c.format ? `<span class="cand-format">${esc(c.format)}</span>` : ""}`}</span>
             <span class="use">Use this</span>
           </button></li>`).join("")}</ul>`
       : `<p class="note">${f.anyFormat ? "No results." : "No vinyl pressings found."} Try different words, or paste a link to the album's Discogs page.</p>`
