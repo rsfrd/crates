@@ -1485,7 +1485,7 @@ function renderTools() {
 
       ${lookups ? sec("Want-list prices", "From Discogs", `<div class="card">
         ${!pricesReady() ? `<div class="card-row"><p class="hint">${esc(SETUP_PRICES)}</p></div>`
-          : priceable().length ? action(`${plural(priceable().length, "wanted record")} on Discogs`, "Prices also update when you open one.", `<button class="btn" id="prices-all">Refresh all</button>`)
+          : priceable().length ? action(`${plural(priceable().length, "wanted record")} on Discogs`, "Prices also update when you open any wanted album.", `<button class="btn" id="prices-all">Refresh all</button>`)
           : `<div class="card-row"><p class="hint">Wanted records matched on Discogs show their lowest marketplace price.</p></div>`}
       </div>`) : ""}
 
