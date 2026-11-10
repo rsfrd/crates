@@ -448,3 +448,7 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .cands .row-title { white-space: normal; }
 
 .price-block .note.warn { margin: 0 0 12px; }
+/* Fix match rows: cover, title and "Use this" share the top line; the details run underneath */
+.cands button { align-items: flex-start; padding: 12px 0; }
+.cands .thumb.mini { width: 56px; height: 56px; margin-top: 2px; }
+.cands .use { padding-top: 2px; }
