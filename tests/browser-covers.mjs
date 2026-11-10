@@ -16,7 +16,7 @@ const art = (h1, h2, w = 300, hgt = 300) => sharp(Buffer.from(`<svg xmlns="http:
 const covers = { cd: await art(0, 0), a: await art(20, 200), b: await art(210, 40), c: await art(130, 330), d: await art(280, 60), e: await art(45, 170) };
 const photo = await art(160, 20, 1600, 1200); // a landscape "phone photo"
 
-const demo = JSON.parse(fs.readFileSync(path.join(ROOT, "demo.json"), "utf8"));
+const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
 const mingus = demo.find((r) => r.title.startsWith("The Black Saint"));
 Object.assign(mingus, { cover_url: "/t/cd.png", thumb_url: "/t/cd.png", discogs_id: 42, enrich_status: "matched", year: 1963 });
 const cdRecord = demo.find((r) => r.artist === "Ahmad Jamal") || demo[40];

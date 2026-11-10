@@ -19,7 +19,7 @@ async function art(hueA, hueB) {
 }
 const covers = { a: await art(10, 50), b: await art(210, 30), c: await art(140, 300), d: await art(270, 190) };
 
-const demo = JSON.parse(fs.readFileSync(path.join(ROOT, "demo.json"), "utf8"));
+const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
 const find = (artist, title) => demo.find((r) => r.artist === artist && r.title.startsWith(title));
 const mingus = find("Charles Mingus", "The Black Saint");
 Object.assign(mingus, {

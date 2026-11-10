@@ -3,7 +3,7 @@ import { createRequire } from "node:module"; import http from "node:http"; impor
 const { chromium } = createRequire("/opt/npm-tools/node_modules/")("playwright");
 const OUT = process.argv[2]; fs.mkdirSync(OUT, { recursive: true });
 const ROOT = new URL("../public/", import.meta.url).pathname;
-const demo = JSON.parse(fs.readFileSync(ROOT + "demo.json", "utf8"));
+const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
 // A record with the kinds of credits that used to overflow.
 Object.assign(demo[0], {
   title: "Supercalifragilisticexpialidociousnessesandmorewithoutspaces Live", artist: "The Extremely Long Ensemble Name Orchestra And Chorus Of The Somewhere State Opera",

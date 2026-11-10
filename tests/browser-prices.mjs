@@ -3,7 +3,7 @@ import { createRequire } from "node:module"; import http from "node:http"; impor
 const { chromium } = createRequire("/opt/npm-tools/node_modules/")("playwright");
 const OUT = process.argv[2]; fs.mkdirSync(OUT, { recursive: true });
 const ROOT = new URL("../public/", import.meta.url).pathname;
-const demo = JSON.parse(fs.readFileSync(ROOT + "demo.json", "utf8"));
+const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
 const hoursAgo = (h) => new Date(Date.now() - h * 3600e3).toISOString();
 const want = (id, title, extra) => ({ ...structuredClone(demo[5]), id, title, artist: "Charles Mingus", status: "want", enrich_status: "matched", tracks: [], credits: [], crates: [], created_at: hoursAgo(30), ...extra });
 demo.push(

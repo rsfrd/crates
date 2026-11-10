@@ -4,12 +4,14 @@
 //   ?op=search&q=…                             Discogs candidates to pick from
 //   ?op=images&artist=…&title=…&discogs_id=…   alternative covers (Apple Music, Cover Art Archive, Discogs)
 //   ?op=price&id=<release id>[&master=1]       lowest marketplace price in USD + copies for sale
-import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, RateLimited } from "../lib/discogs.mjs";
+//   ?op=collection&username=…&list=collection|wants&page=N   one page of someone's Discogs collection or want list
+import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, collectionPage, DiscogsUserError, RateLimited } from "../lib/discogs.mjs";
 import { findImages } from "../lib/images.mjs";
-import { signedIn, json } from "../lib/auth.mjs";
+import { ownerOnly, json } from "../lib/auth.mjs";
 
 export default async (req) => {
-  if (!(await signedIn(req))) return json({ error: "not signed in" }, 401);
+  const denied = await ownerOnly(req);
+  if (denied) return denied;
 
   const p = new URL(req.url).searchParams;
   const op = p.get("op");
@@ -31,6 +33,8 @@ export default async (req) => {
       const id = Number(p.get("id"));
       if (!Number.isInteger(id) || id <= 0) return json({ error: "Missing a Discogs release number" }, 400);
       body = { price: await marketplace(client, id, { withMaster: p.get("master") === "1" }) };
+    } else if (op === "collection") {
+      body = await collectionPage(client, p.get("username"), p.get("list") === "wants" ? "wants" : "collection", Math.max(1, Number(p.get("page")) || 1));
     } else if (op === "images") {
       body = {
         images: await findImages(client, {
@@ -45,6 +49,7 @@ export default async (req) => {
     return json(body);
   } catch (e) {
     if (e instanceof RateLimited) return json({ error: "rate_limited", retryAfter: e.retryAfter }, 429);
+    if (e instanceof DiscogsUserError) return json({ error: e.message }, 400);
     return json({ error: String(e.message || e) }, 502);
   }
 };

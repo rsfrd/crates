@@ -1,4 +1,5 @@
 import { createStore, cache, outbox } from "./store.js";
+import { parseCSV, FIELDS, looksLikeHeader, guessColumns, recordsFromRows, withoutDuplicates } from "./importer.js";
 import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople } from "./search.js";
 
 // ---------- helpers ----------
@@ -31,6 +32,8 @@ const ICON = {
 // ---------- state ----------
 const state = {
   store: null,
+  owner: true,       // false for guests who came in with the passphrase
+  settings: { siteName: "Garage Crates", guestEmail: "" },
   albums: [],
   index: { list: [], people: new Map(), genres: [], crates: [] },
   q: "",
@@ -49,6 +52,7 @@ const state = {
   lookingUp: new Set(), // album ids whose details are being fetched right now
   pick: null,        // { crate, genre, id } for "Pick for me"
   pricing: new Set(), // want-list ids whose price is being checked right now
+  imp: null,         // an import in progress
   priceFailed: new Set(), // checks that failed this session; not retried automatically
 };
 
@@ -142,7 +146,7 @@ function renderShell() {
   $("#app").innerHTML = `
     <header class="top">
       <div class="brand">
-        <h1>Garage Crates</h1>
+        <h1>${esc(state.settings.siteName)}</h1>
         <p class="count" id="count"></p>
       </div>
       <div class="top-actions">
@@ -213,7 +217,7 @@ function renderShell() {
 
 function renderHeader() {
   const c = counts();
-  $("#count").textContent = `${plural(c.owned, "record")}, ${c.want.toLocaleString()} wanted`;
+  $("#count").textContent = `${plural(c.owned, "record")}, ${c.want.toLocaleString()} wanted${state.owner ? "" : ", view only"}`;
   const sel = $("#genre");
   sel.innerHTML = `<option value="">All genres</option>` +
     state.index.genres.map((g) => `<option ${g === state.genre ? "selected" : ""}>${esc(g)}</option>`).join("");
@@ -238,6 +242,11 @@ function renderResults() {
 
   if (!res.query) {
     if (!res.albums.length) {
+      if (!state.albums.length && state.owner) {
+        el.innerHTML = `<div class="empty"><p>Your collection is empty. Bring it in from Discogs or a spreadsheet, or add records one at a time.</p>
+          <div class="empty-actions"><a class="btn primary" href="#/import/discogs">Import from Discogs</a><a class="btn" href="#/import/csv">Import a spreadsheet</a></div></div>`;
+        return;
+      }
       el.innerHTML = emptyState(state.status === "want"
         ? "Your want list is empty. Add an album you heard and it'll be here when you're in the store."
         : state.status === "sale" ? "Nothing is marked for sale. Open a record and turn on “For sale” to queue it."
@@ -287,7 +296,7 @@ function renderAll() {
 }
 
 // ---------- crates ----------
-const SETUP_CRATES = "Crates aren't set up yet. Run supabase/004_crates.sql in Supabase, then try again.";
+const SETUP_CRATES = "Crates aren't set up yet. Run supabase/updates/004_crates.sql in Supabase, then try again.";
 const crateError = (e) => (/crates/i.test((e && e.message) || "") ? SETUP_CRATES : (e && e.message) || "Couldn't save that change.");
 const cleanCrate = (s) => String(s || "").replace(/\s+/g, " ").trim().slice(0, 60);
 
@@ -533,7 +542,7 @@ function fileUnderGuess(a) {
 }
 
 // ---------- want-list prices ----------
-const SETUP_PRICES = "Prices aren't set up yet. Run supabase/005_prices.sql in Supabase, then reload.";
+const SETUP_PRICES = "Prices aren't set up yet. Run supabase/updates/005_prices.sql in Supabase, then reload.";
 const PRICE_MAX_AGE = 12 * 3600 * 1000;
 
 // The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
@@ -619,6 +628,185 @@ async function checkPrice(a, force = false, quiet = false) {
   }
 }
 
+// ---------- importing ----------
+// state.imp holds the import in progress: { list, username, vinylOnly, reading, page, pages, found[], error, saving, saved }
+
+const IMPORT_COLUMNS = new Set(["artist", "title", "year", "label", "catno", "genres", "notes", "personnel_hint", "status", "enrich_status",
+  "discogs_id", "master_id", "discogs_url", "cover_url", "thumb_url"]);
+
+// Only send columns this site's database has (older sites may not have master_id yet).
+function forDatabase(r) {
+  const out = {};
+  for (const [k, v] of Object.entries(r)) if (IMPORT_COLUMNS.has(k) && !(k === "master_id" && !pricesReady())) out[k] = v;
+  return out;
+}
+
+function importSummary(fresh, dupes, other) {
+  return [`${plural(fresh.length, "record")} to bring in`, dupes.length && `${dupes.length.toLocaleString()} you already have`, other].filter(Boolean).join(", ") + ".";
+}
+
+async function saveImport(records, label) {
+  const imp = state.imp;
+  imp.saving = true; imp.saved = 0; imp.error = "";
+  renderOverlay();
+  try {
+    const saved = await state.store.insertMany(records.map(forDatabase), (n) => { imp.saved = n; renderOverlay(); });
+    setAlbums([...state.albums, ...saved]);
+    imp.saving = false; imp.done = saved.length;
+    renderAll();
+    toast(`Imported ${plural(saved.length, "record")}${label ? ` from ${label}` : ""}`);
+  } catch (e) {
+    imp.saving = false;
+    imp.error = /permission|row-level|policy/i.test(e.message) ? "This is a view-only copy. Only the owner can import." : `Importing stopped: ${e.message}`;
+    renderAll();
+  }
+}
+
+function importDone(imp) {
+  return `<div class="note"><p><strong>${plural(imp.done, "record")} imported.</strong></p>
+    <p>Covers, tracks and personnel come next. Open Collection and tap <strong>Fetch details</strong>${state.store.canEnrich ? "" : " once the site is connected to Discogs"}.</p>
+    <p class="price-links"><a class="btn primary" href="#/tools">Go to Collection</a><button class="btn" data-close>Done</button></p></div>`;
+}
+
+function renderImportDiscogs() {
+  if (!state.owner) { viewOnly(); return closeOverlay(); }
+  const imp = state.imp || (state.imp = { kind: "discogs", list: "collection", username: "", vinylOnly: true, found: null });
+  let body = "";
+  if (imp.done != null) body = importDone(imp);
+  else if (imp.saving) body = `<p class="note looking">Saving ${imp.saved.toLocaleString()} of ${imp.toSave.toLocaleString()}…</p>`;
+  else if (imp.reading) body = `<p class="note looking">Reading ${imp.list === "wants" ? "the want list" : "the collection"} from Discogs${imp.pages > 1 ? `, page ${imp.page} of ${imp.pages}` : ""}…</p>`;
+  else if (imp.found) {
+    const pool = imp.vinylOnly ? imp.found.filter((r) => r.vinyl) : imp.found;
+    const notVinyl = imp.found.filter((r) => !r.vinyl).length;
+    const { fresh, dupes } = withoutDuplicates(pool, state.albums);
+    imp.fresh = fresh;
+    body = `
+      <p class="hint">${importSummary(fresh, dupes, notVinyl && imp.vinylOnly ? `${notVinyl.toLocaleString()} not on vinyl, left out` : "")}</p>
+      ${notVinyl ? `<label class="check"><input type="checkbox" id="imp-vinyl" ${imp.vinylOnly ? "checked" : ""}> Vinyl only</label>` : ""}
+      ${fresh.length ? `<div class="rows import-preview">${fresh.slice(0, 8).map((r) => row({ ...r, id: "p" + r.discogs_id })).join("")}</div>
+        ${fresh.length > 8 ? `<p class="hint">…and ${(fresh.length - 8).toLocaleString()} more.</p>` : ""}
+        <button class="btn primary big" id="imp-save">Import ${plural(fresh.length, "record")} ${imp.list === "wants" ? "to your want list" : "to your collection"}</button>` : ""}
+      <button class="btn" id="imp-again">Start over</button>`;
+  } else {
+    body = `
+      <form id="imp-form" class="add">
+        <label>Discogs username<input name="username" value="${esc(imp.username)}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="jazzcollector" required></label>
+        <fieldset class="seg" role="radiogroup" aria-label="What to import">
+          <label><input type="radio" name="list" value="collection" ${imp.list === "collection" ? "checked" : ""}><span>Collection</span></label>
+          <label><input type="radio" name="list" value="wants" ${imp.list === "wants" ? "checked" : ""}><span>Want list</span></label>
+        </fieldset>
+        <button class="btn primary big">Look it up</button>
+        <p class="hint">Records come in as the exact pressings listed on Discogs, so nothing needs matching. The collection must be public on Discogs, unless it's the account whose token this site uses.</p>
+      </form>`;
+  }
+  const panel = openPanel(`
+    <div class="panel-bar">
+      <h2 class="panel-title">Import from Discogs</h2>
+      <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
+    </div>
+    <div class="importer">${imp.error ? `<p class="note warn">${esc(imp.error)}</p>` : ""}${body}</div>`, "import");
+
+  panel.querySelector("#imp-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    imp.username = String(f.get("username") || "").trim().replace(/^.*discogs\.com\/(user\/)?/i, "").replace(/\/.*$/, "");
+    imp.list = f.get("list");
+    readDiscogs(imp);
+  });
+  panel.querySelector("#imp-vinyl")?.addEventListener("change", (e) => { imp.vinylOnly = e.target.checked; renderOverlay(); });
+  panel.querySelector("#imp-again")?.addEventListener("click", () => { state.imp = null; renderOverlay(); });
+  panel.querySelector("#imp-save")?.addEventListener("click", () => { imp.toSave = imp.fresh.length; saveImport(imp.fresh, "Discogs"); });
+}
+
+async function readDiscogs(imp) {
+  if (!state.store.canEnrich) { imp.error = "Importing from Discogs needs the site connected to Discogs (the DISCOGS_TOKEN setting)."; return renderOverlay(); }
+  Object.assign(imp, { reading: true, error: "", found: [], page: 1, pages: 1 });
+  renderOverlay();
+  try {
+    for (let page = 1; page <= imp.pages; page++) {
+      const r = await politeApi({ op: "collection", username: imp.username, list: imp.list, page });
+      if (!r) throw new Error("Discogs is busy. Try again in a minute.");
+      Object.assign(imp, { page, pages: r.pages });
+      imp.found.push(...r.rows);
+      renderOverlay();
+    }
+    imp.reading = false;
+    if (!imp.found.length) imp.error = imp.list === "wants" ? "That want list is empty." : "That collection is empty.";
+    if (!imp.found.length) imp.found = null;
+  } catch (e) {
+    Object.assign(imp, { reading: false, found: null, error: e.message });
+  }
+  renderOverlay();
+}
+
+function renderImportCSV() {
+  if (!state.owner) { viewOnly(); return closeOverlay(); }
+  const imp = state.imp || (state.imp = { kind: "csv", status: "owned" });
+  let body = "";
+  if (imp.done != null) body = importDone(imp);
+  else if (imp.saving) body = `<p class="note looking">Saving ${imp.saved.toLocaleString()} of ${imp.toSave.toLocaleString()}…</p>`;
+  else if (imp.rows) {
+    const data = imp.hasHeader ? imp.rows.slice(1) : imp.rows;
+    const ready = imp.map.artist != null && imp.map.title != null;
+    const { records, skipped } = ready ? recordsFromRows(data, imp.map, imp.status) : { records: [], skipped: [] };
+    const { fresh, dupes } = withoutDuplicates(records, state.albums);
+    imp.fresh = fresh;
+    const heads = imp.rows[0].map((h, i) => (imp.hasHeader ? h || `Column ${i + 1}` : `Column ${i + 1}: ${h}`.slice(0, 40)));
+    body = `
+      <p class="hint">${esc(imp.fileName)}: ${plural(data.length, "row")}.</p>
+      <label class="check"><input type="checkbox" id="imp-header" ${imp.hasHeader ? "checked" : ""}> The first row is headings</label>
+      <div class="map">
+        ${FIELDS.map((f) => `<label><span>${f.label}${f.required ? "" : ' <span class="hint">optional</span>'}</span>
+          <select data-field="${f.key}"><option value="">${f.required ? "Choose a column" : "Not in this file"}</option>
+          ${heads.map((h, i) => `<option value="${i}" ${imp.map[f.key] === i ? "selected" : ""}>${esc(h)}</option>`).join("")}</select></label>`).join("")}
+      </div>
+      <fieldset class="seg" role="radiogroup" aria-label="Import into">
+        <label><input type="radio" name="imp-status" value="owned" ${imp.status === "owned" ? "checked" : ""}><span>Collection</span></label>
+        <label><input type="radio" name="imp-status" value="want" ${imp.status === "want" ? "checked" : ""}><span>Want list</span></label>
+      </fieldset>
+      ${!ready ? `<p class="note warn">Choose which columns hold the artist and the album.</p>` : `
+        <p class="hint">${importSummary(fresh, dupes, skipped.length && `${skipped.length.toLocaleString()} without an artist or album, left out`)}</p>
+        ${fresh.length ? `<div class="rows import-preview">${fresh.slice(0, 5).map((r, i) => row({ ...r, id: "p" + i }, [r.year, r.catno, r.genres.join("/")].filter(Boolean).map(esc).join(", "))).join("")}</div>
+          <button class="btn primary big" id="imp-save">Import ${plural(fresh.length, "record")}</button>` : ""}`}
+      <button class="btn" id="imp-again">Choose another file</button>`;
+  } else {
+    body = `
+      <p>Any spreadsheet saved as CSV works: one row per record, with at least an artist and an album. Year, label, catalogue number, genre, notes and players are used if they're there.</p>
+      <label class="btn primary big" for="imp-file">Choose a file</label>
+      <input type="file" id="imp-file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" class="visually-hidden">
+      <p class="hint">In Excel, Numbers or Google Sheets, use File → Export or Download → CSV.</p>`;
+  }
+  const panel = openPanel(`
+    <div class="panel-bar">
+      <h2 class="panel-title">Import a spreadsheet</h2>
+      <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
+    </div>
+    <div class="importer">${imp.error ? `<p class="note warn">${esc(imp.error)}</p>` : ""}${body}</div>`, "import");
+
+  panel.querySelector("#imp-file")?.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const { rows } = parseCSV(await file.text());
+      if (!rows.length) throw new Error("That file is empty.");
+      const hasHeader = looksLikeHeader(rows[0]);
+      Object.assign(imp, { rows, fileName: file.name, hasHeader, map: guessColumns(rows[0], hasHeader), error: "" });
+    } catch (err) { imp.error = err.message || "Couldn't read that file. Save it as CSV and try again."; }
+    renderOverlay();
+  });
+  panel.querySelector("#imp-header")?.addEventListener("change", (e) => {
+    imp.hasHeader = e.target.checked; imp.map = guessColumns(imp.rows[0], imp.hasHeader); renderOverlay();
+  });
+  panel.querySelectorAll("[data-field]").forEach((sel) => sel.addEventListener("change", () => {
+    const v = sel.value === "" ? null : Number(sel.value);
+    if (v == null) delete imp.map[sel.dataset.field]; else imp.map[sel.dataset.field] = v;
+    renderOverlay();
+  }));
+  panel.querySelectorAll('[name="imp-status"]').forEach((r) => r.addEventListener("change", () => { imp.status = r.value; renderOverlay(); }));
+  panel.querySelector("#imp-again")?.addEventListener("click", () => { state.imp = null; renderOverlay(); });
+  panel.querySelector("#imp-save")?.addEventListener("click", () => { imp.toSave = imp.fresh.length; saveImport(imp.fresh, imp.fileName); });
+}
+
 // ---------- overlays ----------
 let lastFocus = null;
 
@@ -666,10 +854,12 @@ function renderOverlay() {
   const r = route();
   if (r.name !== "album") { state.editing = false; state.fix = null; state.cover = null; state.crateAdd = null; }
   if (r.name !== "pick" && r.name !== "album") state.pick = null;
+  if (r.name !== "import" && !(state.imp && state.imp.saving)) state.imp = null;
   if (r.name === "album") return renderAlbum(r.arg);
   if (r.name === "person") return renderPerson(r.arg);
   if (r.name === "add") return renderAdd(r.params.get("q") || "");
   if (r.name === "tools") return renderTools();
+  if (r.name === "import") return r.arg === "csv" ? renderImportCSV() : renderImportDiscogs();
   if (r.name === "pick") return renderPick();
   hideOverlay();
 }
@@ -787,7 +977,7 @@ function renderAlbum(id) {
         </div>
       </div>
       ${a._pending ? "" : coverOpen ? renderCover(a) : `<div class="cover-bar">
-        ${canEnrich ? `<button class="btn" id="cover-find">Find a better image</button>` : ""}
+        ${canEnrich || !state.owner ? `<button class="btn" id="cover-find">Find a better image</button>` : ""}
         <button class="btn" id="cover-own">Use my own image</button>
       </div>`}
       ${looking ? `<p class="note looking">Looking up the cover, tracks and personnel…</p>` : ""}
@@ -803,7 +993,7 @@ function renderAlbum(id) {
       ${players.length ? `<section class="block"><h3>Personnel</h3><ul class="credits">${players.map(credit).join("")}</ul></section>` : ""}
       ${others.length ? `<details class="block more"><summary>Production and other credits <span>${others.length}</span></summary><ul class="credits">${others.map(credit).join("")}</ul></details>` : ""}
 
-      ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
+      ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich || !state.owner ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
       ${a.enrich_status === "review" ? `<p class="note warn">This was the closest Discogs match, but it might be the wrong album. Check the tracks, or fix the match below.</p>` : ""}
       ${a.enrich_status === "not_found" ? `<p class="note warn">No Discogs match found. Paste a Discogs link below to add details.</p>` : ""}
 
@@ -817,8 +1007,8 @@ function renderAlbum(id) {
 
       <div class="footer-actions">
         ${a.discogs_url ? `<a class="btn" href="${esc(a.discogs_url)}" target="_blank" rel="noopener">${a.discogs_id ? "View on Discogs" : "View on Bandcamp"}</a>` : ""}
-        ${canEnrich ? `<button class="btn" id="fix-open">${a.discogs_url ? "Wrong album? Fix match" : "Find on Discogs or Bandcamp"}</button>` : ""}
-        ${canEnrich && a.discogs_id ? `<button class="btn" id="refresh">Refresh details</button>` : ""}
+        ${canEnrich || !state.owner ? `<button class="btn" id="fix-open">${a.discogs_url ? "Wrong album? Fix match" : "Find on Discogs or Bandcamp"}</button>` : ""}
+        ${(canEnrich || !state.owner) && a.discogs_id ? `<button class="btn" id="refresh">Refresh details</button>` : ""}
         ${!state.editing ? `<button class="btn" id="edit-open">Edit details</button>` : ""}
         <button class="btn danger" id="delete">${a.status === "want" ? "Remove from want list" : "Delete record"}</button>
       </div>
@@ -1139,6 +1329,7 @@ function renderPerson(key) {
 
 // ---------- add a record ----------
 function renderAdd(prefill) {
+  if (!state.owner) { viewOnly(); return closeOverlay(); }
   const toCollection = state.status === "owned" || state.status === "sale";
   const label = (v) => (v === "want" ? "Add to want list" : "Add to collection");
   const panel = openPanel(`
@@ -1229,8 +1420,16 @@ function renderTools() {
       <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
     </div>
     <div class="tools">
-      ${mode === "demo" ? `<p class="note">You're looking at demo mode. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your real collection.</p>` : ""}
+      ${mode === "demo" ? `<p class="note">You're looking at demo mode with a small sample collection. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your own records.</p>` : ""}
       ${mode === "offline" ? `<p class="note">You're offline, showing the copy saved on this device. Want-list adds will sync when you reconnect.</p>` : ""}
+
+      <section class="block">
+        <h3>Bring in records</h3>
+        <div class="price-links">
+          <a class="btn" href="#/import/discogs" data-import>Import from Discogs</a>
+          <a class="btn" href="#/import/csv" data-import>Import a spreadsheet</a>
+        </div>
+      </section>
 
       <section class="block">
         <h3>Covers, tracks and personnel</h3>
@@ -1244,7 +1443,7 @@ function renderTools() {
           <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></div>
           <p class="hint">${e.done} of ${e.total}. ${esc(e.current)}${e.note ? ` ${esc(e.note)}` : ""}</p>
           <button class="btn" id="stop">Stop</button>`
-        : state.store.canEnrich ? `
+        : state.store.canEnrich || !state.owner ? `
           ${pending.length ? `<button class="btn primary" id="run">Fetch details for ${plural(pending.length, "record")}</button>
             <p class="hint">Discogs allows about 60 lookups a minute, so this takes roughly ${Math.max(1, Math.round(pending.length * 4 / 60))} minutes. Keep this screen open; you can stop and pick up later.</p>` : ""}
           ${missing.length + errors.length ? `<button class="btn" id="retry">Try the ${missing.length + errors.length} not found again</button>` : ""}
@@ -1264,7 +1463,7 @@ function renderTools() {
         <div class="rows">${[...review, ...missing, ...errors].map((a) => row(a, a.enrich_status === "review" ? "Check match" : "Not found")).join("")}</div>
       </section>` : ""}
 
-      ${state.store.canEnrich ? `<section class="block">
+      ${state.store.canEnrich || !state.owner ? `<section class="block">
         <h3>Want-list prices</h3>
         ${!pricesReady() ? `<p class="hint">${esc(SETUP_PRICES)}</p>`
           : priceable().length ? `<p class="hint">Prices refresh when you open a want-list record. To update them all at once:</p>
@@ -1356,7 +1555,10 @@ async function politeApi(params) {
 }
 
 async function enrichOnce(a) {
-  const r = await politeApi({ op: "match", artist: a.artist, title: a.title, catno: a.catno || "" });
+  const exact = a.discogs_id && a.enrich_status === "pending";   // imported from Discogs: the pressing is known
+  const r = exact
+    ? await politeApi({ op: "fetch", ref: `release/${a.discogs_id}`, artist: a.artist, exact: "1" })
+    : await politeApi({ op: "match", artist: a.artist, title: a.title, catno: a.catno || "" });
   if (!r) return 0;
   const patch = r.release ? releasePatch(a, r.release, r.status) : { enrich_status: "not_found" };
   await updateAlbum(a.id, patch);
@@ -1465,23 +1667,83 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
-function renderLogin(error = "") {
+// With a guest account set up, the passphrase comes first; the owner signs in with email and password.
+function renderLogin(error = "", mode) {
+  const guest = !!state.settings.guestEmail;
+  mode = mode || (guest ? "guest" : "owner");
+  document.title = state.settings.siteName;
   $("#app").innerHTML = `
     <main class="login">
-      <h1>Garage Crates</h1>
-      <form id="login">
-        <label>Email<input name="email" type="email" autocomplete="username" required></label>
-        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-        ${error ? `<p class="note warn">${esc(error)}</p>` : ""}
-        <button class="btn primary big">Sign in</button>
-      </form>
+      <h1>${esc(state.settings.siteName)}</h1>
+      ${mode === "guest" ? `
+        <form id="login-guest">
+          <label>Passphrase<input name="passphrase" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+          ${error ? `<p class="note warn">${esc(error)}</p>` : ""}
+          <button class="btn primary big">Look around</button>
+        </form>
+        <button class="linkish login-switch" id="to-owner">Owner sign in</button>`
+      : `
+        <form id="login">
+          <label>Email<input name="email" type="email" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          ${error ? `<p class="note warn">${esc(error)}</p>` : ""}
+          <button class="btn primary big">Sign in</button>
+        </form>
+        ${guest ? `<button class="linkish login-switch" id="to-guest">I have a passphrase</button>` : ""}`}
     </main>`;
-  $("#login").addEventListener("submit", async (e) => {
+  $("#to-owner")?.addEventListener("click", () => renderLogin("", "owner"));
+  $("#to-guest")?.addEventListener("click", () => renderLogin("", "guest"));
+  $("#login-guest")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try { await state.store.signIn(state.settings.guestEmail, new FormData(e.target).get("passphrase")); boot(); }
+    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That passphrase didn't work. Check it and try again." : err.message, "guest"); }
+  });
+  $("#login")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     try { await state.store.signIn(f.get("email"), f.get("password")); boot(); }
-    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That email and password don't match. Try again." : err.message); }
+    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That email and password don't match. Try again." : err.message, "owner"); }
   });
+  setTimeout(() => $("#app input")?.focus(), 50);
+}
+
+// ---------- view only ----------
+// Guests see every control, greyed out; tapping one explains why instead of doing anything.
+// The database refuses guest changes regardless; this just keeps the screen honest.
+const EDIT_CONTROLS = [
+  'a.fab[href="#/add"]', '.empty a.btn[href^="#/add"]', "#select-toggle",
+  "#got-it", ".switch-row", "#for-sale", "#notes",
+  "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
+  "#fix-open", "#refresh", "#edit-open", "#delete", "#price-refresh",
+  "#run", "#retry", "#vinyl", "#works", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+].join(", ");
+
+function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }
+
+function markViewOnly(root) {
+  if (state.owner || !root.querySelectorAll) return;
+  const els = [...(root.matches?.(EDIT_CONTROLS) ? [root] : []), ...root.querySelectorAll(EDIT_CONTROLS)];
+  for (const el of els) {
+    el.setAttribute("aria-disabled", "true");
+    if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") el.readOnly = true;
+  }
+}
+
+function startViewOnly() {
+  document.body.classList.add("view-only");
+  markViewOnly(document.body);
+  new MutationObserver((changes) => { for (const c of changes) for (const n of c.addedNodes) markViewOnly(n); })
+    .observe(document.body, { childList: true, subtree: true });
+  // Capture phase: runs before any of the app's own handlers.
+  for (const type of ["click", "change"]) {
+    document.addEventListener(type, (e) => {
+      const el = e.target.closest?.("[aria-disabled='true']");
+      if (!el) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (type === "click" && el.id !== "notes") viewOnly();
+    }, true);
+  }
+  document.addEventListener("focusin", (e) => { if (e.target.id === "notes") viewOnly(); });
 }
 
 // Track in-app navigation so the close button can go "back".
@@ -1493,13 +1755,20 @@ window.addEventListener("hashchange", () => {
 async function boot() {
   const cached = cache.get();
   state.store = state.store || (await createStore());
+  state.settings = await state.store.settings().catch(() => state.settings);
+  try { localStorage.setItem("crate.settings.v1", JSON.stringify(state.settings)); } catch {}
+  document.title = state.settings.siteName;
   const session = await state.store.session();
   if (!session) return renderLogin();
 
+  state.owner = await state.store.isOwner();
+  if (!state.owner) state.store.canEnrich = false;   // no lookups or automatic updates for guests
+
   renderShell();
+  if (!state.owner) startViewOnly();
   if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
   try {
-    const synced = await outbox.flush(state.store);
+    const synced = state.owner ? await outbox.flush(state.store) : [];
     const rows = await state.store.load();
     const pending = outbox.all();
     setAlbums([...rows, ...pending]);

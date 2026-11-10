@@ -8,6 +8,7 @@ const ROOT = new URL("../public/", import.meta.url).pathname;
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 const server = http.createServer((rq, res) => {
   const u = new URL(rq.url, "http://x");
+  if (u.pathname === "/demo.json") { res.writeHead(200, { "content-type": "application/json" }); return res.end(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url))); }
   if (u.pathname.startsWith("/api/")) { res.writeHead(404); return res.end(); }
   const f = path.join(ROOT, u.pathname === "/" ? "index.html" : u.pathname);
   if (!f.startsWith(ROOT) || !fs.existsSync(f)) { res.writeHead(404); return res.end(); }

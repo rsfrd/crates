@@ -3,7 +3,7 @@ import { createRequire } from "node:module"; import http from "node:http"; impor
 const { chromium } = createRequire("/opt/npm-tools/node_modules/")("playwright");
 const OUT = process.argv[2]; fs.mkdirSync(OUT, { recursive: true });
 const ROOT = new URL("../public/", import.meta.url).pathname;
-const demo = JSON.parse(fs.readFileSync(ROOT + "demo.json", "utf8"));
+const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
 // As after Discogs: Zappa and Hubbard credited individually.
 for (const r of demo) {
   if (r.artist.startsWith("Frank Zappa")) r.credits = [{ name: "Frank Zappa", roles: ["Guitar", "Vocals"], tracks: [], leader: true, kind: "musician" }];

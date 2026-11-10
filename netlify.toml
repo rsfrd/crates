@@ -10,3 +10,9 @@
   [headers.values]
     X-Frame-Options = "DENY"
     Referrer-Policy = "no-referrer"
+
+# Shown by the "Deploy to Netlify" button so a new site asks for its settings up front.
+[template.environment]
+  SUPABASE_URL = "Your Supabase project URL (Supabase → Project Settings → API)"
+  SUPABASE_ANON_KEY = "Your Supabase anon / publishable key (same page; NOT the service role key)"
+  DISCOGS_TOKEN = "A Discogs personal access token (discogs.com → Settings → Developers)"

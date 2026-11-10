@@ -1,0 +1,6 @@
+# Never commit keys: Supabase and Discogs settings belong in Netlify's environment variables.
+.env
+.env.*
+.netlify/
+node_modules/
+.DS_Store

@@ -356,6 +356,59 @@ export async function marketplace(client, releaseId, { withMaster = false } = {}
   };
 }
 
+// ---------- importing someone's Discogs collection or want list ----------
+const SPACER = /spacer\.gif/;
+
+// One "basic_information" entry from Discogs → a record row for the app. The pressing is exact,
+// so these skip matching: "Fetch details" reads that very release.
+export function rowFromDiscogs(bi, status) {
+  const label = (bi.labels || [])[0];
+  const art = (u) => (u && !SPACER.test(u) ? u : null);
+  return {
+    artist: artistLine(bi.artists || []) || "Unknown artist",
+    title: String(bi.title || "").trim() || "Untitled",
+    year: bi.year || null,
+    label: label ? cleanName(label.name) : null,
+    catno: label && label.catno && label.catno.toLowerCase() !== "none" ? label.catno : null,
+    genres: [...new Set(bi.genres || [])],
+    discogs_id: bi.id,
+    master_id: bi.master_id || null,
+    discogs_url: `https://www.discogs.com/release/${bi.id}`,
+    cover_url: art(bi.cover_image), thumb_url: art(bi.thumb) || art(bi.cover_image),
+    status,
+    enrich_status: "pending",
+    vinyl: (bi.formats || []).some((f) => f.name === "Vinyl"),
+    format: (bi.formats || []).map((f) => [f.name, ...(f.descriptions || [])].join(" ")).join(", "),
+  };
+}
+
+export class DiscogsUserError extends Error {}
+
+// One page (up to 100 records) of a user's collection ("collection") or want list ("wants").
+export async function collectionPage(client, username, list = "collection", page = 1) {
+  const user = encodeURIComponent(String(username || "").trim());
+  if (!user) throw new DiscogsUserError("Enter a Discogs username.");
+  const path = list === "wants" ? `/users/${user}/wants` : `/users/${user}/collection/folders/0/releases`;
+  let r;
+  try {
+    r = await client.get(path, { page: String(page), per_page: "100", ...(list === "wants" ? {} : { sort: "artist", sort_order: "asc" }) });
+  } catch (e) {
+    if (/ 403 /.test(` ${e.message} `) || /Discogs 403/.test(e.message)) {
+      throw new DiscogsUserError(list === "wants" ? "That want list is private on Discogs." : "That collection is private on Discogs. Its owner can make it public in Discogs settings (Privacy), or use their own Discogs token on this site.");
+    }
+    throw e;
+  }
+  if (!r) throw new DiscogsUserError(`There's no Discogs user called “${decodeURIComponent(user)}”. Check the spelling.`);
+  const items = (list === "wants" ? r.wants : r.releases) || [];
+  const status = list === "wants" ? "want" : "owned";
+  return {
+    page: (r.pagination && r.pagination.page) || page,
+    pages: (r.pagination && r.pagination.pages) || 1,
+    total: (r.pagination && r.pagination.items) || items.length,
+    rows: items.filter((x) => x.basic_information).map((x) => rowFromDiscogs(x.basic_information, status)),
+  };
+}
+
 export async function search(client, q) {
   const r = await client.get("/database/search", { q, per_page: 25 });
   const all = ((r && r.results) || []).filter((x) => x.type === "release" || x.type === "master");

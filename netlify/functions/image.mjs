@@ -1,11 +1,12 @@
 // /api/image?url=… — fetches an image from a link you pasted, so the app can save its own copy.
 // (Browsers can't download images from most sites directly; many sites also block hotlinking.)
-import { signedIn, json } from "../lib/auth.mjs";
+import { ownerOnly, json } from "../lib/auth.mjs";
 
 const MAX = 12 * 1024 * 1024;
 
 export default async (req) => {
-  if (!(await signedIn(req))) return json({ error: "not signed in" }, 401);
+  const denied = await ownerOnly(req);
+  if (denied) return denied;
   let url;
   try { url = new URL(new URL(req.url).searchParams.get("url") || ""); } catch { return json({ error: "That doesn't look like a link" }, 400); }
   if (!/^https?:$/.test(url.protocol) || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(url.hostname)) {
