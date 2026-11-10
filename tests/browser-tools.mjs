@@ -114,5 +114,20 @@ await g.screenshot({ path: path.join(OUT, "t06-guest.png") });
 await g.goto("http://localhost:5189/?demo&demoapi&guest#/album/r0064"); await g.waitForSelector("#keep-as-is");
 check(await g.getAttribute("#keep-as-is", "aria-disabled") === "true", "guests can't mark a record as fine");
 
+// closing an album returns to the same place in the list, with the rows drawn
+{
+  const p = await page("light"); await p.goto("http://localhost:5189/?demo&demoapi"); await p.waitForSelector(".row");
+  await p.evaluate(() => window.scrollTo(0, 3000)); await p.waitForTimeout(200);
+  const before = await p.evaluate(() => window.scrollY);
+  const target = await p.evaluate(() => [...document.querySelectorAll("#results a.row")].find((r) => r.getBoundingClientRect().top > 100).getAttribute("href"));
+  await p.click(`#results a.row[href="${target}"]`); await p.waitForSelector(".album-title"); await p.waitForTimeout(400);
+  await p.click(".panel-bar [data-close]"); await p.waitForSelector("#overlay", { state: "hidden" }); await p.waitForTimeout(300);
+  const after = await p.evaluate(() => window.scrollY);
+  check(Math.abs(after - before) < 2, `closing an album keeps the list where it was (${before} → ${after})`);
+  const shown = await p.evaluate(() => [...document.querySelectorAll("#results a.row")].filter((r) => { const b = r.getBoundingClientRect(); return b.bottom > 0 && b.top < innerHeight && b.height > 40; }).length);
+  check(shown >= 6, `rows on screen are drawn after closing (${shown})`);
+  await p.screenshot({ path: path.join(OUT, "after-close.png") });
+}
+
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); server.close();

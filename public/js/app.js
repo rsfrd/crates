@@ -834,7 +834,7 @@ function openPanel(html, kind) {
   panel.dataset.view = location.hash;
   panel.scrollTop = scroll;
   document.body.classList.add("locked");
-  if (wasHidden) lastFocus = document.activeElement;
+  if (wasHidden) { lastFocus = document.activeElement; listScroll = window.scrollY; }
   if (!sameView) panel.focus({ preventScroll: true });
   ov.querySelector("[data-close].scrim")?.addEventListener("click", closeOverlay);
   ov.querySelectorAll("button[data-close]").forEach((b) => b.addEventListener("click", closeOverlay));
@@ -847,7 +847,13 @@ function hideOverlay() {
   ov.hidden = true; ov.innerHTML = "";
   document.body.classList.remove("locked");
   lastFocus?.focus?.({ preventScroll: true });
+  // Back to where the list was. Closing sets the address to "#", which jumps to the top, and iOS Safari
+  // sometimes leaves the list unpainted until it scrolls; a real scroll repaints it and loads the covers.
+  const y = listScroll;
+  window.scrollTo(0, y);
+  requestAnimationFrame(() => { window.scrollTo(0, y + 1); window.scrollTo(0, y); });
 }
+let listScroll = 0;
 
 function route() {
   const h = decodeURIComponent(location.hash.slice(1));

@@ -75,7 +75,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 #results h2 span, .more summary span { font-weight: 400; margin-left: 4px; font-variant-numeric: tabular-nums; }
 
 .rows { display: flex; flex-direction: column; }
-.row { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); content-visibility: auto; contain-intrinsic-size: auto 74px; }
+.row { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: 0; }
 .row:active { opacity: .6; }
 .row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -112,7 +112,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 18px 12px; padding-top: 6px; }
 @media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 24px 16px; } }
-.tile { display: flex; flex-direction: column; min-width: 0; position: relative; content-visibility: auto; contain-intrinsic-size: auto 180px; }
+.tile { display: flex; flex-direction: column; min-width: 0; position: relative; }
 .tile .tile-art { width: 100%; height: auto; aspect-ratio: 1; box-shadow: var(--shadow); }
 .tile .tile-art.is-want { box-shadow: none; }
 .tile-title { margin-top: 8px; font-size: 14px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
