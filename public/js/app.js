@@ -702,7 +702,7 @@ function renderImportDiscogs() {
           <label><input type="radio" name="list" value="wants" ${imp.list === "wants" ? "checked" : ""}><span>Want list</span></label>
         </fieldset>
         <button class="btn primary big">Look it up</button>
-        <p class="hint">Records come in as the exact pressings listed on Discogs, so nothing needs matching. The collection must be public on Discogs, unless it's the account whose token this site uses.</p>
+        <p class="hint">Albums come in as the pressings listed on Discogs. Discogs Wantlists are imported as Want lists in Garage Crates. The collection must be public on Discogs, unless it's the account whose token this site uses.</p>
       </form>`;
   }
   const panel = openPanel(`
