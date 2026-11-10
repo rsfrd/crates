@@ -441,3 +441,4 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .keep-note p { margin: 0; }
 
 .card-list .row-extra { color: var(--warn); font-size: 13px; font-weight: 600; }
+.overlay-tools .panel-title { font-size: 36px; line-height: 1; letter-spacing: -.01em; }
