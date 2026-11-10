@@ -28,11 +28,11 @@ export default async (req) => {
       const release = await fetchByRef(client, ref.type, ref.id, p.get("artist") || "", { preferVinyl: p.get("exact") !== "1" });
       body = release ? { status: "matched", release } : { status: "not_found", release: null };
     } else if (op === "search") {
-      body = { candidates: await search(client, p.get("q") || "") };
+      body = { candidates: await search(client, p.get("q") || "", { anyFormat: p.get("any") === "1" }) };
     } else if (op === "price") {
       const id = Number(p.get("id"));
       if (!Number.isInteger(id) || id <= 0) return json({ error: "Missing a Discogs release number" }, 400);
-      body = { price: await marketplace(client, id, { withMaster: p.get("master") === "1" }) };
+      body = { price: await marketplace(client, id, { withMaster: p.get("master") === "1", withFormat: p.get("fmt") === "1" }) };
     } else if (op === "collection") {
       body = await collectionPage(client, p.get("username"), p.get("list") === "wants" ? "wants" : "collection", Math.max(1, Number(p.get("page")) || 1));
     } else if (op === "images") {

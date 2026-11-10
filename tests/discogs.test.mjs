@@ -184,9 +184,31 @@ test("a CD release is swapped for the vinyl LP, unless asked for exactly", async
   assert.equal(exact.discogs_id, 100);
 });
 
-test("Fix match search lists masters and vinyl only", async () => {
-  const r = await searchDiscogs(makeClient("t", fakeDiscogs([])), "kind of blue");
+test("Fix match search asks Discogs for vinyl, lists masters and vinyl only, all formats when asked", async () => {
+  const calls = [];
+  const r = await searchDiscogs(makeClient("t", fakeDiscogs(calls)), "kind of blue");
   assert.deepEqual(r.map((c) => `${c.type}:${c.id}`), ["master:7", "release:200"]);
+  assert.ok(calls[0].includes("format=Vinyl"));
+  const any = await searchDiscogs(makeClient("t", fakeDiscogs(calls)), "kind of blue", { anyFormat: true });
+  assert.deepEqual(any.map((c) => `${c.type}:${c.id}`), ["release:100", "master:7", "release:200"]);
+  assert.ok(!calls[1].includes("format="));
+});
+
+test("Fix match candidates carry what tells pressings apart", async () => {
+  const fake = async () => new Response(JSON.stringify({ results: [{
+    type: "release", id: 9, title: "Miles Davis - Kind Of Blue", year: "2015", country: "Europe", catno: "CS 8163",
+    label: ["Columbia (2)", "Sony Music"], format: ["Vinyl", "LP", "Album", "Reissue"],
+    formats: [{ name: "Vinyl", qty: "1", descriptions: ["LP", "Album", "Reissue", "180g"], text: "Blue Translucent" }],
+    community: { have: 1234, want: 50 },
+  }, { type: "release", id: 10, title: "X", format: ["Vinyl", "LP"], formats: [{ name: "Vinyl", qty: "2", descriptions: ["LP"] }], catno: "none" }] }), { status: 200 });
+  const [c, d] = await searchDiscogs(makeClient("t", fake), "kind of blue");
+  assert.equal(c.format, "Vinyl, LP, Album, Reissue, 180g, Blue Translucent");
+  assert.equal(c.label, "Columbia");
+  assert.equal(c.catno, "CS 8163");
+  assert.equal(c.country, "Europe");
+  assert.equal(c.have, 1234);
+  assert.equal(d.format, "2 × Vinyl, LP");
+  assert.equal(d.catno, null);
 });
 
 test("automatic match ends on the vinyl LP and searches catalogue numbers among vinyl", async () => {
@@ -320,13 +342,28 @@ test("marketplace: lowest price in USD, copies for sale, album family", async ()
     return new Response("{}", { status: 404 });
   };
   const client = makeClient("t", fake);
-  assert.deepEqual(await marketplace(client, 200, { withMaster: true }), { value: 24.5, currency: "USD", for_sale: 7, blocked: false, master_id: 7 });
+  assert.deepEqual(await marketplace(client, 200, { withMaster: true }), { value: 24.5, currency: "USD", for_sale: 7, blocked: false, master_id: 7, vinyl: null, format: null });
   assert.ok(calls[0].includes("curr_abbr=USD"));
-  assert.deepEqual(await marketplace(client, 300), { value: null, currency: "USD", for_sale: 0, blocked: false, master_id: null });
+  assert.deepEqual(await marketplace(client, 300), { value: null, currency: "USD", for_sale: 0, blocked: false, master_id: null, vinyl: null, format: null });
 });
 
 test("matched releases remember their album family", () => {
   assert.equal(normalizeRelease({ id: 1, master_id: 55 }, "").master_id, 55);
   assert.equal(normalizeRelease({ id: 1 }, "", { id: 66, year: 1960 }).master_id, 66);
   assert.equal(normalizeRelease({ id: 1 }, "").master_id, null);
+});
+
+test("marketplace: says whether the pressing is vinyl when asked", async () => {
+  const fake = async (url) => {
+    const u = new URL(url);
+    if (u.pathname.startsWith("/marketplace/stats/")) return new Response(JSON.stringify({ lowest_price: { currency: "USD", value: 9 }, num_for_sale: 3 }), { status: 200 });
+    if (u.pathname === "/releases/1") return new Response(JSON.stringify({ id: 1, master_id: 5, formats: [{ name: "CD", qty: "1", descriptions: ["Album"] }] }), { status: 200 });
+    if (u.pathname === "/releases/2") return new Response(JSON.stringify({ id: 2, master_id: 5, formats: [{ name: "Vinyl", qty: "1", descriptions: ["LP"], text: "Red" }] }), { status: 200 });
+    return new Response("{}", { status: 404 });
+  };
+  const client = makeClient("t", fake);
+  const cd = await marketplace(client, 1, { withFormat: true });
+  assert.equal(cd.vinyl, false); assert.equal(cd.format, "CD, Album"); assert.equal(cd.master_id, 5);
+  const lp = await marketplace(client, 2, { withFormat: true });
+  assert.equal(lp.vinyl, true); assert.equal(lp.format, "Vinyl, LP, Red");
 });

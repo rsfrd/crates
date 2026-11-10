@@ -64,7 +64,7 @@ await p.screenshot({ path: path.join(OUT, "g02-record.png") });
 // want list: price shown, no automatic price check
 await p.goto(BASE + "#/album/want-1"); await p.waitForSelector(".price-block"); await p.waitForTimeout(600);
 check((await p.textContent(".price-block")).includes("$20.00") && !calls.some((c) => !c.startsWith("/api/config")), "prices show, but guests trigger no lookups");
-check(await p.getAttribute('.price-links a:has-text("Shop US sellers")', "aria-disabled") === null, "marketplace links still work");
+check(await p.getAttribute('.price-links a:has-text("US sellers")', "aria-disabled") === null, "marketplace links still work");
 
 // Collection screen: tools greyed, export and sign-out still there
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");

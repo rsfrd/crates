@@ -561,6 +561,7 @@ function pricesReady() {
 const priceable = () => state.albums.filter((a) => a.status === "want" && a.discogs_id && !a._pending);
 function priceStale(a) {
   if (!a.discogs_id || !state.store.canEnrich || !pricesReady() || state.pricing.has(a.id) || state.priceFailed.has(a.id)) return false;
+  if (a.price && a.price.release && a.price.release !== a.discogs_id) return true;   // matched to another pressing since
   const t = a.price && Date.parse(a.price.checked_at);
   return !t || Date.now() - t > PRICE_MAX_AGE;
 }
@@ -582,13 +583,18 @@ function ago(iso) {
   return d === 1 ? "yesterday" : `${d} days ago`;
 }
 
-// Discogs marketplace pages: every vinyl pressing of the album when we know its family, else this pressing.
+// Discogs marketplace pages. The first two are this pressing, the one the price is for; the third is
+// every vinyl pressing of the album, when we know its family.
 function marketLinks(a) {
-  const base = a.master_id
-    ? `https://www.discogs.com/sell/list?master_id=${a.master_id}&format=Vinyl&sort=price%2Casc`
-    : `https://www.discogs.com/sell/release/${a.discogs_id}?sort=price%2Casc`;
-  return { us: `${base}&ships_from=United+States`, all: base };
+  const pressing = `https://www.discogs.com/sell/release/${a.discogs_id}?sort=price%2Casc`;
+  return {
+    us: `${pressing}&ships_from=United+States`,
+    all: pressing,
+    others: a.master_id ? `https://www.discogs.com/sell/list?master_id=${a.master_id}&format=Vinyl&sort=price%2Casc` : null,
+  };
 }
+
+const notVinyl = (a) => !!(a.price && a.price.vinyl === false && a.price.release === a.discogs_id);
 
 function priceBlock(a) {
   if (!a.discogs_id) return "";
@@ -596,6 +602,7 @@ function priceBlock(a) {
   const links = marketLinks(a);
   let line;
   if (state.pricing.has(a.id) && !p) line = `<p class="price-line"><span class="hint">Checking Discogs…</span></p>`;
+  else if (notVinyl(a)) line = `<p class="note warn">This match isn't a vinyl pressing${p.format ? ` (${esc(p.format.split(",")[0])})` : ""}, so there's no vinyl price. Use <strong>Wrong album? Fix match</strong> below to pick the LP.</p>`;
   else if (p && p.value != null) line = `<p class="price-line"><strong>From ${money(p)}</strong><span class="hint">${plural(p.for_sale || 0, "copy", "copies")} of this pressing for sale, lowest price before shipping</span></p>`;
   else if (p) line = `<p class="price-line"><span>No copies of this pressing for sale on Discogs right now.</span></p>`;
   else line = "";
@@ -603,10 +610,11 @@ function priceBlock(a) {
     <h3>Buy on Discogs</h3>
     ${line}
     <div class="price-links">
-      <a class="btn" href="${esc(links.us)}" target="_blank" rel="noopener">Shop US sellers</a>
-      <a class="btn" href="${esc(links.all)}" target="_blank" rel="noopener">All sellers</a>
+      ${notVinyl(a) ? "" : `<a class="btn" href="${esc(links.us)}" target="_blank" rel="noopener">US sellers</a>
+      <a class="btn" href="${esc(links.all)}" target="_blank" rel="noopener">All sellers</a>`}
+      ${links.others ? `<a class="btn" href="${esc(links.others)}" target="_blank" rel="noopener">Other pressings</a>` : ""}
     </div>
-    <p class="hint price-note">${a.master_id ? "The links show every vinyl pressing of this album, cheapest first. " : ""}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
+    <p class="hint price-note">${notVinyl(a) ? "" : "US sellers and All sellers show this pressing, the one the price is for. "}${links.others ? "Other pressings shows every vinyl version of the album, which can cost more or less. " : ""}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
       ${state.store.canEnrich && pricesReady() && !state.pricing.has(a.id) ? `<button class="linkish" id="price-refresh">Check again</button>` : ""}</p>
   </section>`;
 }
@@ -619,9 +627,15 @@ async function checkPrice(a, force = false, quiet = false) {
   renderOverlay();
   try {
     state.priceFailed.delete(a.id);
-    const r = await politeApi({ op: "price", id: a.discogs_id, master: a.master_id ? "0" : "1" });
+    // Whether the pressing is vinyl is asked once per pressing and kept with the price.
+    const known = a.price && a.price.release === a.discogs_id && typeof a.price.vinyl === "boolean";
+    const r = await politeApi({ op: "price", id: a.discogs_id, master: a.master_id ? "0" : "1", fmt: known ? "0" : "1" });
     if (!r || !r.price) { state.priceFailed.add(a.id); return r ? r.rateRemaining : 0; }
-    const patch = { price: { value: r.price.value, currency: r.price.currency, for_sale: r.price.for_sale, checked_at: new Date().toISOString() } };
+    const vinyl = known ? a.price.vinyl : r.price.vinyl;
+    const format = known ? a.price.format : r.price.format;
+    const base = { release: a.discogs_id, vinyl: typeof vinyl === "boolean" ? vinyl : null, format: format || null, checked_at: new Date().toISOString() };
+    // A CD (or cassette) match gets no price: a vinyl buyer would be misled by it.
+    const patch = { price: vinyl === false ? { value: null, for_sale: 0, ...base } : { value: r.price.value, currency: r.price.currency, for_sale: r.price.for_sale, ...base } };
     if (!a.master_id && r.price.master_id) patch.master_id = r.price.master_id;
     state.pricing.delete(a.id);
     await updateAlbum(a.id, patch).catch(() => {});
@@ -1182,10 +1196,17 @@ function renderFix(a) {
           <li><button data-ref="${c.type}/${c.id}">
             <span class="thumb mini">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="blank" style="--h:${hue(c.title)}"><span class="disc"></span></span>`}</span>
             <span class="row-text"><span class="row-title">${esc(c.title)}</span>
-            <span class="row-sub">${esc([c.year, c.country, c.format || (c.type === "master" ? "Original release" : "")].filter(Boolean).join(", "))}</span></span>
+            ${c.type === "master"
+              ? `<span class="cand-line">${esc([c.year, "Any pressing: uses the original LP"].filter(Boolean).join(" · "))}</span>`
+              : `<span class="cand-line">${esc([c.year, c.country, [c.label, c.catno].filter(Boolean).join(" ")].filter(Boolean).join(" · "))}</span>
+                 ${c.format ? `<span class="cand-format">${esc(c.format)}</span>` : ""}
+                 ${c.have ? `<span class="cand-line">${Number(c.have).toLocaleString()} ${c.have === 1 ? "collector has" : "collectors have"} this</span>` : ""}`}</span>
             <span class="use">Use this</span>
           </button></li>`).join("")}</ul>`
-      : `<p class="note">No results. Try different words, or paste a link to the album's Discogs page.</p>`
+      : `<p class="note">${f.anyFormat ? "No results." : "No vinyl pressings found."} Try different words, or paste a link to the album's Discogs page.</p>`
+    : "";
+  const formatSwitch = f.candidates && !f.busy
+    ? `<p class="hint">${f.anyFormat ? "Showing every format." : "Showing vinyl only."} <button class="linkish" id="fix-any">${f.anyFormat ? "Vinyl only" : "Include CDs and other formats"}</button></p>`
     : "";
   return `<section class="block fix" id="fix">
     <h3>Fix the match</h3>
@@ -1194,6 +1215,7 @@ function renderFix(a) {
       <button class="btn primary" ${f.busy ? "disabled" : ""}>${f.busy ? "Searching…" : "Search"}</button>
     </form>
     ${f.error ? `<p class="note warn">${esc(f.error)}</p>` : ""}
+    ${formatSwitch}
     ${list}
   </section>`;
 }
@@ -1207,13 +1229,17 @@ function wireFix(panel, a) {
     runFixSearch(a, v);
   });
   panel.querySelectorAll("[data-ref]").forEach((b) => b.addEventListener("click", () => applyRef(a, b.dataset.ref)));
+  panel.querySelector("#fix-any")?.addEventListener("click", () => {
+    state.fix = { ...state.fix, anyFormat: !state.fix.anyFormat };
+    runFixSearch(a, state.fix.lastQuery || `${a.artist} ${a.title}`);
+  });
 }
 
 async function runFixSearch(a, q) {
   state.fix = { ...state.fix, busy: true, error: "", lastQuery: q };
   renderOverlay();
   try {
-    const r = await api({ op: "search", q });
+    const r = await api({ op: "search", q, any: state.fix && state.fix.anyFormat ? "1" : "0" });
     state.fix = { ...state.fix, busy: false, candidates: r.candidates || [] };
   } catch (e) {
     state.fix = { ...state.fix, busy: false, error: e.message };
@@ -1504,6 +1530,7 @@ function renderTools() {
 
   const owned = state.albums.filter((x) => x.status !== "want").length, wanted = state.albums.length - owned;
   const notFound = missing.length + errors.length;
+  const cdWants = state.albums.filter((x) => !x._pending && x.status === "want" && notVinyl(x) && x.enrich_status === "matched");
   const sec = (title, note, body) => `<section class="sec">
         <div class="sec-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ""}</div>
         ${body}
@@ -1547,8 +1574,8 @@ function renderTools() {
         : ""}
       </div>`)}
 
-      ${review.length + notFound ? sec("Needs a look", "Open one, then Fix match", `<div class="card card-list">
-        <div class="rows">${[...review, ...missing, ...errors].map((a) => row(a, a.enrich_status === "review" ? "Check match" : "Not found")).join("")}</div>
+      ${review.length + notFound + cdWants.length ? sec("Needs a look", "Open one, then Fix match", `<div class="card card-list">
+        <div class="rows">${[...review, ...missing, ...errors, ...cdWants].map((a) => row(a, a.enrich_status === "review" ? "Check match" : a.enrich_status === "matched" ? "Not vinyl" : "Not found")).join("")}</div>
       </div>`) : ""}
 
       ${lookups ? sec("Want-list prices", "From Discogs", `<div class="card">

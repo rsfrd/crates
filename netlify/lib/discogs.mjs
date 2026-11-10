@@ -229,11 +229,23 @@ export function normalizeRelease(release, albumArtist, master) {
 
 // ---------- matching ----------
 
+// "Vinyl, LP, Album, Reissue, 180g, Red Translucent": everything that tells pressings apart, including
+// the free-text part (colour, edition) that Discogs keeps in `text`.
+export function formatText(formats = []) {
+  return formats.map((f) => [Number(f.qty) > 1 ? `${f.qty} × ${f.name}` : f.name, ...(f.descriptions || []), f.text]
+    .filter(Boolean).join(", ")).join(" + ");
+}
+
 function toCandidate(r) {
+  const labels = [...new Set((r.label || []).map(cleanName))];
   return {
     type: r.type, id: r.id, title: r.title, year: r.year || null,
-    country: r.country || null, format: (r.format || []).slice(0, 3).join(", "),
-    catno: r.catno || null, thumb: r.thumb || r.cover_image || null,
+    country: r.country || null,
+    format: (r.formats && r.formats.length ? formatText(r.formats) : (r.format || []).join(", ")) || null,
+    label: labels[0] || null,
+    catno: r.catno && r.catno !== "none" ? r.catno : null,
+    have: (r.community && r.community.have) || null,
+    thumb: r.thumb || r.cover_image || null,
     master_id: r.master_id || null,
   };
 }
@@ -339,12 +351,14 @@ export async function match(client, { artist, title, catno }) {
 
 // Marketplace figures for one release, in US dollars: the lowest listed price (any seller, before shipping)
 // and how many copies are for sale. Also the album family, when asked for.
-export async function marketplace(client, releaseId, { withMaster = false } = {}) {
+// `withFormat` also says whether the pressing is vinyl, so a CD match never gets a vinyl price.
+export async function marketplace(client, releaseId, { withMaster = false, withFormat = false } = {}) {
   const stats = await client.get(`/marketplace/stats/${releaseId}`, { curr_abbr: "USD" });
-  let masterId = null;
-  if (withMaster) {
+  let masterId = null, vinyl = null, format = null;
+  if (withMaster || withFormat) {
     const rel = await client.get(`/releases/${releaseId}`);
     masterId = (rel && rel.master_id) || null;
+    if (rel && rel.formats) { vinyl = isVinylRelease(rel); format = formatText(rel.formats) || null; }
   }
   const low = stats && stats.lowest_price;
   return {
@@ -353,6 +367,7 @@ export async function marketplace(client, releaseId, { withMaster = false } = {}
     for_sale: (stats && Number.isFinite(stats.num_for_sale)) ? stats.num_for_sale : 0,
     blocked: !!(stats && stats.blocked_from_sale),
     master_id: masterId,
+    vinyl, format,
   };
 }
 
@@ -409,10 +424,10 @@ export async function collectionPage(client, username, list = "collection", page
   };
 }
 
-export async function search(client, q) {
-  const r = await client.get("/database/search", { q, per_page: 25 });
+// Vinyl pressings (and album families, which resolve to an LP) unless `anyFormat` asks for CDs and the rest too.
+export async function search(client, q, { anyFormat = false } = {}) {
+  const r = await client.get("/database/search", { q, per_page: 50, ...(anyFormat ? {} : { format: "Vinyl" }) });
   const all = ((r && r.results) || []).filter((x) => x.type === "release" || x.type === "master");
-  const vinylish = (x) => x.type === "master" || (x.format || []).includes("Vinyl");
-  const keep = all.some(vinylish) ? all.filter(vinylish) : all;
-  return keep.slice(0, 12).map(toCandidate);
+  const keep = anyFormat ? all : all.filter((x) => x.type === "master" || (x.format || []).includes("Vinyl"));
+  return keep.slice(0, 30).map(toCandidate);
 }

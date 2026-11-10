@@ -442,3 +442,9 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 
 .card-list .row-extra { color: var(--warn); font-size: 13px; font-weight: 600; }
 .overlay-tools .panel-title { font-size: 36px; line-height: 1; letter-spacing: -.01em; }
+.cands .cand-line, .cands .cand-format { display: block; font-size: 13.5px; color: var(--muted); line-height: 1.35; }
+.cands .cand-format { color: var(--ink); }
+.cands .row-text { gap: 1px; }
+.cands .row-title { white-space: normal; }
+
+.price-block .note.warn { margin: 0 0 12px; }

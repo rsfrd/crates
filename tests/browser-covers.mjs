@@ -43,6 +43,7 @@ const bandcampRelease = { source: "bandcamp", discogs_id: null, discogs_url: "ht
   credits: [{ name: "Kit Downes Trio", id: null, roles: [], tracks: [], leader: true, kind: "musician" }, { name: "Petter Eldh", id: null, roles: ["Double bass"], tracks: [], leader: false, kind: "musician" }],
   credits_text: "Kit Downes – piano\nPetter Eldh - double bass", discogs_title: "Smoke & Mirrors", discogs_artist: "Kit Downes Trio", parser: 3 };
 const bandcampLog = [];
+const searchLog = [];
 // The Virtuoso Oboe: one track per piece, composer credited on each track.
 const vOboe = demo.find((r) => /Virtuoso Oboe/.test(r.title));
 Object.assign(vOboe, { discogs_id: 40, enrich_status: "matched", title: "The Virtuoso Oboe", artist: "André Lardrot, Felix Prohaska, Chamber Orchestra Of The Vienna State Opera",
@@ -113,9 +114,11 @@ const server = http.createServer(async (rq, res) => {
         : { ...release("Charles Mingus", "x"), discogs_artist: "Charles Mingus", discogs_title: "The Black Saint And The Sinner Lady" };
       return send(200, "application/json", JSON.stringify({ status: "matched", release: rel }));
     }
-    if (op === "search") return send(200, "application/json", JSON.stringify({ candidates: [
-      { type: "release", id: 900, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "1975", country: "US", format: "Vinyl, LP", thumb: "/t/e.png" },
-    ] }));
+    if (op === "search") { searchLog.push(u.searchParams.get("any")); return send(200, "application/json", JSON.stringify({ candidates: [
+      { type: "release", id: 900, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "1975", country: "US", label: "Pablo", catno: "2625 705", format: "2 × Vinyl, LP, Album, Gatefold", have: 812, thumb: "/t/e.png" },
+      { type: "release", id: 901, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "2017", country: "Europe", label: "Pablo", catno: "PACR 7020", format: "2 × Vinyl, LP, Album, Reissue, 180g, Clear", have: 95, thumb: "/t/e.png" },
+      { type: "master", id: 77, title: "Oscar Peterson & Joe Pass - À Salle Pleyel", year: "1975", thumb: "/t/e.png" },
+    ] })); }
     return send(400, "application/json", "{}");
   }
   if (u.pathname === "/api/bandcamp" && /missing-function/.test(u.searchParams.get("url"))) { res.writeHead(404, { "content-type": "text/html" }); return res.end("<html>Page not found</html>"); }
@@ -211,6 +214,13 @@ const evans = demo.find((r) => r.artist === "Oscar Peterson, Joe Pass");
 await p.goto(BASE + "#/album/" + evans.id); await p.waitForSelector(".album-title");
 const before = await p.textContent(".album-title");
 await p.click("#fix-open"); await p.waitForSelector("[data-ref]");
+const cands = await p.textContent(".cands");
+check(cands.includes("1975 · US · Pablo 2625 705") && cands.includes("2 × Vinyl, LP, Album, Reissue, 180g, Clear") && cands.includes("812 collectors have this") && cands.includes("Any pressing: uses the original LP"), "Fix match rows show year, country, label, catalogue number, format details and how common it is");
+check(searchLog.at(-1) === "0" && (await p.textContent("#fix")).includes("Showing vinyl only."), "Fix match searches vinyl only");
+await p.locator("#fix").scrollIntoViewIfNeeded(); await p.screenshot({ path: path.join(OUT, "fix-list.png") });
+await p.click("#fix-any"); await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("Showing every format."));
+check(searchLog.at(-1) === "1", "and can include CDs and other formats");
+await p.click("#fix-any"); await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("Showing vinyl only."));
 await p.click("[data-ref]"); await p.waitForTimeout(400);
 check((await p.textContent(".album-title")) === "À Salle Pleyel", `fix match sets the Discogs title (was "${before}")`);
 check((await p.textContent(".album-artist")) === "Oscar Peterson & Joe Pass", "fix match sets the Discogs artist line");
