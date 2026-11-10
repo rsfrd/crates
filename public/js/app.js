@@ -25,6 +25,12 @@ const ICON = {
   select: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>',
   check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.5c2 0 3.2 1 4.3 2.7l2.4 4.6c1.1 1.7 2.3 2.7 4.3 2.7H20"/><path d="M4 17h3.5c1.4 0 2.4-.5 3.2-1.4M13.3 8.4c.8-.9 1.8-1.4 3.2-1.4H20"/><path d="m17.5 4.5 2.5 2.5-2.5 2.5M17.5 14.5l2.5 2.5-2.5 2.5"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+  signout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>',
+  disc: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M3.5 14.5h17M10 4v16"/></svg>',
   // Hollow record = not on the shelf yet
   want: '<svg viewBox="0 0 16 16" aria-hidden="true" class="glyph"><circle cx="8" cy="8" r="6.25" fill="none" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.4" fill="none"/></svg>',
 };
@@ -664,7 +670,7 @@ async function saveImport(records, label) {
 
 function importDone(imp) {
   return `<div class="note"><p><strong>${plural(imp.done, "record")} imported.</strong></p>
-    <p>Covers, tracks and personnel come next. Open Collection and tap <strong>Fetch details</strong>${state.store.canEnrich ? "" : " once the site is connected to Discogs"}.</p>
+    <p>Covers, tracks and personnel come next. Open Collection and, under Album details, tap <strong>Fetch</strong>${state.store.canEnrich ? "" : " once the site is connected to Discogs"}.</p>
     <p class="price-links"><a class="btn primary" href="#/tools">Go to Collection</a><button class="btn" data-close>Done</button></p></div>`;
 }
 
@@ -994,8 +1000,10 @@ function renderAlbum(id) {
       ${others.length ? `<details class="block more"><summary>Production and other credits <span>${others.length}</span></summary><ul class="credits">${others.map(credit).join("")}</ul></details>` : ""}
 
       ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich || !state.owner ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
-      ${a.enrich_status === "review" ? `<p class="note warn">This was the closest Discogs match, but it might be the wrong album. Check the tracks, or fix the match below.</p>` : ""}
-      ${a.enrich_status === "not_found" ? `<p class="note warn">No Discogs match found. Paste a Discogs link below to add details.</p>` : ""}
+      ${a.enrich_status === "review" || a.enrich_status === "not_found" || a.enrich_status === "error" ? `<div class="note warn keep-note">
+        <p>${a.enrich_status === "review" ? "This was the closest Discogs match, but it might be the wrong album. Check the tracks, or fix the match below." : "No Discogs match found. Paste a Discogs or Bandcamp link below to add details."}</p>
+        <button class="btn" id="keep-as-is">${a.enrich_status === "review" ? "The match is right" : "It's fine as it is"}</button>
+      </div>` : ""}
 
       <section class="block">
         <h3>Notes</h3>
@@ -1029,6 +1037,12 @@ function renderAlbum(id) {
   });
   const notes = panel.querySelector("#notes");
   notes.addEventListener("change", () => updateAlbum(a.id, { notes: notes.value || null }).then(() => toast("Note saved")).catch(() => {}));
+  // Records Discogs can't help with (a private pressing, a bespoke recording) can leave "Needs a look".
+  panel.querySelector("#keep-as-is")?.addEventListener("click", async () => {
+    const was = a.enrich_status;
+    await updateAlbum(a.id, { enrich_status: was === "review" ? "matched" : "manual" }).catch(() => {});
+    toast(was === "review" ? "Match confirmed" : "Kept as it is. It won't need a look again.");
+  });
   panel.querySelector("#edit-open")?.addEventListener("click", () => { state.editing = true; renderOverlay(); });
   panel.querySelector("#edit-cancel")?.addEventListener("click", () => { state.editing = false; renderOverlay(); });
   panel.querySelector("#edit-form")?.addEventListener("submit", async (e) => {
@@ -1407,12 +1421,25 @@ function renderAdd(prefill) {
 // ---------- tools / enrichment ----------
 function renderTools() {
   const by = (s) => state.albums.filter((a) => a._pending ? false : a.enrich_status === s);
-  const pending = by("pending"), review = by("review"), missing = by("not_found"), errors = by("error"), done = by("matched");
+  const pending = by("pending"), review = by("review"), missing = by("not_found"), errors = by("error"), done = by("matched"), kept = by("manual");
   const noSides = state.albums.filter(fromCDListing);
   const flatClassical = state.albums.filter(needsWorks);
   const e = state.enrich;
   const mode = state.store.mode;
   const pct = e.total ? Math.round((e.done / e.total) * 100) : 0;
+
+  const owned = state.albums.filter((x) => x.status !== "want").length, wanted = state.albums.length - owned;
+  const notFound = missing.length + errors.length;
+  const sec = (title, note, body) => `<section class="sec">
+        <div class="sec-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ""}</div>
+        ${body}
+      </section>`;
+  // One action per row: what it's about on the left, a same-width button on the right.
+  const action = (text, hint, button) => `<div class="card-row">
+          <div class="card-text"><p>${text}</p>${hint ? `<p class="hint">${hint}</p>` : ""}</div>
+          ${button}
+        </div>`;
+  const lookups = state.store.canEnrich || !state.owner;
 
   const panel = openPanel(`
     <div class="panel-bar">
@@ -1420,72 +1447,60 @@ function renderTools() {
       <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
     </div>
     <div class="tools">
+      <p class="tools-sub">${plural(owned, "record")}${wanted ? ` · ${wanted} wanted` : ""}${state.index.crates.length ? ` · ${plural(state.index.crates.length, "crate")}` : ""}</p>
       ${mode === "demo" ? `<p class="note">You're looking at demo mode with a small sample collection. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your own records.</p>` : ""}
       ${mode === "offline" ? `<p class="note">You're offline, showing the copy saved on this device. Want-list adds will sync when you reconnect.</p>` : ""}
 
-      <section class="block">
-        <h3>Bring in records</h3>
-        <div class="price-links">
-          <a class="btn" href="#/import/discogs" data-import>Import from Discogs</a>
-          <a class="btn" href="#/import/csv" data-import>Import a spreadsheet</a>
-        </div>
-      </section>
-
-      <section class="block">
-        <h3>Covers, tracks and personnel</h3>
-        <dl class="stats">
-          <div><dt>Done</dt><dd>${done.length}</dd></div>
-          <div><dt>Not fetched</dt><dd>${pending.length}</dd></div>
-          <div><dt>Check match</dt><dd>${review.length}</dd></div>
-          <div><dt>Not found</dt><dd>${missing.length + errors.length}</dd></div>
+      ${sec("Album details", "Covers, tracks, personnel", `<div class="card">
+        <dl class="stat-strip">
+          <div><dt>Done</dt><dd>${done.length + kept.length}</dd></div>
+          <div><dt>To fetch</dt><dd>${pending.length}</dd></div>
+          <div class="${review.length ? "warn" : ""}"><dt>Check</dt><dd>${review.length}</dd></div>
+          <div class="${notFound ? "warn" : ""}"><dt>Not found</dt><dd>${notFound}</dd></div>
         </dl>
-        ${e.running ? `
-          <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></div>
-          <p class="hint">${e.done} of ${e.total}. ${esc(e.current)}${e.note ? ` ${esc(e.note)}` : ""}</p>
-          <button class="btn" id="stop">Stop</button>`
-        : state.store.canEnrich || !state.owner ? `
-          ${pending.length ? `<button class="btn primary" id="run">Fetch details for ${plural(pending.length, "record")}</button>
-            <p class="hint">Discogs allows about 60 lookups a minute, so this takes roughly ${Math.max(1, Math.round(pending.length * 4 / 60))} minutes. Keep this screen open; you can stop and pick up later.</p>` : ""}
-          ${missing.length + errors.length ? `<button class="btn" id="retry">Try the ${missing.length + errors.length} not found again</button>` : ""}
-          ${noSides.length ? `<div class="vinyl-fix">
-            <p class="hint">${plural(noSides.length, "record")} ${noSides.length === 1 ? "has" : "have"} a track list without sides, which usually means it came from a CD.</p>
-            <button class="btn" id="vinyl">Switch ${noSides.length === 1 ? "it" : "them"} to the vinyl LP</button>
-          </div>` : ""}
-          ${flatClassical.length ? `<div class="vinyl-fix">
-            <p class="hint">${plural(flatClassical.length, "classical record")} can show ${flatClassical.length === 1 ? "its" : "their"} pieces and composers better. This keeps the pressing you have and only updates the details.</p>
-            <button class="btn" id="works">Update ${flatClassical.length === 1 ? "its" : "their"} track ${flatClassical.length === 1 ? "list" : "lists"}</button>
-          </div>` : ""}`
+        ${e.running ? `<div class="card-row progress-row">
+          <div class="card-text">
+            <div class="progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></div>
+            <p class="hint">${e.done} of ${e.total}. ${esc(e.current)}${e.note ? ` ${esc(e.note)}` : ""}</p>
+          </div>
+          <button class="btn" id="stop">Stop</button>
+        </div>`
+        : lookups ? `
+          ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
+          ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn't" : "weren't"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
+          ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}
+          ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Can show pieces and composers. Same pressing.", `<button class="btn" id="works">Update</button>`) : ""}`
         : ""}
-      </section>
+      </div>`)}
 
-      ${review.length + missing.length ? `<section class="block"><h3>Needs a look</h3>
-        <p class="hint">Open one and use “Fix match” to pick the right pressing or paste its Discogs link.</p>
+      ${review.length + notFound ? sec("Needs a look", "Open one, then Fix match", `<div class="card card-list">
         <div class="rows">${[...review, ...missing, ...errors].map((a) => row(a, a.enrich_status === "review" ? "Check match" : "Not found")).join("")}</div>
-      </section>` : ""}
+      </div>`) : ""}
 
-      ${state.store.canEnrich || !state.owner ? `<section class="block">
-        <h3>Want-list prices</h3>
-        ${!pricesReady() ? `<p class="hint">${esc(SETUP_PRICES)}</p>`
-          : priceable().length ? `<p class="hint">Prices refresh when you open a want-list record. To update them all at once:</p>
-            <button class="btn" id="prices-all">Refresh prices for ${plural(priceable().length, "record")}</button>`
-          : `<p class="hint">Records on your want list that are matched on Discogs show their lowest marketplace price here and on the want list.</p>`}
-      </section>` : ""}
+      ${lookups ? sec("Want-list prices", "From Discogs", `<div class="card">
+        ${!pricesReady() ? `<div class="card-row"><p class="hint">${esc(SETUP_PRICES)}</p></div>`
+          : priceable().length ? action(`${plural(priceable().length, "wanted record")} on Discogs`, "Prices also update when you open one.", `<button class="btn" id="prices-all">Refresh all</button>`)
+          : `<div class="card-row"><p class="hint">Wanted records matched on Discogs show their lowest marketplace price.</p></div>`}
+      </div>`) : ""}
 
-      <section class="block">
-        <h3>Crates</h3>
+      ${sec("Crates", "Your own groupings", `<div class="card">
         ${state.index.crates.length ? `<ul class="crate-list">${state.index.crates.map((c) => `<li>
             <button class="crate-name" data-crate-open="${esc(c.name)}">${esc(c.name)} <span>${c.count}</span></button>
-            <button class="btn" data-crate-rename="${esc(c.name)}">Rename</button>
-            <button class="btn danger" data-crate-delete="${esc(c.name)}">Delete</button>
-          </li>`).join("")}</ul>`
-        : `<p class="hint">Crates are your own groupings, like “Japanese” or “Late night”. Tap the select button at the top of the main screen, pick some records, and choose “Add to crate”.</p>`}
-      </section>
+            <button class="icon-btn" data-crate-rename="${esc(c.name)}" aria-label="Rename ${esc(c.name)}">${ICON.pencil}</button>
+            <button class="icon-btn danger" data-crate-delete="${esc(c.name)}" aria-label="Delete ${esc(c.name)}">${ICON.trash}</button>
+          </li>`).join("")}</ul>` : ""}
+        <p class="hint card-foot">${state.index.crates.length ? "To make a crate" : "Crates are your own groupings, like “Japanese” or “Late night”. To make one"}, tap the select button on the main screen, pick records, then Add to crate.</p>
+      </div>`)}
 
-      <section class="block">
-        <h3>Backup</h3>
-        <button class="btn" id="export">Download a copy (CSV)</button>
-      </section>
-      ${mode === "live" ? `<section class="block"><button class="btn" id="signout">Sign out</button></section>` : ""}
+      ${sec("Add records", "Duplicates are skipped", `<div class="import-tiles">
+        <a class="import-tile" href="#/import/discogs" data-import>${ICON.disc}<span><strong>From Discogs</strong><span>Collection or want list, by username</span></span></a>
+        <a class="import-tile" href="#/import/csv" data-import>${ICON.sheet}<span><strong>From a spreadsheet</strong><span>Any CSV file, columns matched for you</span></span></a>
+      </div>`)}
+
+      ${sec(mode === "live" ? "Backup and account" : "Backup", "", `<div class="card">
+        <button class="list-row" id="export"><span><strong>Download a copy</strong><span>A CSV that imports straight back in</span></span>${ICON.download}</button>
+        ${mode === "live" ? `<button class="list-row" id="signout"><span><strong>Sign out</strong></span>${ICON.signout}</button>` : ""}
+      </div>`)}
     </div>`, "tools");
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
@@ -1714,7 +1729,7 @@ const EDIT_CONTROLS = [
   'a.fab[href="#/add"]', '.empty a.btn[href^="#/add"]', "#select-toggle",
   "#got-it", ".switch-row", "#for-sale", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
-  "#fix-open", "#refresh", "#edit-open", "#delete", "#price-refresh",
+  "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
   "#run", "#retry", "#vinyl", "#works", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 

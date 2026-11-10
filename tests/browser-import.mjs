@@ -69,8 +69,8 @@ await p.click("#imp-save");
 await p.waitForSelector(".importer .note strong", { timeout: 10000 });
 check((await p.textContent(".importer")).includes("102 records imported"), "102 records imported");
 await shot("i03-discogs-done");
-await p.click('.importer a[href="#/tools"]'); await p.waitForSelector(".stats");
-check((await p.textContent("#run")).includes("Fetch details for 102 records"), "they're waiting for Fetch details");
+await p.click('.importer a[href="#/tools"]'); await p.waitForSelector(".stat-strip");
+check((await p.textContent(".card-row:has(#run)")).includes("102 records to fetch"), "they're waiting to be fetched");
 await p.click("#run");
 await p.waitForFunction(() => document.querySelector(".progress"), null, { timeout: 5000 });
 await new Promise((r) => setTimeout(r, 1500));
@@ -117,7 +117,7 @@ await p.click("#results a.row[data-id]"); await p.waitForSelector(".album-title"
 check((await p.textContent(".album")).includes("Folk") && (await p.textContent(".album")).includes("Rock") && (await p.textContent(".album-meta")).includes("1966"), "genres and year came through");
 
 // guests can't import
-await p.goto(BASE + "&guest#/tools".replace("&guest#", "&guest#")); await p.waitForSelector(".stats");
+await p.goto(BASE + "&guest#/tools".replace("&guest#", "&guest#")); await p.waitForSelector(".stat-strip");
 check(await p.getAttribute('a[data-import][href="#/import/discogs"]', "aria-disabled") === "true", "import is greyed out for guests");
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); srv.close();

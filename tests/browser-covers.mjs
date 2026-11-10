@@ -224,8 +224,8 @@ await p.fill("#q", "");
 check(fetchLog.includes("release/900 exact"), "a pressing picked in Fix match is used exactly");
 
 // --- records pulled from CD track listings can be switched to vinyl
-await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
-check((await p.textContent(".tools")).includes("1 record has a track list without sides"), "Collection screen finds the CD-listed record");
+await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");
+check((await p.textContent(".tools")).includes("1 track list looks like a CD"), "Collection screen finds the CD-listed record");
 await shot("c11-vinyl-fix");
 await p.click("#vinyl");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished switching"), null, { timeout: 8000 });
@@ -237,9 +237,9 @@ check((await p.getAttribute(".thumb.large img", "src")) === "/t/e.png", "a cover
 await p.goto(BASE); await p.waitForSelector(".row");
 
 // --- classical records: re-pull the same pressing so movements sit under their pieces
-await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
+await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");
 const toolsText = await p.textContent(".tools");
-check(toolsText.includes("1 classical record can show its pieces and composers better"), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
+check(toolsText.includes("1 classical record") && toolsText.includes("Can show pieces and composers"), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
 await p.click("#works");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
 check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn't count as done; button stays");

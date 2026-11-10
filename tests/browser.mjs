@@ -160,7 +160,7 @@ await shot(p, "13-grid");
 await p.fill("#q", "zzqx nothing"); await p.waitForTimeout(250);
 check((await p.textContent("#results")).includes("Add “zzqx nothing”"), "empty search offers want-list add");
 await shot(p, "14-empty");
-await p.goto("http://localhost:5178/#/tools"); await p.waitForSelector(".stats");
+await p.goto("http://localhost:5178/#/tools"); await p.waitForSelector(".stat-strip");
 await shot(p, "15-tools");
 
 // Dark mode

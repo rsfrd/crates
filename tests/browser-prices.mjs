@@ -92,7 +92,7 @@ await p.screenshot({ path: path.join(OUT, "p02-want-list.png") });
 // bulk refresh
 const n0 = calls.length;
 await p.goto(BASE + "#/tools"); await p.waitForSelector("#prices-all");
-check((await p.textContent("#prices-all")).includes("Refresh prices for 4 records"), "Collection offers a bulk refresh for the 4 wants on Discogs");
+check((await p.textContent(".card-row:has(#prices-all)")).includes("4 wanted records on Discogs"), "Collection offers a bulk refresh for the 4 wants on Discogs");
 await p.click("#prices-all");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Prices updated"), null, { timeout: 20000 });
 check(calls.length - n0 === 4, "bulk refresh checks each want once");

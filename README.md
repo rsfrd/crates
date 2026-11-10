@@ -55,7 +55,7 @@ Your new site invites you to import:
 - **From Discogs**: type your Discogs username. Your collection (or want list) comes in as the exact pressings you've catalogued. Leave **Vinyl only** ticked to skip CDs and tapes.
 - **From a spreadsheet**: export it as CSV (comma, tab or semicolon separated all work). The app matches the columns from your headings (artist, album, year, label, catalogue number, genre, notes, players), shows a preview, and leaves out duplicates.
 
-Then open **Collection** (the record icon, top right) and tap **Fetch details** for covers, track lists and personnel. Discogs allows about 60 lookups a minute, so 700 records take about 45 minutes. Keep the screen open; you can stop and carry on later. Records imported from a spreadsheet are matched by name. Anything uncertain lands under **Needs a look**, where **Fix match** lets you pick the right pressing or paste its Discogs link.
+Then open **Collection** (the record icon, top right) and, under **Album details**, tap **Fetch** for covers, track lists and personnel. Discogs allows about 60 lookups a minute, so 700 records take about 45 minutes. Keep the screen open; you can stop and carry on later. Records imported from a spreadsheet are matched by name. Anything uncertain lands under **Needs a look**, where **Fix match** lets you pick the right pressing or paste its Discogs link. For a record that isn't on Discogs or Bandcamp at all, fill in what you know with **Edit details**, then tap **It's fine as it is** so it stops asking.
 
 ### 5. Put it on your phone
 

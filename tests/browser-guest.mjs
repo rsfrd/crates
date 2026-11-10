@@ -67,7 +67,7 @@ check((await p.textContent(".price-block")).includes("$20.00") && !calls.some((c
 check(await p.getAttribute('.price-links a:has-text("Shop US sellers")', "aria-disabled") === null, "marketplace links still work");
 
 // Collection screen: tools greyed, export and sign-out still there
-await p.goto(BASE + "#/tools"); await p.waitForSelector(".stats");
+await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");
 check(await p.locator("#export").getAttribute("aria-disabled") === null, "CSV download still works");
 await p.screenshot({ path: path.join(OUT, "g03-tools.png") });
 
