@@ -1475,7 +1475,7 @@ function renderTools() {
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn't" : "weren't"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}
-          ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Can show pieces and composers. Same pressing.", `<button class="btn" id="works">Update</button>`) : ""}`
+          ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Update to refresh track listing with compositions and composers.", `<button class="btn" id="works">Update</button>`) : ""}`
         : ""}
       </div>`)}
 

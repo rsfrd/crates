@@ -239,7 +239,7 @@ await p.goto(BASE); await p.waitForSelector(".row");
 // --- classical records: re-pull the same pressing so movements sit under their pieces
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");
 const toolsText = await p.textContent(".tools");
-check(toolsText.includes("1 classical record") && toolsText.includes("Can show pieces and composers"), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
+check(toolsText.includes("1 classical record") && toolsText.includes("Update to refresh track listing with compositions and composers."), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
 await p.click("#works");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
 check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn't count as done; button stays");
