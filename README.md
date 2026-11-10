@@ -118,3 +118,7 @@ supabase/setup.sql       everything a new site's database needs
 supabase/updates/        updates for sites set up before setup.sql
 tests/                   node --test tests/*.test.mjs; browser walkthroughs: node tests/browser*.mjs <folder>
 ```
+
+## Licence
+
+MIT. Use it, change it, share it. See [LICENSE](LICENSE).
