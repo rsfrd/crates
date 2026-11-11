@@ -5,6 +5,11 @@
 const CACHE_KEY = "crate.cache.v1";
 const OUTBOX_KEY = "crate.outbox.v1";
 const OWNER_KEY = "crate.owner.v1";
+const FULL_KEY = "crate.fullLoad.v1";          // when the whole collection was last downloaded
+const FULL_EVERY = 24 * 3600 * 1000;           // otherwise only changes are downloaded
+
+// Whether this device was last known to be the owner (used to draw the saved copy before checking).
+export const lastOwner = () => readLS(OWNER_KEY, true);
 const DEFAULTS = { siteName: "Garage Crates", guestEmail: "" };
 
 function readLS(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
@@ -53,14 +58,38 @@ async function supabaseStore(cfg) {
       if (/could not find|does not exist|PGRST202|404/i.test(`${r.error.code} ${r.error.message}`)) return true;
       return readLS(OWNER_KEY, true);   // network trouble: go with the last answer
     },
-    async load() {
-      const rows = [];
-      for (let from = 0; ; from += 1000) {
-        const page = one(await sb.from("albums").select("*").order("created_at").range(from, from + 999));
-        rows.push(...page);
-        if (page.length < 1000) break;
-      }
-      return rows;
+    // With the copy saved on this device, downloads only what changed since: records edited after the newest
+    // one in the copy, plus the list of ids (to drop records deleted elsewhere). The whole collection is
+    // downloaded once a day anyway, and whenever there's no copy.
+    async load(saved) {
+      const all = async (query) => {
+        const rows = [];
+        for (let from = 0; ; from += 1000) {
+          const page = one(await query().range(from, from + 999));
+          rows.push(...page);
+          if (page.length < 1000) break;
+        }
+        return rows;
+      };
+      const full = async () => {
+        const rows = await all(() => sb.from("albums").select("*").order("created_at"));
+        writeLS(FULL_KEY, Date.now());
+        store.lastLoad = { kind: "full", rows: rows.length };
+        return rows;
+      };
+      const since = Array.isArray(saved) && saved.length && Date.now() - readLS(FULL_KEY, 0) < FULL_EVERY
+        ? saved.reduce((m, r) => (r.updated_at && r.updated_at > m ? r.updated_at : m), "") : "";
+      if (!since) return full();
+      const [ids, changed] = await Promise.all([
+        all(() => sb.from("albums").select("id").order("id")),
+        all(() => sb.from("albums").select("*").gte("updated_at", since).order("updated_at")),
+      ]);
+      const present = new Set(ids.map((r) => r.id));
+      const byId = new Map(saved.filter((r) => present.has(r.id)).map((r) => [r.id, r]));
+      for (const r of changed) byId.set(r.id, r);
+      if (ids.some((r) => !byId.has(r.id))) return full();   // something the copy can't account for: start fresh
+      store.lastLoad = { kind: "changes", rows: changed.length, removed: saved.filter((r) => !present.has(r.id)).length };
+      return [...byId.values()].sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.id < b.id ? -1 : 1));
     },
     async insert(row) { return one(await sb.from("albums").insert(row).select().single()); },
     async insertMany(rows, onProgress) {

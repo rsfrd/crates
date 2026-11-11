@@ -9,29 +9,41 @@ const ROOT = new URL("../public/", import.meta.url).pathname;
 const FAKE_SUPABASE = `
 const cfg = window.__sb;
 const KEY = "fake-sb-session";
-const rows = cfg.rows;
+// The "server" keeps its data in localStorage, so a reload is like coming back to a real site.
+const DB = "fake-db";
+const rows = JSON.parse(localStorage.getItem(DB) || "null") || cfg.rows;
+const save = () => localStorage.setItem(DB, JSON.stringify(rows));
+if (!localStorage.getItem(DB)) save();
+const log = (entry) => { const l = JSON.parse(localStorage.getItem("fake-log") || "[]"); l.push(entry); localStorage.setItem("fake-log", JSON.stringify(l)); };
+const wait = () => new Promise((r) => setTimeout(r, cfg.delay || 0));
+const now = () => new Date().toISOString();
 const who = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 const err = (message, code) => ({ data: null, error: { message, code } });
 const denied = () => err('new row violates row-level security policy for table "albums"', "42501");
 const isOwner = () => who()?.email === cfg.ownerEmail;
 function query(table) {
-  const q = { table, op: "select", filters: [], one: false, range: null, payload: null, wantRows: false };
+  const q = { table, op: "select", cols: "*", filters: [], since: null, one: false, range: null, payload: null, wantRows: false };
   const run = async () => {
+    if (table === "albums") await wait();
     if (table === "site_settings") return cfg.settings ? { data: cfg.settings, error: null } : err('relation "site_settings" does not exist', "42P01");
     if (!who()) return { data: [], error: null };
-    let set = rows.filter((r) => q.filters.every(([k, v]) => r[k] === v));
-    if (q.op === "select") { if (q.range) set = set.slice(q.range[0], q.range[1] + 1); return { data: set, error: null }; }
+    let set = rows.filter((r) => q.filters.every(([k, v]) => r[k] === v) && (!q.since || r.updated_at >= q.since));
+    if (q.op === "select") {
+      if (table === "albums" && (!q.range || q.range[0] === 0)) log(q.cols === "id" ? "ids" : q.since ? "changes" : "everything");
+      if (q.range) set = set.slice(q.range[0], q.range[1] + 1);
+      return { data: q.cols === "id" ? set.map((r) => ({ id: r.id })) : set, error: null };
+    }
     if (cfg.rules && !isOwner()) return denied();
     if (q.op === "insert") {
-      const list = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: crypto.randomUUID(), genres: [], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: new Date().toISOString(), ...r }));
-      rows.push(...list); cfg.inserted = (cfg.inserted || 0) + list.length;
+      const list = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: crypto.randomUUID(), genres: [], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: now(), ...r, updated_at: now() }));
+      rows.push(...list); save(); cfg.inserted = (cfg.inserted || 0) + list.length;
       return { data: q.one ? list[0] : list, error: null };
     }
-    if (q.op === "update") { set.forEach((r) => Object.assign(r, q.payload)); return q.one ? (set[0] ? { data: set[0], error: null } : err("no rows")) : { data: set, error: null }; }
-    if (q.op === "delete") { for (const r of set) rows.splice(rows.indexOf(r), 1); return { data: null, error: null }; }
+    if (q.op === "update") { set.forEach((r) => Object.assign(r, q.payload, { updated_at: now() })); save(); return q.one ? (set[0] ? { data: set[0], error: null } : err("no rows")) : { data: set, error: null }; }
+    if (q.op === "delete") { for (const r of set) rows.splice(rows.indexOf(r), 1); save(); return { data: null, error: null }; }
   };
   const b = {
-    select() { return b; }, order() { return b; }, range(a, z) { q.range = [a, z]; return b; },
+    select(cols) { if (q.op === "select" && cols) q.cols = cols; return b; }, order() { return b; }, gte(k, v) { q.since = v; return b; }, range(a, z) { q.range = [a, z]; return b; },
     insert(p) { q.op = "insert"; q.payload = p; return b; }, update(p) { q.op = "update"; q.payload = p; return b; }, delete() { q.op = "delete"; return b; },
     eq(k, v) { q.filters.push([k, v]); return b; }, single() { q.one = true; return b; },
     then(ok, no) { return run().then(ok, no); },
@@ -52,6 +64,7 @@ export function createClient() {
     from: query,
     async rpc(name) {
       if (name !== "is_owner") return err("unknown");
+      await wait();
       if (!cfg.rules) return err("Could not find the function public.is_owner without parameters in the schema cache", "PGRST202");
       return { data: isOwner(), error: null };
     },
@@ -82,7 +95,7 @@ async function site(setup) {
   p.on("pageerror", (e) => errors.push(e.message));
   return p;
 }
-const rec = (i, extra = {}) => ({ id: "r" + i, artist: "Artist " + i, title: "Album " + i, status: "owned", genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, notes: "condition notes " + i, created_at: "2026-01-01", enrich_status: "matched", price: null, sort_as: null, master_id: null, ...extra });
+const rec = (i, extra = {}) => ({ id: "r" + i, updated_at: "2026-01-0" + Math.min(i, 9) + "T00:00:00.000Z", artist: "Artist " + i, title: "Album " + i, status: "owned", genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, notes: "condition notes " + i, created_at: "2026-01-01", enrich_status: "matched", price: null, sort_as: null, master_id: null, ...extra });
 const toastSays = (p, t) => p.waitForFunction((t) => document.querySelector("#toast")?.textContent.includes(t), t, { timeout: 3000 }).then(() => true, () => false);
 
 // ---- a site with owner + guest set up
@@ -127,6 +140,62 @@ await p.waitForSelector(".importer .note strong", { timeout: 10000 });
 check((await p.textContent(".importer")).includes("450 records imported") && (await p.evaluate(() => window.__sb.inserted)) === 450, "450 rows saved to Supabase (in batches)");
 await p.evaluate(() => { location.hash = "#/"; }); await p.waitForSelector(".row"); await p.waitForTimeout(300);
 const cnt = await p.textContent("#count"); check(cnt.includes("452 records"), "they are in the collection: " + cnt);
+
+// ---- coming back: the saved copy shows at once, and only changes are downloaded
+{
+  const v = await site({
+    rules: true, ownerEmail: "me@example.com", delay: 1200,
+    users: [{ email: "me@example.com", password: "owner-pw" }],
+    settings: [{ key: "site_name", value: "Sam’s Shelves" }],
+    rows: [rec(1), rec(2), rec(3), rec(4, { status: "want" })],
+  });
+  const logOf = () => v.evaluate(() => JSON.parse(localStorage.getItem("fake-log") || "[]"));
+  const clearLog = () => v.evaluate(() => localStorage.removeItem("fake-log"));
+  await v.goto("http://localhost:5188/"); await v.waitForSelector(".login");
+  await v.fill('input[name="email"]', "me@example.com"); await v.fill('input[name="password"]', "owner-pw"); await v.click("#login button");
+  await v.waitForSelector(".row"); await v.waitForTimeout(400);
+  check((await logOf()).includes("everything"), "first visit downloads the whole collection");
+
+  await clearLog();
+  const t0 = Date.now();
+  await v.reload(); await v.waitForSelector(".row");
+  const shownIn = Date.now() - t0;
+  check(shownIn < 1000 && (await v.textContent(".brand h1")) === "Sam’s Shelves", `coming back shows the saved copy before the server answers (${shownIn} ms, server takes 1200+)`);
+  await v.waitForFunction(() => JSON.parse(localStorage.getItem("fake-log") || "[]").length >= 2, null, { timeout: 8000 });
+  await v.waitForTimeout(300);
+  const l2 = await logOf();
+  check(!l2.includes("everything") && l2.includes("changes") && l2.includes("ids"), "and then only asks for what changed: " + l2.join(", "));
+
+  // meanwhile, on another device: one record renamed, one deleted, one added
+  await v.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem("fake-db"));
+    const later = new Date(Date.now() + 1000).toISOString();
+    Object.assign(db.find((r) => r.id === "r1"), { title: "Renamed Elsewhere", updated_at: later });
+    db.splice(db.findIndex((r) => r.id === "r2"), 1);
+    db.push({ ...db[0], id: "r9", title: "Added Elsewhere", created_at: later, updated_at: later });
+    localStorage.setItem("fake-db", JSON.stringify(db));
+    localStorage.removeItem("fake-log");
+  });
+  await v.reload(); await v.waitForSelector(".row");
+  await v.waitForFunction(() => document.querySelector("#results")?.textContent.includes("Renamed Elsewhere"), null, { timeout: 8000 });
+  const list = await v.textContent("#results");
+  check(list.includes("Added Elsewhere") && !list.includes("Album 2"), "edits, additions and deletions made elsewhere come through");
+  check(!(await logOf()).includes("everything"), "without downloading everything again");
+  check((await v.textContent("#count")).includes("3 records"), "count is right: " + (await v.textContent("#count")));
+
+  // a day later, the whole collection is downloaded once as a safety net
+  await v.evaluate(() => { localStorage.setItem("crate.fullLoad.v1", String(Date.now() - 25 * 3600 * 1000)); localStorage.removeItem("fake-log"); });
+  await v.reload(); await v.waitForSelector(".row");
+  await v.waitForFunction(() => JSON.parse(localStorage.getItem("fake-log") || "[]").length >= 1, null, { timeout: 8000 });
+  check((await logOf()).includes("everything"), "once a day it downloads everything, to stay in step");
+
+  // signing out: the next visit shows the sign-in screen, not the saved copy
+  await v.goto("http://localhost:5188/#/tools"); await v.waitForSelector("#signout");
+  await v.click("#signout"); await v.waitForSelector(".login");
+  await v.reload(); await v.waitForTimeout(300);
+  check(!(await v.locator(".row").count()), "after signing out, coming back doesn’t flash the saved copy");
+  await v.waitForSelector(".login");
+}
 
 // ---- a site set up before owners and guests existed: unchanged
 const old = await site({ rules: false, users: [{ email: "me@example.com", password: "pw" }], settings: null, rows: [rec(1)] });

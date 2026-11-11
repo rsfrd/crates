@@ -1,4 +1,4 @@
-import { createStore, cache, outbox } from "./store.js";
+import { createStore, cache, outbox, lastOwner } from "./store.js";
 import { parseCSV, FIELDS, looksLikeHeader, guessColumns, recordsFromRows, withoutDuplicates } from "./importer.js";
 import { collectionCSV, collectionBackup, readBackup } from "./exporter.js";
 import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople, typeset, typesetAlbum } from "./search.js";
@@ -41,7 +41,8 @@ const ICON = {
 const state = {
   store: null,
   owner: true,       // false for guests who came in with the passphrase
-  settings: { siteName: "Garage Crates", guestEmail: "" },
+  // The last known name and guest setting, so the saved copy can be shown before anything loads.
+  settings: (() => { try { return { siteName: "Garage Crates", guestEmail: "", ...JSON.parse(localStorage.getItem("crate.settings.v1") || "{}") }; } catch { return { siteName: "Garage Crates", guestEmail: "" }; } })(),
   albums: [],
   index: { list: [], people: new Map(), genres: [], crates: [] },
   q: "",
@@ -539,7 +540,7 @@ function shuffleTo(panel, pool) {
 // ---------- filing ----------
 // The database has the "File under" column once 006_file_under.sql has run.
 function sortReady() {
-  if (state.store.mode !== "live") return true;
+  if (state.store && state.store.mode !== "live") return true;
   return state.albums.some((a) => !a._pending && Object.prototype.hasOwnProperty.call(a, "sort_as"));
 }
 // Shown as the placeholder: where the record files now, e.g. "Zappa".
@@ -555,12 +556,12 @@ const PRICE_MAX_AGE = 12 * 3600 * 1000;
 
 // The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
 function pricesReady() {
-  if (state.store.mode !== "live") return true;
+  if (state.store && state.store.mode !== "live") return true;
   return state.albums.some((a) => !a._pending && Object.prototype.hasOwnProperty.call(a, "price"));
 }
 const priceable = () => state.albums.filter((a) => a.status === "want" && a.discogs_id && !a._pending);
 function priceStale(a) {
-  if (!a.discogs_id || !state.store.canEnrich || !pricesReady() || state.pricing.has(a.id) || state.priceFailed.has(a.id)) return false;
+  if (!a.discogs_id || !state.store?.canEnrich || !pricesReady() || state.pricing.has(a.id) || state.priceFailed.has(a.id)) return false;
   if (a.price && a.price.release && a.price.release !== a.discogs_id) return true;   // matched to another pressing since
   const t = a.price && Date.parse(a.price.checked_at);
   return !t || Date.now() - t > PRICE_MAX_AGE;
@@ -1613,7 +1614,7 @@ function renderTools() {
   panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
   panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
   panel.querySelectorAll("[data-crate-delete]").forEach((b) => b.addEventListener("click", () => deleteCrate(b.dataset.crateDelete)));
-  panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
+  panel.querySelector("#signout")?.addEventListener("click", async () => { pref.set(SIGNED_IN, ""); await state.store.signOut(); location.hash = ""; location.reload(); });
 }
 
 // A reply that isn’t from our function (Netlify’s "page not found") means the server file isn’t deployed.
@@ -1882,6 +1883,7 @@ function markViewOnly(root) {
 }
 
 function startViewOnly() {
+  if (document.body.classList.contains("view-only")) return;   // already watching
   document.body.classList.add("view-only");
   markViewOnly(document.body);
   new MutationObserver((changes) => { for (const c of changes) for (const n of c.addedNodes) markViewOnly(n); })
@@ -1904,24 +1906,47 @@ window.addEventListener("hashchange", () => {
   renderOverlay();
 });
 
+const SIGNED_IN = "signedIn1";   // this device was signed in last time
+
 async function boot() {
   const cached = cache.get();
+  // Signed in last time with a copy on this device: show it straight away, before any network calls.
+  let early = false;
+  if (cached && !new URLSearchParams(location.search).has("demo") && pref.get(SIGNED_IN, "") === "1") {
+    state.owner = lastOwner();
+    document.title = state.settings.siteName;
+    renderShell();
+    if (!state.owner) startViewOnly();
+    setAlbums(cached);
+    renderAll();
+    early = true;
+  }
+
   state.store = state.store || (await createStore());
+  const before = state.settings.siteName;
   state.settings = await state.store.settings().catch(() => state.settings);
   try { localStorage.setItem("crate.settings.v1", JSON.stringify(state.settings)); } catch {}
   document.title = state.settings.siteName;
   const session = await state.store.session();
-  if (!session) return renderLogin();
+  if (!session) { pref.set(SIGNED_IN, ""); return renderLogin(); }
+  if (state.store.mode === "live") pref.set(SIGNED_IN, "1");
 
+  const wasOwner = state.owner;
   state.owner = await state.store.isOwner();
   if (!state.owner) state.store.canEnrich = false;   // no lookups or automatic updates for guests
 
-  renderShell();
-  if (!state.owner) startViewOnly();
-  if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
+  if (!early) {
+    renderShell();
+    if (!state.owner) startViewOnly();
+    if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
+  } else if (wasOwner !== state.owner) {
+    return location.reload();   // a different account than last time: start over with the right controls
+  } else if (before !== state.settings.siteName) {
+    $(".brand h1").textContent = state.settings.siteName;
+  }
   try {
     const synced = state.owner ? await outbox.flush(state.store) : [];
-    const rows = await state.store.load();
+    const rows = await state.store.load(state.store.mode === "live" ? cached : null);
     const pending = outbox.all();
     setAlbums([...rows, ...pending]);
     if (synced.length) toast(`Synced ${plural(synced.length, "want-list add")}`);
