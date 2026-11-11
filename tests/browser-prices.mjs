@@ -48,7 +48,13 @@ const open = async (id) => { await p.goto(`${BASE}#/album/${id}`); await p.waitF
 // never checked: checks on open, shows price, links to all vinyl pressings
 await open("w-new");
 check((await p.textContent(".price-block")).includes("Checking Discogs"), "a new want shows it’s checking");
+// Mark the page and scroll down while the price is on its way: the price must arrive in place.
+await p.evaluate(() => { const panel = document.querySelector("#overlay .panel"); panel.dataset.marker = "same-page"; panel.scrollTop = 250; window.__cover = document.querySelector(".cover img, .cover"); });
+const scrolled = await p.evaluate(() => document.querySelector("#overlay .panel").scrollTop);
 await p.waitForFunction(() => document.querySelector(".price-line strong")?.textContent.includes("$31.50"), null, { timeout: 5000 });
+const after = await p.evaluate(() => { const panel = document.querySelector("#overlay .panel"); return { marker: panel.dataset.marker, scroll: panel.scrollTop, sameCover: window.__cover === document.querySelector(".cover img, .cover") }; });
+check(after.marker === "same-page" && after.sameCover, "the price arrives without redrawing the page");
+check(scrolled > 0 && Math.abs(after.scroll - scrolled) < 2, `and without moving it (${scrolled} → ${after.scroll})`);
 const pb = await p.textContent(".price-block");
 check(pb.includes("4 copies of this pressing for sale") && pb.includes("before shipping"), "price is labelled: copies for sale, before shipping");
 const us = await p.getAttribute('.price-links a:has-text("US sellers")', "href");
@@ -72,9 +78,12 @@ const before = calls.length;
 await open("w-fresh"); await p.waitForTimeout(800);
 check(calls.length === before && (await p.textContent(".price-line")).includes("$18.25"), "a price checked an hour ago is shown without asking again");
 check((await p.textContent(".price-note")).includes("Price checked an hour ago"), "says when it was checked");
+await p.evaluate(() => { document.querySelector("#overlay .panel").dataset.marker = "again"; });
 await p.click("#price-refresh");
 await p.waitForFunction(() => document.querySelector(".price-line strong")?.textContent.includes("$17.00"), null, { timeout: 5000 });
-check(true, "Check again updates it");
+check(await p.evaluate(() => document.querySelector("#overlay .panel").dataset.marker === "again"), "Check again updates the price in place");
+await p.click("#price-refresh").catch(() => {}); await p.waitForTimeout(700);
+check(await p.locator("#price-refresh").count() === 1, "and Check again keeps working after the price section is refreshed");
 
 // failure: one try, a clear message, no retry loop
 await open("w-fail");

@@ -615,11 +615,26 @@ function priceBlock(a) {
 }
 
 // Asks Discogs for the current lowest price. `quiet` skips toasts (used when refreshing many).
+// Redraws only the price section of an open album page. Everything else on the page is left alone, so a
+// price arriving never reloads the page or moves it (iOS Safari jumped on every full redraw).
+function paintPrice(id) {
+  const r = route();
+  const el = r.name === "album" && r.arg === id ? $("#overlay .panel .price-block") : null;
+  const a = byId(id);
+  if (!el || !a) return;
+  const holder = document.createElement("div");
+  holder.innerHTML = priceBlock(a).trim();
+  const fresh = holder.firstElementChild;
+  if (!fresh) return;
+  el.replaceWith(fresh);
+  fresh.querySelector("#price-refresh")?.addEventListener("click", () => checkPrice(byId(id), true));
+}
+
 async function checkPrice(a, force = false, quiet = false) {
   if (!a.discogs_id || state.pricing.has(a.id) || (!force && !priceStale(a))) return null;
   if (!pricesReady()) { if (!quiet) toast(SETUP_PRICES); return null; }
   state.pricing.add(a.id);
-  renderOverlay();
+  paintPrice(a.id);
   try {
     state.priceFailed.delete(a.id);
     // Whether the pressing is vinyl is asked once per pressing and kept with the price.
@@ -633,7 +648,10 @@ async function checkPrice(a, force = false, quiet = false) {
     const patch = { price: vinyl === false ? { value: null, for_sale: 0, ...base } : { value: r.price.value, currency: r.price.currency, for_sale: r.price.for_sale, ...base } };
     if (!a.master_id && r.price.master_id) patch.master_id = r.price.master_id;
     state.pricing.delete(a.id);
-    await updateAlbum(a.id, patch).catch(() => {});
+    // Saved without redrawing anything; the price section and the list are refreshed below.
+    const before = byId(a.id);
+    replaceAlbum({ ...before, ...patch });
+    try { replaceAlbum(await state.store.update(a.id, patch)); } catch { replaceAlbum(before); }
     return r.rateRemaining;
   } catch (e) {
     state.priceFailed.add(a.id);
@@ -641,7 +659,8 @@ async function checkPrice(a, force = false, quiet = false) {
     return null;
   } finally {
     state.pricing.delete(a.id);
-    renderAll();
+    paintPrice(a.id);
+    renderResults();   // the list behind (price tags); open pages other than this album aren't touched
   }
 }
 
@@ -1182,7 +1201,7 @@ function renderAlbum(id) {
   wireFix(panel, a);
   wireCover(panel, a);
   wireCrates(panel, a);
-  panel.querySelector("#price-refresh")?.addEventListener("click", () => checkPrice(a, true));
+  panel.querySelector("#price-refresh")?.addEventListener("click", () => checkPrice(byId(a.id), true));
   // Want-list prices refresh themselves when the record is opened and the last check is old.
   if (a.status === "want" && priceStale(a)) checkPrice(a);
 }
@@ -1898,6 +1917,9 @@ async function boot() {
   renderShell();
   if (!state.owner) startViewOnly();
   if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
+  // The open album page, as it was drawn: if syncing changes nothing on it, it isn't redrawn.
+  const openAlbum = () => { const r = route(); return r.name === "album" ? JSON.stringify(byId(r.arg) || null) : null; };
+  const shown = openAlbum();
   try {
     const synced = state.owner ? await outbox.flush(state.store) : [];
     const rows = await state.store.load(state.store.mode === "live" ? cached : null);
@@ -1909,7 +1931,7 @@ async function boot() {
     if (!cached) $("#results").innerHTML = emptyState(`Couldn’t load your records: ${esc(e.message)}`);
     else toast("Showing the copy saved on this device. Couldn’t reach the server.");
   }
-  renderAll();
+  if (shown !== null && shown !== "null" && openAlbum() === shown) renderResults(); else renderAll();
 }
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {

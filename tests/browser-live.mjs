@@ -184,6 +184,15 @@ const cnt = await p.textContent("#count"); check(cnt.includes("452 records"), "t
   check(!(await logOf()).includes("everything"), "without downloading everything again");
   check((await v.textContent("#count")).includes("3 records"), "count is right: " + (await v.textContent("#count")));
 
+  // opening straight onto an album: the background sync doesn't redraw it when nothing on it changed
+  await v.evaluate(() => localStorage.removeItem("fake-log"));
+  await v.goto("http://localhost:5188/#/album/r3"); await v.reload(); await v.waitForSelector(".album-title");
+  await v.evaluate(() => { document.querySelector("#overlay .panel").dataset.marker = "kept"; });
+  await v.waitForFunction(() => JSON.parse(localStorage.getItem("fake-log") || "[]").includes("changes"), null, { timeout: 8000 });
+  await v.waitForTimeout(500);
+  check(await v.evaluate(() => document.querySelector("#overlay .panel")?.dataset.marker === "kept"), "an open album page isn’t redrawn when the sync brings no changes for it");
+  await v.goto("http://localhost:5188/");
+
   // a day later, the whole collection is downloaded once as a safety net
   await v.evaluate(() => { localStorage.setItem("crate.fullLoad.v1", String(Date.now() - 25 * 3600 * 1000)); localStorage.removeItem("fake-log"); });
   await v.reload(); await v.waitForSelector(".row");
