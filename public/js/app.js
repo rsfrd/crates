@@ -1828,7 +1828,8 @@ function renderLogin(error = "", mode) {
     try { await state.store.signIn(f.get("email"), f.get("password")); boot(); }
     catch (err) { renderLogin(/invalid/i.test(err.message) ? "That email and password don’t match. Try again." : err.message, "owner"); }
   });
-  setTimeout(() => $("#app input")?.focus(), 50);
+  // Put the cursor in the first field, unless someone has already started typing somewhere.
+  setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) $("#app input")?.focus(); }, 50);
 }
 
 // ---------- view only ----------
@@ -1880,7 +1881,9 @@ window.addEventListener("hashchange", () => {
 const SIGNED_IN = "signedIn1";   // this device was signed in last time
 
 async function boot() {
-  const cached = cache.get();
+  // Leftovers from the one-time catalogue check, no longer used.
+  try { localStorage.removeItem("crate.catnoChecked1"); localStorage.removeItem("crate.catnoPassDone1"); } catch {}
+  const cached = await cache.get();
   // Signed in last time with a copy on this device: show it straight away, before any network calls.
   let early = false;
   if (cached && !new URLSearchParams(location.search).has("demo") && pref.get(SIGNED_IN, "") === "1") {

@@ -15,9 +15,55 @@ const DEFAULTS = { siteName: "Garage Crates", guestEmail: "" };
 function readLS(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function writeLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; } }
 
+// The saved copy of the collection lives in IndexedDB. With full track lists and personnel it runs to
+// several MB, and Safari gives localStorage only about 5 MB per site, which the sign-in also needs: once
+// it was full, Supabase couldn't save the session and every reload signed you out.
+let dbOpen = null;
+function idb() {
+  dbOpen = dbOpen || new Promise((resolve, reject) => {
+    const r = indexedDB.open("garage-crates", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("kv");
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+  return dbOpen;
+}
+async function idbGet(key) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const q = db.transaction("kv").objectStore("kv").get(key);
+    q.onsuccess = () => resolve(q.result);
+    q.onerror = () => reject(q.error);
+  });
+}
+async function idbSet(key, value) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(value, key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+let saveTimer = null, toSave = null;
 export const cache = {
-  get: () => readLS(CACHE_KEY, null),
-  set: (rows) => writeLS(CACHE_KEY, rows),
+  async get() {
+    // Versions before this kept the copy in localStorage: move it, which frees that space for the sign-in.
+    const old = readLS(CACHE_KEY, null);
+    if (old) {
+      try { localStorage.removeItem(CACHE_KEY); } catch {}
+      try { await idbSet(CACHE_KEY, old); } catch {}
+      return old;
+    }
+    try { return (await idbGet(CACHE_KEY)) ?? null; } catch { return null; }
+  },
+  // Writes are gathered for a moment, since a run of edits each replaces the whole copy.
+  set(rows) {
+    toSave = rows;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { idbSet(CACHE_KEY, toSave).catch(() => {}); }, 300);
+  },
 };
 
 export async function createStore() {
@@ -29,7 +75,7 @@ export async function createStore() {
 
   const forceDemo = new URLSearchParams(location.search).has("demo");
   if (!forceDemo && cfg && cfg.supabaseUrl && cfg.supabaseAnonKey) return supabaseStore(cfg);
-  if (!forceDemo && !cfg && cache.get()) return offlineStore();
+  if (!forceDemo && !cfg && (await cache.get())) return offlineStore();
   return demoStore();
 }
 
@@ -125,7 +171,7 @@ function offlineStore() {
     async session() { return { offline: true }; },
     async token() { return ""; },
     async signIn() {}, async signOut() {},
-    async load() { return cache.get() || []; },
+    async load() { return (await cache.get()) || []; },
     async insert() { throw new Error("offline"); },
     async update() { throw new Error("You’re offline. Changes will need a connection."); },
     async remove() { throw new Error("You’re offline. Changes will need a connection."); },

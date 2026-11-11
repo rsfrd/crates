@@ -17,7 +17,9 @@ if (!localStorage.getItem(DB)) save();
 const log = (entry) => { const l = JSON.parse(localStorage.getItem("fake-log") || "[]"); l.push(entry); localStorage.setItem("fake-log", JSON.stringify(l)); };
 const wait = () => new Promise((r) => setTimeout(r, cfg.delay || 0));
 const now = () => new Date().toISOString();
-const who = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+// Like supabase-js: if storage is full the session can't be saved, so it lasts only until a reload.
+let memorySession = null;
+const who = () => { try { return JSON.parse(localStorage.getItem(KEY)) || memorySession; } catch { return memorySession; } };
 const err = (message, code) => ({ data: null, error: { message, code } });
 const denied = () => err('new row violates row-level security policy for table "albums"', "42501");
 const isOwner = () => who()?.email === cfg.ownerEmail;
@@ -57,9 +59,10 @@ export function createClient() {
       async signInWithPassword({ email, password }) {
         const u = cfg.users.find((x) => x.email === email && x.password === password);
         if (!u) return err("Invalid login credentials");
-        localStorage.setItem(KEY, JSON.stringify({ email })); return { data: { user: { email } }, error: null };
+        try { localStorage.setItem(KEY, JSON.stringify({ email })); } catch { memorySession = { email }; }
+        return { data: { user: { email } }, error: null };
       },
-      async signOut() { localStorage.removeItem(KEY); return { error: null }; },
+      async signOut() { localStorage.removeItem(KEY); memorySession = null; return { error: null }; },
     },
     from: query,
     async rpc(name) {
@@ -195,6 +198,37 @@ const cnt = await p.textContent("#count"); check(cnt.includes("452 records"), "t
   await v.reload(); await v.waitForTimeout(300);
   check(!(await v.locator(".row").count()), "after signing out, coming back doesn’t flash the saved copy");
   await v.waitForSelector(".login");
+}
+
+// ---- storage full from an older version's saved copy: signing in must still stick
+{
+  const f = await site({
+    rules: true, ownerEmail: "me@example.com",
+    users: [{ email: "me@example.com", password: "owner-pw" }],
+    settings: [{ key: "site_name", value: "Full Storage" }],
+    rows: [rec(1), rec(2), rec(3)],
+  });
+  await f.goto("http://localhost:5188/"); await f.waitForSelector(".login");
+  // Fill localStorage to the brim with an old-style saved copy (crate.cache.v1), as older versions did.
+  const filled = await f.evaluate((rows) => {
+    const make = (n) => JSON.stringify([...rows, { ...rows[0], id: "pad", notes: "x".repeat(n) }]);
+    let lo = 0, hi = 20e6;
+    while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); try { localStorage.setItem("crate.cache.v1", make(mid)); lo = mid; } catch { hi = mid; } }
+    localStorage.setItem("crate.cache.v1", make(lo));
+    let roomLeft = true; try { localStorage.setItem("probe", "{\"email\":\"me@example.com\"}"); localStorage.removeItem("probe"); } catch { roomLeft = false; }
+    return { chars: lo, roomLeft };
+  }, [rec(1), rec(2), rec(3)]);
+  check(!filled.roomLeft, `storage filled to the limit with an old saved copy (${(filled.chars / 1e6).toFixed(1)}M characters)`);
+  await f.reload(); await f.waitForSelector(".login");
+  await f.fill('input[name="email"]', "me@example.com"); await f.fill('input[name="password"]', "owner-pw"); await f.click("#login button");
+  await f.waitForSelector(".row");
+  check(!(await f.evaluate(() => localStorage.getItem("crate.cache.v1"))), "the old saved copy is moved out of the small storage");
+  await f.waitForTimeout(600);
+  await f.reload(); await f.waitForTimeout(1500);
+  check(await f.locator(".row").count() > 0 && !(await f.locator(".login").count()), "after a reload you're still signed in");
+  await f.reload(); await f.waitForTimeout(1500);
+  check(await f.locator(".row").count() > 0 && !(await f.locator(".login").count()), "and after another");
+  check((await f.evaluate(() => new Promise((ok) => { const r = indexedDB.open("garage-crates"); r.onsuccess = () => { const q = r.result.transaction("kv").objectStore("kv").get("crate.cache.v1"); q.onsuccess = () => ok(Array.isArray(q.result) ? q.result.length : -1); }; }))) === 3, "the saved copy now lives in the browser's database");
 }
 
 // ---- a site set up before owners and guests existed: unchanged
