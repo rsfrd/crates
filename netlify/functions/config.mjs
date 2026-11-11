@@ -1,4 +1,4 @@
-// /api/config — hands the browser the public Supabase settings from Netlify's environment variables.
+// /api/config — hands the browser the public Supabase settings from Netlify’s environment variables.
 // (The anon key is designed to be public; your data is protected by sign-in + row level security.)
 export default async () =>
   new Response(

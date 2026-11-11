@@ -1,5 +1,5 @@
 // Checks the Supabase session the app sends. Lookups (Discogs, Bandcamp, images, prices) are for the
-// site's owner only, so guests browsing with the passphrase can't use up the owner's Discogs allowance.
+// site’s owner only, so guests browsing with the passphrase can’t use up the owner’s Discogs allowance.
 const checked = new Map(); // token -> { until, owner }
 
 export async function whoIs(req, fetchImpl = fetch) {
@@ -24,7 +24,7 @@ export async function whoIs(req, fetchImpl = fetch) {
   return { signedIn: true, owner };
 }
 
-// Returns a Response to send back when the caller isn't the owner, or null when they are.
+// Returns a Response to send back when the caller isn’t the owner, or null when they are.
 export async function ownerOnly(req, fetchImpl = fetch) {
   const who = await whoIs(req, fetchImpl);
   if (!who.signedIn) return json({ error: "not signed in" }, 401);

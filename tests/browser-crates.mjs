@@ -38,8 +38,8 @@ const cityPop = await p.locator("#results a.row[data-id]").count();
 await p.click("#select-toggle");
 check(await p.locator("#selbar").isVisible() && await p.locator('a.fab[href="#/add"]').isHidden(), "select mode shows the selection bar instead of Add");
 await p.locator("#results a.row[data-id]").first().click();
-check((await p.textContent(".selcount")).includes("1 record selected"), "tapping a record selects it (doesn't open it)");
-check(!(await p.evaluate(() => location.hash)), "record didn't open");
+check((await p.textContent(".selcount")).includes("1 record selected"), "tapping a record selects it (doesn’t open it)");
+check(!(await p.evaluate(() => location.hash)), "record didn’t open");
 await shot("k01-selecting");
 await p.click("#sel-all");
 check((await p.textContent(".selcount")).includes(`${cityPop} records selected`), `select all picks the ${cityPop} results`);
@@ -69,7 +69,7 @@ await shot("k03-crate-filter");
 
 // searching the crate name finds its records
 await p.selectOption("#crate", ""); await p.fill("#q", "japanese"); await p.waitForTimeout(250);
-check((await p.locator("#results a.row[data-id]").count()) >= inCrate, "searching “japanese” finds the crate's records");
+check((await p.locator("#results a.row[data-id]").count()) >= inCrate, "searching “japanese” finds the crate’s records");
 await p.fill("#q", "");
 
 // record page: crates shown, remove and re-add
@@ -88,7 +88,7 @@ check((await p.inputValue("#crate")) === "Japanese" && !(await p.evaluate(() => 
 // add a new record while looking at the crate: crate is pre-filled
 await p.click('a.fab[href="#/add"]'); await p.waitForSelector("#add-form");
 await p.click(".add-more summary");
-check((await p.inputValue('input[name="crate"]')) === "Japanese", "new record defaults to the crate you're viewing");
+check((await p.inputValue('input[name="crate"]')) === "Japanese", "new record defaults to the crate you’re viewing");
 await p.fill('input[name="artist"]', "Hiroshi Yoshimura"); await p.fill('input[name="title"]', "Music For Nine Post Cards");
 await p.click("#add-submit"); await p.waitForSelector(".crates-block");
 check((await p.textContent(".crates-block")).includes("Japanese"), "new record lands in the crate");
@@ -118,7 +118,7 @@ for (let i = 0; i < 4; i++) {
   check(jp.has(await p.textContent(".pick-title")), "pick comes from the chosen crate");
   await p.click("#pick-again"); await p.waitForTimeout(700);
 }
-check((await p.textContent(".pick-pool")).includes(`One of ${jp.size} records in Japanese`), "says how many it's picking from");
+check((await p.textContent(".pick-pool")).includes(`One of ${jp.size} records in Japanese`), "says how many it’s picking from");
 await p.selectOption("#pick-genre", "Ambient"); await p.waitForTimeout(200);
 const both = (await owned()).filter((r) => (r.crates || []).includes("Japanese") && (r.genres || []).includes("Ambient"));
 check(both.length > 0 && both.map((r) => r.title).includes(await p.textContent(".pick-title")), "crate and genre combine");

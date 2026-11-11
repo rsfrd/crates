@@ -47,7 +47,7 @@ const open = async (id) => { await p.goto(`${BASE}#/album/${id}`); await p.waitF
 
 // never checked: checks on open, shows price, links to all vinyl pressings
 await open("w-new");
-check((await p.textContent(".price-block")).includes("Checking Discogs"), "a new want shows it's checking");
+check((await p.textContent(".price-block")).includes("Checking Discogs"), "a new want shows it’s checking");
 await p.waitForFunction(() => document.querySelector(".price-line strong")?.textContent.includes("$31.50"), null, { timeout: 5000 });
 const pb = await p.textContent(".price-block");
 check(pb.includes("4 copies of this pressing for sale") && pb.includes("before shipping"), "price is labelled: copies for sale, before shipping");
@@ -56,7 +56,7 @@ const all = await p.getAttribute('.price-links a:has-text("All sellers")', "href
 check(us.includes("/sell/release/500") && us.includes("ships_from=United+States") && us.includes("sort=price%2Casc"), "US sellers: this pressing, US sellers, cheapest first");
 check(all.includes("/sell/release/500") && !all.includes("ships_from"), "All sellers: this pressing, worldwide (where the price comes from)");
 check(!(await p.locator('.price-links a:has-text("Other pressings")').count()), "no Other pressings link");
-check(calls.includes("500+master+fmt"), "first check also learns the album family and that it's vinyl");
+check(calls.includes("500+master+fmt"), "first check also learns the album family and that it’s vinyl");
 await p.locator(".price-block").scrollIntoViewIfNeeded(); await p.waitForTimeout(300);
 await p.screenshot({ path: path.join(OUT, "p01-price.png") });
 
@@ -78,27 +78,27 @@ check(true, "Check again updates it");
 
 // failure: one try, a clear message, no retry loop
 await open("w-fail");
-await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Couldn't check the price"), null, { timeout: 5000 });
+await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Couldn’t check the price"), null, { timeout: 5000 });
 await p.waitForTimeout(1500);
-check(calls.filter((c) => c.startsWith("503")).length === 1, "a failed check isn't retried over and over");
+check(calls.filter((c) => c.startsWith("503")).length === 1, "a failed check isn’t retried over and over");
 check(await p.locator(".price-links a").count() === 2, "links are still offered when the price check fails");
 
 // matched to a CD: no price, a note, and it lands in Needs a look
 await open("w-cd");
 await p.waitForFunction(() => document.querySelector(".price-block .note.warn"), null, { timeout: 5000 });
 const cdBlock = await p.textContent(".price-block");
-check(cdBlock.includes("isn't a vinyl pressing (CD)") && !cdBlock.includes("$9.99"), "a CD match shows no price, and says so");
+check(cdBlock.includes("isn’t a vinyl pressing (CD)") && !cdBlock.includes("$9.99"), "a CD match shows no price, and says so");
 check(!(await p.locator('.price-links a').count()), "no shop links for the CD");
 await p.locator(".price-block").scrollIntoViewIfNeeded(); await p.waitForTimeout(200);
 await p.screenshot({ path: path.join(OUT, "p03-cd.png") });
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".sec");
-check((await p.textContent(".card-list")).includes("Mingus Dynasty") && (await p.textContent(".card-list")).includes("Not vinyl"), "it's listed under Needs a look as Not vinyl");
+check((await p.textContent(".card-list")).includes("Mingus Dynasty") && (await p.textContent(".card-list")).includes("Not vinyl"), "it’s listed under Needs a look as Not vinyl");
 await p.goto(BASE); await p.waitForSelector(".row");
 await p.click('[data-status="want"]'); await p.waitForTimeout(250);
 check(!(await p.textContent("#results")).includes("$9.99"), "and shows no price in the want list");
 
 // not on Discogs, and owned records: no price section
-await open("w-bc"); check(!(await p.locator(".price-block").count()), "no price section for a want that isn't on Discogs");
+await open("w-bc"); check(!(await p.locator(".price-block").count()), "no price section for a want that isn’t on Discogs");
 await open(demo[6].id); check(!(await p.locator(".price-block").count()), "no price section for records you own");
 
 // want list shows prices at a glance
@@ -116,7 +116,7 @@ await p.click("#prices-all");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Prices updated"), null, { timeout: 20000 });
 const bulk = calls.slice(n0);
 check(bulk.length === 5, "bulk refresh checks each want once");
-check(!bulk.some((c) => c.includes("+fmt") && !c.startsWith("503")), "and doesn't ask the format again for pressings it already knows: " + bulk.join(", "));
+check(!bulk.some((c) => c.includes("+fmt") && !c.startsWith("503")), "and doesn’t ask the format again for pressings it already knows: " + bulk.join(", "));
 await p.click('[data-status="all"]').catch(() => {});
 
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");

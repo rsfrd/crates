@@ -18,7 +18,7 @@ const srv = http.createServer(async (rq, res) => {
     const op = u.searchParams.get("op"); calls.push(`${op}:${u.searchParams.get("username") || u.searchParams.get("ref") || ""}:${u.searchParams.get("list") || ""}:${u.searchParams.get("page") || ""}${u.searchParams.get("exact") ? ":exact" : ""}`);
     if (op === "collection") {
       const name = u.searchParams.get("username");
-      if (name === "nobody") return send(400, { error: "There's no Discogs user called “nobody”. Check the spelling." });
+      if (name === "nobody") return send(400, { error: "There’s no Discogs user called “nobody”. Check the spelling." });
       const { rowFromDiscogs } = await import("../netlify/lib/discogs.mjs");
       if (u.searchParams.get("list") === "wants") return send(200, { page: 1, pages: 1, total: 1, rows: [rowFromDiscogs(bi(500, "Andrew Hill", "Point Of Departure"), "want")] });
       const p = Number(u.searchParams.get("page"));
@@ -70,7 +70,7 @@ await p.waitForSelector(".importer .note strong", { timeout: 10000 });
 check((await p.textContent(".importer")).includes("102 records imported"), "102 records imported");
 await shot("i03-discogs-done");
 await p.click('.importer a[href="#/tools"]'); await p.waitForSelector(".stat-strip");
-check((await p.textContent(".card-row:has(#run)")).includes("102 records to fetch"), "they're waiting to be fetched");
+check((await p.textContent(".card-row:has(#run)")).includes("102 records to fetch"), "they’re waiting to be fetched");
 await p.click("#run");
 await p.waitForFunction(() => document.querySelector(".progress"), null, { timeout: 5000 });
 await new Promise((r) => setTimeout(r, 1500));
@@ -116,7 +116,7 @@ await p.fill("#q", "parsley"); await p.waitForTimeout(250);
 await p.click("#results a.row[data-id]"); await p.waitForSelector(".album-title");
 check((await p.textContent(".album")).includes("Folk") && (await p.textContent(".album")).includes("Rock") && (await p.textContent(".album-meta")).includes("1966"), "genres and year came through");
 
-// guests can't import
+// guests can’t import
 await p.goto(BASE + "&guest#/tools".replace("&guest#", "&guest#")); await p.waitForSelector(".stat-strip");
 check(await p.getAttribute('a[data-import][href="#/import/discogs"]', "aria-disabled") === "true", "import is greyed out for guests");
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");

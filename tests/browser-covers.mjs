@@ -17,6 +17,7 @@ const covers = { cd: await art(0, 0), a: await art(20, 200), b: await art(210, 4
 const photo = await art(160, 20, 1600, 1200); // a landscape "phone photo"
 
 const demo = JSON.parse(fs.readFileSync(new URL("./fixtures/collection.json", import.meta.url).pathname, "utf8"));
+demo.find((r) => r.artist === "Oscar Peterson, Joe Pass").catno = "OLD-123";   // a catalogue number from the spreadsheet, replaced by Fix match
 const mingus = demo.find((r) => r.title.startsWith("The Black Saint"));
 Object.assign(mingus, { cover_url: "/t/cd.png", thumb_url: "/t/cd.png", discogs_id: 42, enrich_status: "matched", year: 1963 });
 const cdRecord = demo.find((r) => r.artist === "Ahmad Jamal") || demo[40];
@@ -110,7 +111,8 @@ const server = http.createServer(async (rq, res) => {
         oldServer = false;
         return send(200, "application/json", JSON.stringify({ status: "matched", release: answer }));
       }
-      const rel = ref === "release/900" ? { ...release("Oscar Peterson", "À Salle Pleyel"), discogs_id: 900, discogs_artist: "Oscar Peterson & Joe Pass", discogs_title: "À Salle Pleyel" }
+      const rel = ref === "release/900" ? { ...release("Oscar Peterson", "À Salle Pleyel"), discogs_id: 900, discogs_artist: "Oscar Peterson & Joe Pass", discogs_title: "À Salle Pleyel", label_catno: "2625 705",
+          tracks: [{ pos: "A1", title: "Erster Teil = Part I = Première Partie", dur: "5:00" }, { pos: "A2", title: "'Round Midnight", dur: "6:10" }, { pos: "A3", title: "Don't Explain", dur: "4:00" }] }
         : { ...release("Charles Mingus", "x"), discogs_artist: "Charles Mingus", discogs_title: "The Black Saint And The Sinner Lady" };
       return send(200, "application/json", JSON.stringify({ status: "matched", release: rel }));
     }
@@ -124,7 +126,7 @@ const server = http.createServer(async (rq, res) => {
   if (u.pathname === "/api/bandcamp" && /missing-function/.test(u.searchParams.get("url"))) { res.writeHead(404, { "content-type": "text/html" }); return res.end("<html>Page not found</html>"); }
   if (u.pathname === "/api/bandcamp") {
     bandcampLog.push(u.searchParams.get("url"));
-    if (!/bandcamp/.test(u.searchParams.get("url"))) return send(422, "application/json", JSON.stringify({ error: "That page doesn't look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }));
+    if (!/bandcamp/.test(u.searchParams.get("url"))) return send(422, "application/json", JSON.stringify({ error: "That page doesn’t look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }));
     await new Promise((r) => setTimeout(r, 500));
     return send(200, "application/json", JSON.stringify({ status: "matched", release: bandcampRelease }));
   }
@@ -204,7 +206,7 @@ check((await p.getAttribute(".thumb.large img", "src")) === "/t/b.png", "cover f
 await shot("c08-added-filled");
 await p.click("button[data-close]"); await p.waitForTimeout(250);
 await p.fill("#q", "elvin"); await p.waitForTimeout(250);
-check((await p.textContent(".person-row")).includes("Elvin Jones"), "new record's players are searchable");
+check((await p.textContent(".person-row")).includes("Elvin Jones"), "new record’s players are searchable");
 await p.click(".person-row"); await p.waitForSelector(".person-name");
 check((await p.textContent(".person")).includes("Out There") && (await p.textContent(".person")).includes("Drums"), "player page lists the new record with instrument");
 await p.click("button[data-close]"); await p.waitForTimeout(250);
@@ -225,6 +227,9 @@ await p.click("[data-ref]"); await p.waitForTimeout(400);
 check((await p.textContent(".album-title")) === "À Salle Pleyel", `fix match sets the Discogs title (was "${before}")`);
 check((await p.textContent(".album-artist")) === "Oscar Peterson & Joe Pass", "fix match sets the Discogs artist line");
 check((await p.textContent("#toast")).includes("Match updated: À Salle Pleyel, Oscar Peterson & Joe Pass"), "toast says what it changed to");
+check((await p.textContent(".album-meta")).includes("2625 705"), "fix match updates the catalogue number shown on the album: " + (await p.textContent(".album-meta")));
+const trackText = await p.textContent(".tracks");
+check(trackText.includes("Erster Teil • Part I • Première Partie") && trackText.includes("’Round Midnight") && trackText.includes("Don’t Explain") && !trackText.includes("'"), "track titles show real apostrophes and dots between translations");
 await shot("c10-fixed-names");
 await p.click("button[data-close]"); await p.waitForTimeout(250);
 await p.fill("#q", "peterson & joe"); await p.waitForTimeout(250);
@@ -252,7 +257,7 @@ const toolsText = await p.textContent(".tools");
 check(toolsText.includes("1 classical record") && toolsText.includes("Update to refresh track listing with compositions and composers."), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
 await p.click("#works");
 await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
-check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn't count as done; button stays");
+check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn’t count as done; button stays");
 await p.waitForTimeout(3200);
 await p.evaluate(() => { document.querySelector("#toast").textContent = ""; });
 await p.click("#works");
@@ -271,7 +276,7 @@ await p.fill("#q", "quartet no 2"); await p.waitForTimeout(250);
 const songs = await p.textContent("#results");
 check(songs.includes(Q2) && !songs.includes("Overture"), "searching a piece lists the piece once, not each movement");
 await p.fill("#q", "recitative"); await p.waitForTimeout(250);
-check((await p.textContent("#results")).includes("in " + Q2), "a movement hit says which piece it's from");
+check((await p.textContent("#results")).includes("in " + Q2), "a movement hit says which piece it’s from");
 await shot("c13-classical-search");
 await p.fill("#q", "");
 
@@ -303,7 +308,7 @@ await p.locator(".tracks").scrollIntoViewIfNeeded();
 await shot("c17-composers-on-tracks");
 await p.click('.credits a:has-text("Wolfgang Amadeus Mozart")'); await p.waitForSelector(".person-name");
 const mp = await p.textContent(".person");
-check(mp.includes("Their music, played by others") && mp.includes("Composer on 1"), "Mozart's page groups records as composer");
+check(mp.includes("Their music, played by others") && mp.includes("Composer on 1"), "Mozart’s page groups records as composer");
 await shot("c18-composer-page");
 await p.goto(BASE); await p.waitForSelector(".row");
 await p.fill("#q", "lardrot"); await p.waitForTimeout(250);
@@ -316,9 +321,9 @@ await p.goto(BASE + "#/album/" + bcRec.id); await p.waitForSelector(".album-titl
 await p.click("#fix-open"); await p.waitForSelector("#fix-q");
 await p.fill("#fix-q", "https://example.com/some-page"); await p.click("#fix-form button");
 await p.waitForSelector("#fix .note.warn");
-check((await p.textContent("#fix")).includes("doesn't look like a Bandcamp album"), "a non-Bandcamp link gets a clear message");
+check((await p.textContent("#fix")).includes("doesn’t look like a Bandcamp album"), "a non-Bandcamp link gets a clear message");
 await p.fill("#fix-q", "https://x.bandcamp.com/album/missing-function"); await p.click("#fix-form button");
-await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("isn't on your site yet"), null, { timeout: 5000 });
+await p.waitForFunction(() => document.querySelector("#fix")?.textContent.includes("isn’t on your site yet"), null, { timeout: 5000 });
 check((await p.textContent("#fix")).includes("netlify/functions/bandcamp.mjs"), "a missing server file is named in the message");
 await p.fill("#fix-q", "https://kitdownes.bandcamp.com/album/smoke-mirrors"); await p.click("#fix-form button");
 await p.waitForSelector(".tracks", { timeout: 5000 }); await p.waitForTimeout(200);

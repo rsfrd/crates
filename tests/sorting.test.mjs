@@ -53,9 +53,9 @@ test("bands credited as a whole stay filed by name", () => {
   assert.equal(fileAs("Queens Of The Stone Age", people), "queens of the stone age");
   assert.equal(fileAs("Simon & Garfunkel", people), "simon garfunkel");
   assert.equal(fileAs("Belle and Sebastian", people), "belle and sebastian");
-  assert.equal(fileAs("Arcade Fire", people), "arcade fire", "a producer/songwriter credit doesn't make a band a person");
+  assert.equal(fileAs("Arcade Fire", people), "arcade fire", "a producer/songwriter credit doesn’t make a band a person");
   assert.equal(fileAs("Vampire Weekend", people), "vampire weekend");
-  assert.equal(fileAs("Talking Heads", people), "talking heads", "arranged/instruments/music-by credits don't make a band a person");
+  assert.equal(fileAs("Talking Heads", people), "talking heads", "arranged/instruments/music-by credits don’t make a band a person");
   assert.equal(fileAs("Bruce Springsteen", people), "springsteen bruce");
   assert.equal(fileAs("Leonard Bernstein", people), "bernstein leonard");
   assert.equal(fileAs("Ludwig van Beethoven", people), "beethoven ludwig van");

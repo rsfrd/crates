@@ -32,9 +32,9 @@ const before = await stored();
 check((await p.textContent("#count")).includes("view only"), "header says view only");
 check(await p.getAttribute('a.fab[href="#/add"]', "aria-disabled") === "true" && await p.getAttribute("#select-toggle", "aria-disabled") === "true", "Add and Select are greyed out");
 await p.click('a.fab[href="#/add"]', { force: true });
-check(await toastSays("view-only copy") && !(await p.evaluate(() => location.hash)), "tapping Add explains and doesn't open it");
+check(await toastSays("view-only copy") && !(await p.evaluate(() => location.hash)), "tapping Add explains and doesn’t open it");
 await p.click("#select-toggle", { force: true });
-check(await p.locator("#selbar").isHidden(), "Select doesn't start");
+check(await p.locator("#selbar").isHidden(), "Select doesn’t start");
 await p.screenshot({ path: path.join(OUT, "g01-home.png") });
 
 // search, person pages and Pick for me all work
@@ -52,12 +52,12 @@ for (const sel of ["#for-sale", "#notes", "#cover-find", "#cover-own", "#crate-a
   check(await p.getAttribute(sel, "aria-disabled") === "true", `${sel} greyed`);
 }
 await p.click(".switch-row", { force: true });
-check(await toastSays("view-only") && !(await p.isChecked("#for-sale")), "For sale can't be switched");
-await p.click("#edit-open", { force: true }); check(!(await p.locator("#edit-form").count()), "Edit details doesn't open");
+check(await toastSays("view-only") && !(await p.isChecked("#for-sale")), "For sale can’t be switched");
+await p.click("#edit-open", { force: true }); check(!(await p.locator("#edit-form").count()), "Edit details doesn’t open");
 await p.click("#delete", { force: true }); check(!(await p.locator(".album-title").count()) === false, "Delete does nothing (no dialog)");
 await p.click("[data-crate-rm]", { force: true }); check((await p.locator(".crate-chip").count()) === 1, "crate stays");
 await p.locator("#notes").focus().catch(() => {}); await p.keyboard.type("guest typing");
-check((await p.inputValue("#notes")).includes("VG+"), "notes can't be typed in");
+check((await p.inputValue("#notes")).includes("VG+"), "notes can’t be typed in");
 await p.locator(".crates-block").scrollIntoViewIfNeeded();
 await p.screenshot({ path: path.join(OUT, "g02-record.png") });
 

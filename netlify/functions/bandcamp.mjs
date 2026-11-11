@@ -9,9 +9,9 @@ export default async (req) => {
   const denied = await ownerOnly(req);
   if (denied) return denied;
   let url;
-  try { url = new URL(new URL(req.url).searchParams.get("url") || ""); } catch { return json({ error: "That doesn't look like a link" }, 400); }
+  try { url = new URL(new URL(req.url).searchParams.get("url") || ""); } catch { return json({ error: "That doesn’t look like a link" }, 400); }
   if (!/^https?:$/.test(url.protocol) || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(url.hostname)) {
-    return json({ error: "That doesn't look like a Bandcamp link" }, 400);
+    return json({ error: "That doesn’t look like a Bandcamp link" }, 400);
   }
   url.hash = ""; url.search = "";
   const ctl = new AbortController();
@@ -23,11 +23,11 @@ export default async (req) => {
     if (html.length > MAX) return json({ error: "That page is too large to read" }, 413);
     const release = parseBandcampPage(html, res.url || url.toString());
     if (!release || !release.discogs_title) {
-      return json({ error: "That page doesn't look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }, 422);
+      return json({ error: "That page doesn’t look like a Bandcamp album or track. Open the album on Bandcamp and copy its link." }, 422);
     }
     return json({ status: "matched", release });
   } catch {
-    return json({ error: "Couldn't reach that page. Try again, or check the link." }, 502);
+    return json({ error: "Couldn’t reach that page. Try again, or check the link." }, 502);
   } finally { clearTimeout(timer); }
 };
 

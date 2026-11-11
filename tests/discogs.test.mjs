@@ -242,7 +242,7 @@ test("classical: index tracks keep their piece with each movement", () => {
   assert.equal(t[0]._extra[0].name, "Dmitri Shostakovich", "piece-level composer credit flows to movements");
 });
 
-test("classical: heading rows label the movements below them; side headings don't", () => {
+test("classical: heading rows label the movements below them; side headings don’t", () => {
   const tl = [
     { type_: "heading", title: "Symphony No. 5 In C Minor, Op. 67" },
     { type_: "track", position: "A1", title: "Allegro Con Brio" },

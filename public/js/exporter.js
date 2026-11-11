@@ -88,9 +88,9 @@ export function collectionBackup(albums, siteName = "Garage Crates", now = new D
 export function readBackup(text) {
   let data;
   try { data = JSON.parse(String(text || "").replace(/^﻿/, "")); }
-  catch { throw new Error("That isn't a Garage Crates backup. Choose the .json file from Download a backup."); }
+  catch { throw new Error("That isn’t a Garage Crates backup. Choose the .json file from Download a backup."); }
   const list = Array.isArray(data) ? data : data && Array.isArray(data.albums) ? data.albums : null;
-  if (!list) throw new Error("That isn't a Garage Crates backup. Choose the .json file from Download a backup.");
+  if (!list) throw new Error("That isn’t a Garage Crates backup. Choose the .json file from Download a backup.");
   const records = [];
   let skipped = 0;
   for (const a of list) {

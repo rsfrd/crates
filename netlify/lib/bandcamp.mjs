@@ -46,7 +46,7 @@ export function parseCredits(text = "") {
     if (!m) continue;
     let [, a, b] = m;
     let name = a.trim(), roles = b.trim();
-    // A person's name: capitalised words, at least two of them ("Drums" alone is an instrument).
+    // A person’s name: capitalised words, at least two of them ("Drums" alone is an instrument).
     const person = (x) => NAME.test(x) && x.split(/\s+/).length >= 2;
     if (!person(name) && person(roles)) [name, roles] = [roles, name];   // "Oboe: Bert Lucarelli"
     if (!person(name)) continue;

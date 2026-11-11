@@ -4,7 +4,7 @@
 //   ?op=search&q=…                             Discogs candidates to pick from
 //   ?op=images&artist=…&title=…&discogs_id=…   alternative covers (Apple Music, Cover Art Archive, Discogs)
 //   ?op=price&id=<release id>[&master=1]       lowest marketplace price in USD + copies for sale
-//   ?op=collection&username=…&list=collection|wants&page=N   one page of someone's Discogs collection or want list
+//   ?op=collection&username=…&list=collection|wants&page=N   one page of someone’s Discogs collection or want list
 import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, collectionPage, DiscogsUserError, RateLimited } from "../lib/discogs.mjs";
 import { findImages } from "../lib/images.mjs";
 import { ownerOnly, json } from "../lib/auth.mjs";
@@ -24,7 +24,7 @@ export default async (req) => {
       body = await match(client, { artist: p.get("artist") || "", title: p.get("title") || "", catno: p.get("catno") || "" });
     } else if (op === "fetch") {
       const ref = parseDiscogsRef(p.get("ref"));
-      if (!ref) return json({ error: "That isn't a Discogs link or release number" }, 400);
+      if (!ref) return json({ error: "That isn’t a Discogs link or release number" }, 400);
       const release = await fetchByRef(client, ref.type, ref.id, p.get("artist") || "", { preferVinyl: p.get("exact") !== "1" });
       body = release ? { status: "matched", release } : { status: "not_found", release: null };
     } else if (op === "search") {

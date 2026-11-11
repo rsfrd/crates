@@ -1,4 +1,4 @@
-// The Collection page (titled sections on cards) and "It's fine as it is". Run: node tests/browser-tools.mjs <outdir>
+// The Collection page (titled sections on cards) and "It’s fine as it is". Run: node tests/browser-tools.mjs <outdir>
 import { createRequire } from "node:module";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const { chromium } = createRequire("/opt/npm-tools/node_modules/")("playwright");
@@ -78,17 +78,17 @@ check(await p.locator(".progress").count() === 1 && await p.locator("#stop").cou
 await p.screenshot({ path: path.join(OUT, "t03-running.png") });
 await p.click("#stop"); await p.waitForTimeout(600);
 
-// "It's fine as it is" on the record Discogs doesn't have
+// "It’s fine as it is" on the record Discogs doesn’t have
 await p.goto("http://localhost:5189/?demo&demoapi#/album/r0064"); await p.waitForSelector(".album-title");
-check((await p.textContent("#keep-as-is")) === "It's fine as it is", "a not-found record offers It's fine as it is");
+check((await p.textContent("#keep-as-is")) === "It’s fine as it is", "a not-found record offers It’s fine as it is");
 await p.screenshot({ path: path.join(OUT, "t04-keep.png") });
 await p.click("#keep-as-is");
-check(await toastHas(p, "Kept as it is"), "it says it's kept");
+check(await toastHas(p, "Kept as it is"), "it says it’s kept");
 check(await p.locator("#keep-as-is").count() === 0 && await p.locator(".keep-note").count() === 0, "the warning goes away");
 await p.goto("http://localhost:5189/?demo&demoapi#/tools"); await p.waitForSelector(".sec");
 const rowsInLook = await p.locator(".card-list .row").allTextContents();
-check(!rowsInLook.some((t) => t.includes("Brian Noyes")) && rowsInLook.length === 1, "it's left Needs a look");
-check(await p.locator("#retry").count() === 0, "and isn't retried");
+check(!rowsInLook.some((t) => t.includes("Brian Noyes")) && rowsInLook.length === 1, "it’s left Needs a look");
+check(await p.locator("#retry").count() === 0, "and isn’t retried");
 const doneCount = Number(await p.locator(".stat-strip div >> nth=0 >> dd").textContent());
 check(doneCount === 700, "it counts as done: " + doneCount);
 // confirming a possible match
@@ -96,7 +96,7 @@ await p.goto("http://localhost:5189/?demo&demoapi#/album/r0005"); await p.waitFo
 check((await p.textContent("#keep-as-is")) === "The match is right", "a possible match offers The match is right");
 await p.click("#keep-as-is"); check(await toastHas(p, "Match confirmed"), "and confirms it");
 await p.goto("http://localhost:5189/?demo&demoapi#/tools"); await p.waitForSelector(".sec");
-check(!(await p.locator(".sec-head h3", { hasText: "Needs a look" }).count()), "Needs a look disappears once it's empty");
+check(!(await p.locator(".sec-head h3", { hasText: "Needs a look" }).count()), "Needs a look disappears once it’s empty");
 // after a reload it stays kept (saved in the demo store)
 await p.reload(); await p.waitForSelector(".sec");
 check(!(await p.locator(".sec-head h3", { hasText: "Needs a look" }).count()), "and stays that way after a reload");
@@ -113,7 +113,7 @@ check(await g.getAttribute("#export", "aria-disabled") === null, "guests can sti
 await g.setViewportSize({ width: 390, height: 1900 }); await g.waitForTimeout(300);
 await g.screenshot({ path: path.join(OUT, "t06-guest.png") });
 await g.goto("http://localhost:5189/?demo&demoapi&guest#/album/r0064"); await g.waitForSelector("#keep-as-is");
-check(await g.getAttribute("#keep-as-is", "aria-disabled") === "true", "guests can't mark a record as fine");
+check(await g.getAttribute("#keep-as-is", "aria-disabled") === "true", "guests can’t mark a record as fine");
 
 // closing an album returns to the same place in the list, with the rows drawn
 {
@@ -153,7 +153,7 @@ check(await g.getAttribute("#keep-as-is", "aria-disabled") === "true", "guests c
   await q.click('a[href="#/import/backup"]'); await q.waitForSelector('label[for="imp-file"]');
   await q.setInputFiles("#imp-file", { name: "notes.csv", mimeType: "text/csv", buffer: Buffer.from("artist,title\nx,y") });
   await q.waitForSelector(".importer .note.warn");
-  check((await q.textContent(".importer")).includes("isn't a Garage Crates backup"), "a CSV is turned away from the restore screen");
+  check((await q.textContent(".importer")).includes("isn’t a Garage Crates backup"), "a CSV is turned away from the restore screen");
   await q.setInputFiles("#imp-file", backupPath); await q.waitForSelector("#imp-save");
   const offered = Number((await q.textContent("#imp-save")).match(/Restore (\d+) albums/)?.[1]);
 const overlap = (await q.textContent(".importer")).match(/(\d+) already here/)?.[1];

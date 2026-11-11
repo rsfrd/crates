@@ -89,25 +89,25 @@ const toastSays = (p, t) => p.waitForFunction((t) => document.querySelector("#to
 const p = await site({
   rules: true, ownerEmail: "me@example.com",
   users: [{ email: "me@example.com", password: "owner-pw" }, { email: "guests@example.com", password: "blue velvet lp" }],
-  settings: [{ key: "site_name", value: "Sam's Shelves" }, { key: "guest_email", value: "guests@example.com" }],
+  settings: [{ key: "site_name", value: "Sam’s Shelves" }, { key: "guest_email", value: "guests@example.com" }],
   rows: [rec(1), rec(2), rec(3, { status: "want" })],
 });
 await p.goto("http://localhost:5188/"); await p.waitForSelector(".login");
-check((await p.textContent(".login h1")) === "Sam's Shelves" && (await p.title()) === "Sam's Shelves", "site name comes from settings, before signing in");
+check((await p.textContent(".login h1")) === "Sam’s Shelves" && (await p.title()) === "Sam’s Shelves", "site name comes from settings, before signing in");
 check(await p.locator('input[name="passphrase"]').count() === 1 && await p.locator("#to-owner").count() === 1, "passphrase first, owner sign-in link below");
 await p.screenshot({ path: path.join(OUT, "l01-passphrase.png") });
 await p.fill('input[name="passphrase"]', "wrong words"); await p.click("#login-guest button");
 await p.waitForSelector(".login .note.warn");
-check((await p.textContent(".login")).includes("That passphrase didn't work"), "a wrong passphrase says so");
+check((await p.textContent(".login")).includes("That passphrase didn’t work"), "a wrong passphrase says so");
 await p.fill('input[name="passphrase"]', "blue velvet lp"); await p.click("#login-guest button");
 await p.waitForSelector(".row");
-check((await p.textContent("#count")).includes("view only") && (await p.textContent(".brand h1")) === "Sam's Shelves", "the passphrase opens a view-only copy");
+check((await p.textContent("#count")).includes("view only") && (await p.textContent(".brand h1")) === "Sam’s Shelves", "the passphrase opens a view-only copy");
 await p.click('a.fab[href="#/add"]', { force: true });
 check(await toastSays(p, "view-only"), "Add is view only");
 await p.goto("http://localhost:5188/#/album/r1"); await p.waitForSelector(".album-title");
 check((await p.inputValue("#notes")).includes("condition notes 1"), "guests see notes");
 await p.goto("http://localhost:5188/#/import/csv"); await p.waitForTimeout(400);
-check(!(await p.locator("#imp-file").count()), "guests can't open the import screen by address");
+check(!(await p.locator("#imp-file").count()), "guests can’t open the import screen by address");
 // the guest stays signed in after a reload
 await p.reload(); await p.waitForSelector(".row");
 check((await p.textContent("#count")).includes("view only"), "guest stays signed in after a reload");

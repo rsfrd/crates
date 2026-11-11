@@ -81,7 +81,7 @@ check((await p.textContent("#count")).includes("713 records"), "header counts 71
 check((await p.textContent("#count")).includes("2 wanted"), "header counts 2 wanted");
 await shot(p, "01-home");
 
-// Person search: player on someone else's album + leader
+// Person search: player on someone else’s album + leader
 await p.fill("#q", "dannie richmond"); await p.waitForTimeout(250);
 await shot(p, "02-search-person");
 check(await p.locator(".person-row").count() >= 1, "person result for Dannie Richmond");

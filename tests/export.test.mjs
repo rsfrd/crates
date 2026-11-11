@@ -78,8 +78,8 @@ test("backup: everything comes back except ids and edit times", () => {
 });
 
 test("backup: rejects other files, skips broken entries", () => {
-  assert.throws(() => readBackup("artist,title\nx,y"), /isn't a Garage Crates backup/);
-  assert.throws(() => readBackup('{"hello":1}'), /isn't a Garage Crates backup/);
+  assert.throws(() => readBackup("artist,title\nx,y"), /isn’t a Garage Crates backup/);
+  assert.throws(() => readBackup('{"hello":1}'), /isn’t a Garage Crates backup/);
   const r = readBackup(JSON.stringify({ albums: [{ artist: "A", title: "B", genres: "oops" }, { artist: "", title: "C" }, null] }));
   assert.equal(r.records.length, 1);
   assert.equal(r.skipped, 2);

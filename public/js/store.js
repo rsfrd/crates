@@ -78,7 +78,7 @@ async function supabaseStore(cfg) {
       const base = `${albumId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const put = async (name, blob) => {
         const r = await sb.storage.from("covers").upload(name, blob, { contentType: blob.type || "image/jpeg", cacheControl: "31536000", upsert: false });
-        if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Cover uploads aren't set up yet. Run supabase/updates/002_covers.sql in Supabase." : r.error.message);
+        if (r.error) throw new Error(/bucket not found/i.test(r.error.message) ? "Cover uploads aren’t set up yet. Run supabase/updates/002_covers.sql in Supabase." : r.error.message);
         return sb.storage.from("covers").getPublicUrl(name).data.publicUrl;
       };
       const [cover_url, thumb_url] = await Promise.all([put(`${base}.jpg`, full), put(`${base}-thumb.jpg`, thumb)]);
@@ -98,10 +98,10 @@ function offlineStore() {
     async signIn() {}, async signOut() {},
     async load() { return cache.get() || []; },
     async insert() { throw new Error("offline"); },
-    async update() { throw new Error("You're offline. Changes will need a connection."); },
-    async remove() { throw new Error("You're offline. Changes will need a connection."); },
-    async uploadCover() { throw new Error("You're offline. Changes will need a connection."); },
-    async insertMany() { throw new Error("You're offline. Importing needs a connection."); },
+    async update() { throw new Error("You’re offline. Changes will need a connection."); },
+    async remove() { throw new Error("You’re offline. Changes will need a connection."); },
+    async uploadCover() { throw new Error("You’re offline. Changes will need a connection."); },
+    async insertMany() { throw new Error("You’re offline. Importing needs a connection."); },
     async settings() { return { ...DEFAULTS, ...readLS("crate.settings.v1", {}) }; },
     async isOwner() { return readLS(OWNER_KEY, true); },
     canEnrich: false,
@@ -152,7 +152,7 @@ function demoStore() {
       const t = await asData(thumb);
       return { cover_url: t, thumb_url: t };
     },
-    // "?demo&demoapi" lets the demo talk to a test server's lookup endpoints.
+    // "?demo&demoapi" lets the demo talk to a test server’s lookup endpoints.
     canEnrich: new URLSearchParams(location.search).has("demoapi"),
   };
 }

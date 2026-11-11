@@ -1,5 +1,28 @@
 // Search index over albums, tracks and people. Pure functions, no DOM.
 
+// Typographic tidying for text from Discogs and older records: real apostrophes (Don’t, ’Round
+// Midnight, Rock ’n’ Roll, the ’60s) and translated titles split with a dot instead of Discogs' " = ".
+const ELIDED = /(^|[\s(“"])'(?=(round|til|tis|twas|n|em|cause|bout|s|\d{2}s?)\b)/gi;
+export function typeset(s) {
+  if (typeof s !== "string" || (!s.includes("'") && !s.includes("="))) return s;
+  return s
+    .replace(/\s+=\s+/g, " • ")
+    .replace(ELIDED, "$1’")
+    .replace(/(^|[\s(“"])'([^'\n]+?)'(?=$|[\s).,!?:;”"])/g, "$1‘$2’")
+    .replace(/(?<=[\p{L}\p{N}.])'/gu, "’");
+}
+
+// The same tidying across an album’s names and titles; returns the album itself when nothing changes.
+export function typesetAlbum(a) {
+  if (!a) return a;
+  let changed = false;
+  const t = (v) => { const n = typeset(v); if (n !== v) changed = true; return n; };
+  const out = { ...a, artist: t(a.artist), title: t(a.title), label: t(a.label) };
+  if (Array.isArray(a.tracks)) out.tracks = a.tracks.map((x) => (x && typeof x === "object" ? { ...x, title: t(x.title), work: t(x.work), by: t(x.by), wby: t(x.wby) } : x));
+  if (Array.isArray(a.credits)) out.credits = a.credits.map((x) => (x && typeof x === "object" ? { ...x, name: t(x.name) } : x));
+  return changed ? out : a;
+}
+
 export function fold(s = "") {
   return String(s)
     .normalize("NFKD").replace(/[̀-ͯ]/g, "")
@@ -24,7 +47,7 @@ const BAND_WORDS = /\b(of|the|and|with|in|on|at|to|for|from|my|your|our|his|her|
 const BAND_MARKS = /[&+\/]|\band\b/i;
 // Credits that say an individual played, sang, conducted or composed: a named instrument or voice.
 // Vaguer credits that Discogs often gives a whole band ("Arranged By", "Instruments", "Performer",
-// "Written-By", "Producer") don't count.
+// "Written-By", "Producer") don’t count.
 const INDIVIDUAL_ROLE = /\b(guitar|bass|drums?|percussion|piano|keyboards?|organ|synth\w*|moog|mellotron|rhodes|clavinet|harpsichord|celesta|accordion|vocals?|voice|soprano|alto|tenor|baritone|mezzo|countertenor|contralto|saxophone|sax|trumpet|cornet|flugelhorn|trombone|horn|tuba|euphonium|clarinet|flute|piccolo|oboe|cor anglais|english horn|bassoon|recorder|harmonica|violin|viola|cello|violoncello|double bass|contrabass|fiddle|harp|banjo|mandolin|ukulele|sitar|koto|shamisen|shakuhachi|steel|lap steel|pedal steel|dobro|vibraphone|vibes|marimba|xylophone|glockenspiel|timpani|congas?|bongos?|tabla|turntables|sampler|electronics|theremin|whistl\w*|conductor|composed by|composer|rap|mc)\b/i;
 const individualRole = (r) => INDIVIDUAL_ROLE.test(r) && !/^(performer|featuring|band|ensemble|orchestra|choir|chorus|instruments)\b/i.test(r);
 

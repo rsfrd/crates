@@ -1,7 +1,7 @@
 import { createStore, cache, outbox } from "./store.js";
 import { parseCSV, FIELDS, looksLikeHeader, guessColumns, recordsFromRows, withoutDuplicates } from "./importer.js";
 import { collectionCSV, collectionBackup, readBackup } from "./exporter.js";
-import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople } from "./search.js";
+import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople, typeset, typesetAlbum } from "./search.js";
 
 // ---------- helpers ----------
 const $ = (s, el = document) => el.querySelector(s);
@@ -65,7 +65,7 @@ const state = {
 };
 
 function setAlbums(rows) {
-  state.albums = rows;
+  state.albums = rows.map(typesetAlbum);   // real apostrophes and " • " between translated titles
   state.index = buildIndex(rows);
   if (state.store?.mode === "live") cache.set(rows.filter((r) => !r._pending));
 }
@@ -86,7 +86,7 @@ async function updateAlbum(id, patch) {
   } catch (e) {
     replaceAlbum(before);
     renderAll();
-    toast(e.message || "Couldn't save that change. Check your connection and try again.");
+    toast(e.message || "Couldn’t save that change. Check your connection and try again.");
     throw e;
   }
 }
@@ -256,7 +256,7 @@ function renderResults() {
         return;
       }
       el.innerHTML = emptyState(state.status === "want"
-        ? "Your want list is empty. Add an album you heard and it'll be here when you're in the store."
+        ? "Your want list is empty. Add an album you heard and it’ll be here when you’re in the store."
         : state.status === "sale" ? "Nothing is marked for sale. Open a record and turn on “For sale” to queue it."
         : state.crate ? `Nothing in “${esc(state.crate)}” matches these filters.`
         : "Nothing here yet.");
@@ -297,15 +297,15 @@ function emptyState(msg, offerAdd) {
 
 function renderAll() {
   renderResults();
-  // Don't redraw a panel out from under someone who is typing in it.
+  // Don’t redraw a panel out from under someone who is typing in it.
   const active = document.activeElement;
   if (active && active.closest?.("#overlay") && /input|textarea/i.test(active.tagName)) return;
   renderOverlay();
 }
 
 // ---------- crates ----------
-const SETUP_CRATES = "Crates aren't set up yet. Run supabase/updates/004_crates.sql in Supabase, then try again.";
-const crateError = (e) => (/crates/i.test((e && e.message) || "") ? SETUP_CRATES : (e && e.message) || "Couldn't save that change.");
+const SETUP_CRATES = "Crates aren’t set up yet. Run supabase/updates/004_crates.sql in Supabase, then try again.";
+const crateError = (e) => (/crates/i.test((e && e.message) || "") ? SETUP_CRATES : (e && e.message) || "Couldn’t save that change.");
 const cleanCrate = (s) => String(s || "").replace(/\s+/g, " ").trim().slice(0, 60);
 
 function startSelect() { state.select = new Set(); state.selPanel = null; renderResults(); }
@@ -390,7 +390,7 @@ async function changeCrates(ids, fn) {
     const back = new Map(failed.map((c) => [c.id, c.before]));
     setAlbums(state.albums.map((a) => (back.has(a.id) ? { ...a, crates: back.get(a.id) } : a)));
     renderAll();
-    toast(failed.length === changes.length ? crateError(firstError) : `${plural(failed.length, "record")} couldn't be saved. ${crateError(firstError)}`);
+    toast(failed.length === changes.length ? crateError(firstError) : `${plural(failed.length, "record")} couldn’t be saved. ${crateError(firstError)}`);
     return null;
   }
   renderAll();
@@ -462,7 +462,7 @@ function pickPool(crate, genre) {
     && (!genre || (a.genres || []).includes(genre)));
 }
 
-// A random record from the pool, avoiding the last few picks while there's enough to choose from.
+// A random record from the pool, avoiding the last few picks while there’s enough to choose from.
 function choose(pool, avoidId) {
   if (!pool.length) return null;
   let recent = [];
@@ -509,7 +509,7 @@ function renderPick() {
           <button class="btn primary big" id="pick-again" ${pool.length > 1 ? "" : "disabled"}>${ICON.shuffle}Pick another</button>
           <a class="btn big" href="#/album/${encodeURIComponent(a.id)}">Open record</a>
         </div>`
-      : `<div class="empty"><p>${pk.crate && pk.genre ? `Nothing in ${esc(pk.crate)} is tagged ${esc(pk.genre)}. Try just one of them.` : "There's nothing to pick from here yet."}</p></div>`}
+      : `<div class="empty"><p>${pk.crate && pk.genre ? `Nothing in ${esc(pk.crate)} is tagged ${esc(pk.genre)}. Try just one of them.` : "There’s nothing to pick from here yet."}</p></div>`}
     </div>`, "pick");
 
   const reset = () => { pk.crate = panel.querySelector("#pick-crate").value; pk.genre = panel.querySelector("#pick-genre").value; pk.id = null; renderPick(); };
@@ -550,7 +550,7 @@ function fileUnderGuess(a) {
 }
 
 // ---------- want-list prices ----------
-const SETUP_PRICES = "Prices aren't set up yet. Run supabase/updates/005_prices.sql in Supabase, then reload.";
+const SETUP_PRICES = "Prices aren’t set up yet. Run supabase/updates/005_prices.sql in Supabase, then reload.";
 const PRICE_MAX_AGE = 12 * 3600 * 1000;
 
 // The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
@@ -597,7 +597,7 @@ function priceBlock(a) {
   const links = marketLinks(a);
   let line;
   if (state.pricing.has(a.id) && !p) line = `<p class="price-line"><span class="hint">Checking Discogs…</span></p>`;
-  else if (notVinyl(a)) line = `<p class="note warn">This match isn't a vinyl pressing${p.format ? ` (${esc(p.format.split(",")[0])})` : ""}, so there's no vinyl price. Use <strong>Wrong album? Fix match</strong> below to pick the LP.</p>`;
+  else if (notVinyl(a)) line = `<p class="note warn">This match isn’t a vinyl pressing${p.format ? ` (${esc(p.format.split(",")[0])})` : ""}, so there’s no vinyl price. Use <strong>Wrong album? Fix match</strong> below to pick the LP.</p>`;
   else if (p && p.value != null) line = `<p class="price-line"><strong>From ${money(p)}</strong><span class="hint">${plural(p.for_sale || 0, "copy", "copies")} of this pressing for sale, lowest price before shipping</span></p>`;
   else if (p) line = `<p class="price-line"><span>No copies of this pressing for sale on Discogs right now.</span></p>`;
   else line = "";
@@ -608,7 +608,7 @@ function priceBlock(a) {
       ${notVinyl(a) ? "" : `<a class="btn" href="${esc(links.us)}" target="_blank" rel="noopener">US sellers</a>
       <a class="btn" href="${esc(links.all)}" target="_blank" rel="noopener">All sellers</a>`}
     </div>
-    <p class="hint price-note">${notVinyl(a) ? "" : "Both links show this pressing, the one the price is for. "}Signed in to Discogs, you'll see shipping to your address and each seller's rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
+    <p class="hint price-note">${notVinyl(a) ? "" : "Both links show this pressing, the one the price is for. "}Signed in to Discogs, you’ll see shipping to your address and each seller’s rating.${p && p.checked_at ? ` Price checked ${ago(p.checked_at)}.` : ""}
       ${state.store.canEnrich && pricesReady() && !state.pricing.has(a.id) ? `<button class="linkish" id="price-refresh">Check again</button>` : ""}</p>
   </section>`;
 }
@@ -636,7 +636,7 @@ async function checkPrice(a, force = false, quiet = false) {
     return r.rateRemaining;
   } catch (e) {
     state.priceFailed.add(a.id);
-    if (!quiet) toast(/session expired/i.test(e.message) ? e.message : "Couldn't check the price right now.");
+    if (!quiet) toast(/session expired/i.test(e.message) ? e.message : "Couldn’t check the price right now.");
     return null;
   } finally {
     state.pricing.delete(a.id);
@@ -650,7 +650,7 @@ async function checkPrice(a, force = false, quiet = false) {
 const IMPORT_COLUMNS = new Set(["artist", "title", "year", "label", "catno", "genres", "notes", "personnel_hint", "status", "enrich_status",
   "discogs_id", "master_id", "discogs_url", "cover_url", "thumb_url"]);
 
-// Only send columns this site's database has (older sites may not have master_id yet).
+// Only send columns this site’s database has (older sites may not have master_id yet).
 function forDatabase(r) {
   const out = {};
   for (const [k, v] of Object.entries(r)) if (IMPORT_COLUMNS.has(k) && !(k === "master_id" && !pricesReady())) out[k] = v;
@@ -712,7 +712,7 @@ function renderImportDiscogs() {
           <label><input type="radio" name="list" value="wants" ${imp.list === "wants" ? "checked" : ""}><span>Want list</span></label>
         </fieldset>
         <button class="btn primary big">Look it up</button>
-        <p class="hint">Albums come in as the pressings listed on Discogs. Discogs Wantlists are imported as Want lists in Garage Crates. The collection must be public on Discogs, unless it's the account whose token this site uses.</p>
+        <p class="hint">Albums come in as the pressings listed on Discogs. Discogs Wantlists are imported as Want lists in Garage Crates. The collection must be public on Discogs, unless it’s the account whose token this site uses.</p>
       </form>`;
   }
   const panel = openPanel(`
@@ -787,7 +787,7 @@ function renderImportCSV() {
       <button class="btn" id="imp-again">Choose another file</button>`;
   } else {
     body = `
-      <p>Any spreadsheet saved as CSV works: one row per record, with at least an artist and an album. Year, label, catalogue number, genre, notes and players are used if they're there.</p>
+      <p>Any spreadsheet saved as CSV works: one row per record, with at least an artist and an album. Year, label, catalogue number, genre, notes and players are used if they’re there.</p>
       <label class="btn primary big" for="imp-file">Choose a file</label>
       <input type="file" id="imp-file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" class="visually-hidden">
       <p class="hint">In Excel, Numbers or Google Sheets, use File → Export or Download → CSV.</p>`;
@@ -807,7 +807,7 @@ function renderImportCSV() {
       if (!rows.length) throw new Error("That file is empty.");
       const hasHeader = looksLikeHeader(rows[0]);
       Object.assign(imp, { rows, fileName: file.name, hasHeader, map: guessColumns(rows[0], hasHeader), error: "" });
-    } catch (err) { imp.error = err.message || "Couldn't read that file. Save it as CSV and try again."; }
+    } catch (err) { imp.error = err.message || "Couldn’t read that file. Save it as CSV and try again."; }
     renderOverlay();
   });
   panel.querySelector("#imp-header")?.addEventListener("change", (e) => {
@@ -823,8 +823,8 @@ function renderImportCSV() {
   panel.querySelector("#imp-save")?.addEventListener("click", () => { imp.toSave = imp.fresh.length; saveImport(imp.fresh, imp.fileName); });
 }
 
-// The columns this site's database has. Older sites may lack some (crates, prices, file under), and a
-// backup from a newer site shouldn't stop a restore, so anything the database doesn't have is left out.
+// The columns this site’s database has. Older sites may lack some (crates, prices, file under), and a
+// backup from a newer site shouldn’t stop a restore, so anything the database doesn’t have is left out.
 function siteColumns() {
   const sample = state.store.mode === "live" && state.albums.find((a) => !a._pending);
   return sample ? new Set(Object.keys(sample).filter((k) => k !== "id" && k !== "updated_at")) : null;
@@ -850,7 +850,7 @@ function renderImportBackup() {
       <button class="btn" id="imp-again">Choose another file</button>`;
   } else {
     body = `
-      <p>Choose a backup file made with <strong>Download a backup</strong>. Albums that aren't in your collection come back exactly as they were saved, with covers, tracks, personnel, notes and crates. Albums you already have are left as they are.</p>
+      <p>Choose a backup file made with <strong>Download a backup</strong>. Albums that aren’t in your collection come back exactly as they were saved, with covers, tracks, personnel, notes and crates. Albums you already have are left as they are.</p>
       <label class="btn primary big" for="imp-file">Choose a backup file</label>
       <input type="file" id="imp-file" accept=".json,application/json" class="visually-hidden">`;
   }
@@ -977,7 +977,7 @@ function clock(sec) {
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-// Movements are listed under the piece they belong to, with the piece's total time.
+// Movements are listed under the piece they belong to, with the piece’s total time.
 function trackList(tracks) {
   const groups = [];
   for (const t of tracks) {
@@ -1081,10 +1081,10 @@ function renderAlbum(id) {
       ${players.length ? `<section class="block"><h3>Personnel</h3><ul class="credits">${players.map(credit).join("")}</ul></section>` : ""}
       ${others.length ? `<details class="block more"><summary>Production and other credits <span>${others.length}</span></summary><ul class="credits">${others.map(credit).join("")}</ul></details>` : ""}
 
-      ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven't been fetched yet.${canEnrich || !state.owner ? "" : " They'll appear once the app is connected to Discogs."}</p>` : ""}
+      ${!looking && !a.tracks?.length && a.enrich_status === "pending" ? `<p class="note">Tracks and personnel haven’t been fetched yet.${canEnrich || !state.owner ? "" : " They’ll appear once the app is connected to Discogs."}</p>` : ""}
       ${a.enrich_status === "review" || a.enrich_status === "not_found" || a.enrich_status === "error" ? `<div class="note warn keep-note">
         <p>${a.enrich_status === "review" ? "This was the closest Discogs match, but it might be the wrong album. Check the tracks, or fix the match below." : "No Discogs match found. Paste a Discogs or Bandcamp link below to add details."}</p>
-        <button class="btn" id="keep-as-is">${a.enrich_status === "review" ? "The match is right" : "It's fine as it is"}</button>
+        <button class="btn" id="keep-as-is">${a.enrich_status === "review" ? "The match is right" : "It’s fine as it is"}</button>
       </div>` : ""}
 
       <section class="block">
@@ -1119,11 +1119,11 @@ function renderAlbum(id) {
   });
   const notes = panel.querySelector("#notes");
   notes.addEventListener("change", () => updateAlbum(a.id, { notes: notes.value || null }).then(() => toast("Note saved")).catch(() => {}));
-  // Records Discogs can't help with (a private pressing, a bespoke recording) can leave "Needs a look".
+  // Records Discogs can’t help with (a private pressing, a bespoke recording) can leave "Needs a look".
   panel.querySelector("#keep-as-is")?.addEventListener("click", async () => {
     const was = a.enrich_status;
     await updateAlbum(a.id, { enrich_status: was === "review" ? "matched" : "manual" }).catch(() => {});
-    toast(was === "review" ? "Match confirmed" : "Kept as it is. It won't need a look again.");
+    toast(was === "review" ? "Match confirmed" : "Kept as it is. It won’t need a look again.");
   });
   panel.querySelector("#edit-open")?.addEventListener("click", () => { state.editing = true; renderOverlay(); });
   panel.querySelector("#edit-cancel")?.addEventListener("click", () => { state.editing = false; renderOverlay(); });
@@ -1137,7 +1137,7 @@ function renderAlbum(id) {
       year: Number.isFinite(year) ? year : null, catno: f.get("catno").trim() || null,
       genres: f.get("genres").split(",").map((s) => s.trim()).filter(Boolean),
     }).catch(() => {});
-    // "File under" belongs to the artist, so it's set on every record by them.
+    // "File under" belongs to the artist, so it’s set on every record by them.
     if (f.has("sort_as")) {
       const sortAs = f.get("sort_as").trim() || null;
       if ((a.sort_as || null) !== sortAs) {
@@ -1152,7 +1152,7 @@ function renderAlbum(id) {
     toast("Changes saved");
   });
   panel.querySelector("#delete").addEventListener("click", async () => {
-    const msg = a.status === "want" ? `Remove “${a.title}” from your want list?` : `Delete “${a.title}” from your collection? This can't be undone.`;
+    const msg = a.status === "want" ? `Remove “${a.title}” from your want list?` : `Delete “${a.title}” from your collection? This can’t be undone.`;
     if (!confirm(msg)) return;
     try {
       await state.store.remove(a.id);
@@ -1189,14 +1189,14 @@ function renderFix(a) {
       ? `<ul class="cands">${f.candidates.map((c) => `
           <li><button data-ref="${c.type}/${c.id}">
             <span class="thumb mini">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="blank" style="--h:${hue(c.title)}"><span class="disc"></span></span>`}</span>
-            <span class="row-text"><span class="row-title">${esc(c.title)}</span>
+            <span class="row-text"><span class="row-title">${esc(typeset(c.title))}</span>
             ${c.type === "master"
               ? `<span class="cand-line">${esc([c.year, "Any pressing: uses the original LP"].filter(Boolean).join(" · "))}</span>`
               : `<span class="cand-line">${esc([c.year, c.country, [c.label, c.catno].filter(Boolean).join(" ")].filter(Boolean).join(" · "))}</span>
                  ${c.format ? `<span class="cand-format">${esc(c.format)}</span>` : ""}`}</span>
             <span class="use">Use this</span>
           </button></li>`).join("")}</ul>`
-      : `<p class="note">${f.anyFormat ? "No results." : "No vinyl pressings found."} Try different words, or paste a link to the album's Discogs page.</p>`
+      : `<p class="note">${f.anyFormat ? "No results." : "No vinyl pressings found."} Try different words, or paste a link to the album’s Discogs page.</p>`
     : "";
   const formatSwitch = f.candidates && !f.busy
     ? `<p class="hint">${f.anyFormat ? "Showing every format." : "Showing vinyl only."} <button class="linkish" id="fix-any">${f.anyFormat ? "Vinyl only" : "Include CDs and other formats"}</button></p>`
@@ -1246,7 +1246,7 @@ async function bandcampApi(url) {
   if (!/json/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("bandcamp"));
   const body = await res.json().catch(() => ({}));
   if (res.status === 401) throw new Error("Your session expired. Sign in again.");
-  if (!res.ok) throw new Error(body.error || `Couldn't read that page (${res.status})`);
+  if (!res.ok) throw new Error(body.error || `Couldn’t read that page (${res.status})`);
   return body;
 }
 
@@ -1270,7 +1270,7 @@ async function applyRef(a, ref) {
   renderOverlay();
   try {
     const r = await api({ op: "fetch", ref, artist: a.artist, exact: "1" });
-    if (!r.release) throw new Error("That Discogs page couldn't be loaded. Check the link.");
+    if (!r.release) throw new Error("That Discogs page couldn’t be loaded. Check the link.");
     state.fix = null;
     await updateAlbum(a.id, releasePatch(a, r.release, "matched"));
     const now = byId(a.id);
@@ -1327,7 +1327,7 @@ function wireCover(panel, a) {
   }));
   panel.querySelector("#cover-own")?.addEventListener("click", () => setCover({ error: "" }));
   panel.querySelector("#cover-done")?.addEventListener("click", () => { state.cover = null; renderOverlay(); });
-  // Hide options whose image doesn't exist (Cover Art Archive doesn't have every album).
+  // Hide options whose image doesn’t exist (Cover Art Archive doesn’t have every album).
   panel.querySelectorAll(".cover-opt img").forEach((img) => img.addEventListener("error", () => img.closest(".cover-opt")?.remove()));
   panel.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", async () => {
     const im = state.cover.images[Number(b.dataset.pick)];
@@ -1351,7 +1351,7 @@ function wireCover(panel, a) {
       const token = await state.store.token();
       const res = await fetch(`/api/image?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!/json|image/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("image"));
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't download that image.");
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn’t download that image.");
       await saveOwnImage(a, await res.blob(), setCover);
     } catch (err) { setCover({ busy: "", error: err.message }); }
   });
@@ -1366,7 +1366,7 @@ async function saveOwnImage(a, blob, setCover) {
     await updateAlbum(a.id, { ...urls, cover_locked: true });
     toast("Cover updated");
   } catch (e) {
-    setCover({ busy: "", error: /decode|load/i.test(e.message) ? "That file isn't an image this browser can read. Try a JPEG or PNG." : e.message });
+    setCover({ busy: "", error: /decode|load/i.test(e.message) ? "That file isn’t an image this browser can read. Try a JPEG or PNG." : e.message });
   }
 }
 
@@ -1386,9 +1386,9 @@ function resizeImage(blob, max, square) {
       const ctx = cv.getContext("2d");
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
-      cv.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't load that image"))), "image/jpeg", 0.86);
+      cv.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn’t load that image"))), "image/jpeg", 0.86);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't load that image")); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn’t load that image")); };
     img.src = url;
   });
 }
@@ -1455,7 +1455,7 @@ function renderAdd(prefill) {
         <summary>More details</summary>
         <label><span>Catalogue no.<span class="hint">helps find the exact pressing</span></span><input name="catno" placeholder="BLP 4003"></label>
         <label><span>Crate<span class="hint">optional</span></span><input name="crate" list="add-crate-names" value="${esc(state.crate)}" placeholder="Japanese" autocomplete="off" maxlength="60"><datalist id="add-crate-names">${state.index.crates.map((c) => `<option value="${esc(c.name)}">`).join("")}</datalist></label>
-        <label><span>Bandcamp link<span class="hint">if it isn't on Discogs</span></span><input name="bandcamp" type="url" inputmode="url" placeholder="https://artist.bandcamp.com/album/…"></label>
+        <label><span>Bandcamp link<span class="hint">if it isn’t on Discogs</span></span><input name="bandcamp" type="url" inputmode="url" placeholder="https://artist.bandcamp.com/album/…"></label>
         <label><span>Note<span class="hint">optional</span></span><input name="notes" placeholder="Heard it at the café, the blue pressing…"></label>
       </details>
       <button class="btn primary big" type="submit" id="add-submit">${label(toCollection ? "owned" : "want")}</button>
@@ -1476,7 +1476,7 @@ function renderAdd(prefill) {
     if (crate) row.crates = [crate];
     if (bandcamp && !/^https?:\/\//i.test(bandcamp)) { toast("Paste the full Bandcamp link, starting with https://"); return; }
     const dupe = state.albums.find((a) => fold(a.artist) === fold(row.artist) && fold(a.title) === fold(row.title));
-    if (dupe && !confirm(dupe.status === "want" ? "That's already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
+    if (dupe && !confirm(dupe.status === "want" ? "That’s already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
     $("#add-submit").disabled = true;
     try {
       let saved;
@@ -1497,7 +1497,7 @@ function renderAdd(prefill) {
       if (state.store.canEnrich) {
         (bandcamp ? lookUpBandcamp(saved, bandcamp) : enrichOne(saved)).then(renderAll).catch(() => {
           state.lookingUp.delete(saved.id); renderAll();
-          toast("Couldn't look up details right now. Try “Find on Discogs” later.");
+          toast("Couldn’t look up details right now. Try “Find on Discogs” later.");
         });
       }
     } catch {
@@ -1506,7 +1506,7 @@ function renderAdd(prefill) {
       outbox.push(pending);
       setAlbums([...state.albums, pending]);
       closeOverlay(); renderResults();
-      toast("Saved on this phone. It'll sync next time you're online.");
+      toast("Saved on this phone. It’ll sync next time you’re online.");
     }
   });
 }
@@ -1528,7 +1528,7 @@ function renderTools() {
         <div class="sec-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ""}</div>
         ${body}
       </section>`;
-  // One action per row: what it's about on the left, a same-width button on the right.
+  // One action per row: what it’s about on the left, a same-width button on the right.
   const action = (text, hint, button) => `<div class="card-row">
           <div class="card-text"><p>${text}</p>${hint ? `<p class="hint">${hint}</p>` : ""}</div>
           ${button}
@@ -1542,8 +1542,8 @@ function renderTools() {
     </div>
     <div class="tools">
       <p class="tools-sub">${plural(owned, "record")}${wanted ? ` · ${wanted} wanted` : ""}${state.index.crates.length ? ` · ${plural(state.index.crates.length, "crate")}` : ""}</p>
-      ${mode === "demo" ? `<p class="note">You're looking at demo mode with a small sample collection. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your own records.</p>` : ""}
-      ${mode === "offline" ? `<p class="note">You're offline, showing the copy saved on this device. Want-list adds will sync when you reconnect.</p>` : ""}
+      ${mode === "demo" ? `<p class="note">You’re looking at demo mode with a small sample collection. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your own records.</p>` : ""}
+      ${mode === "offline" ? `<p class="note">You’re offline, showing the copy saved on this device. Want-list adds will sync when you reconnect.</p>` : ""}
 
       ${sec("Album details", "Covers, tracks, personnel", `<div class="card">
         <dl class="stat-strip">
@@ -1561,7 +1561,7 @@ function renderTools() {
         </div>`
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
-          ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn't" : "weren't"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
+          ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}
           ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Update to refresh track listing with compositions and composers.", `<button class="btn" id="works">Update</button>`) : ""}`
         : ""}
@@ -1613,9 +1613,9 @@ function renderTools() {
   panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
 }
 
-// A reply that isn't from our function (Netlify's "page not found") means the server file isn't deployed.
+// A reply that isn’t from our function (Netlify’s "page not found") means the server file isn’t deployed.
 function missingFunction(name) {
-  return `The ${name} lookup isn't on your site yet. Check that netlify/functions/${name}.mjs is in your GitHub repo, then let Netlify redeploy.`;
+  return `The ${name} lookup isn’t on your site yet. Check that netlify/functions/${name}.mjs is in your GitHub repo, then let Netlify redeploy.`;
 }
 
 async function api(params) {
@@ -1642,7 +1642,8 @@ function releasePatch(a, rel, status) {
     if (rel.discogs_artist) patch.artist = rel.discogs_artist;
     if (rel.discogs_title) patch.title = rel.discogs_title;
   }
-  if (!a.catno && rel.label_catno) patch.catno = rel.label_catno;
+  // The catalogue number follows the pressing, like the label and year (a possible match leaves it alone).
+  if (rel.label_catno && (status !== "review" || !a.catno)) patch.catno = rel.label_catno;
   if (rel.credits_text && !a.notes) patch.notes = `Credits from Bandcamp:\n${rel.credits_text}`;
   if (!(a.genres || []).length && (rel.discogs_genres || []).length) patch.genres = rel.discogs_genres;
   return patch;
@@ -1653,7 +1654,7 @@ async function enrichOne(a) {
   try { return await enrichOnce(a); } finally { state.lookingUp.delete(a.id); }
 }
 
-// Calls the lookup, waiting politely if Discogs says we're going too fast.
+// Calls the lookup, waiting politely if Discogs says we’re going too fast.
 async function politeApi(params) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await api(params);
@@ -1817,13 +1818,13 @@ function renderLogin(error = "", mode) {
   $("#login-guest")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     try { await state.store.signIn(state.settings.guestEmail, new FormData(e.target).get("passphrase")); boot(); }
-    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That passphrase didn't work. Check it and try again." : err.message, "guest"); }
+    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That passphrase didn’t work. Check it and try again." : err.message, "guest"); }
   });
   $("#login")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     try { await state.store.signIn(f.get("email"), f.get("password")); boot(); }
-    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That email and password don't match. Try again." : err.message, "owner"); }
+    catch (err) { renderLogin(/invalid/i.test(err.message) ? "That email and password don’t match. Try again." : err.message, "owner"); }
   });
   setTimeout(() => $("#app input")?.focus(), 50);
 }
@@ -1855,7 +1856,7 @@ function startViewOnly() {
   markViewOnly(document.body);
   new MutationObserver((changes) => { for (const c of changes) for (const n of c.addedNodes) markViewOnly(n); })
     .observe(document.body, { childList: true, subtree: true });
-  // Capture phase: runs before any of the app's own handlers.
+  // Capture phase: runs before any of the app’s own handlers.
   for (const type of ["click", "change"]) {
     document.addEventListener(type, (e) => {
       const el = e.target.closest?.("[aria-disabled='true']");
@@ -1896,8 +1897,8 @@ async function boot() {
     if (synced.length) toast(`Synced ${plural(synced.length, "want-list add")}`);
     if (state.store.canEnrich) for (const s of synced) enrichOne(s).then(renderAll).catch(() => {});
   } catch (e) {
-    if (!cached) $("#results").innerHTML = emptyState(`Couldn't load your records: ${esc(e.message)}`);
-    else toast("Showing the copy saved on this device. Couldn't reach the server.");
+    if (!cached) $("#results").innerHTML = emptyState(`Couldn’t load your records: ${esc(e.message)}`);
+    else toast("Showing the copy saved on this device. Couldn’t reach the server.");
   }
   renderAll();
 }

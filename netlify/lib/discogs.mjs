@@ -156,7 +156,7 @@ const SIDE_HEADING = /^(side|disc|disk|cd|lp|record|vinyl|platte|seite|face)\b[\
 export function flattenTracks(tl) {
   const out = [];
   let heading = null, headingId = 0, pieces = 0;
-  // A track's own "Composed By" / "Written-By" credit.
+  // A track’s own "Composed By" / "Written-By" credit.
   const composedBy = (t) => {
     const c = (t.extraartists || []).filter((e) => COMPOSER_ROLE.test(e.role || ""));
     return [...new Set(c.map((e) => cleanName(e.name)))].join(", ");
@@ -183,7 +183,7 @@ export function flattenTracks(tl) {
         title: sub.title, dur: sub.duration, work, wi,
         ...(composedBy(sub) && composedBy(sub) !== wby ? { by: composedBy(sub) } : {}),
         ...(trackNote(sub) ? { note: trackNote(sub) } : {}),
-        // The piece's own running time and composer, kept on its first movement.
+        // The piece’s own running time and composer, kept on its first movement.
         ...(i === 0 && t.duration ? { wdur: t.duration } : {}),
         ...(i === 0 && wby ? { wby } : {}),
         _extra: [...(t.extraartists || []), ...(sub.extraartists || [])],
@@ -256,7 +256,7 @@ export function isVinylRelease(rel) {
   return (rel.formats || []).some((f) => f.name === "Vinyl");
 }
 
-// From a master's vinyl versions, the best stand-in for "the LP": a full-length LP,
+// From a master’s vinyl versions, the best stand-in for "the LP": a full-length LP,
 // officially released, earliest first.
 export function pickVinylVersion(versions = []) {
   const vinyl = versions.filter((v) => {
@@ -285,7 +285,7 @@ async function vinylFromMaster(client, masterId, albumArtist) {
 }
 
 // type "master": always resolves to a vinyl pressing when one exists.
-// type "release": that exact release, unless preferVinyl is on and it isn't vinyl,
+// type "release": that exact release, unless preferVinyl is on and it isn’t vinyl,
 // in which case the vinyl LP of the same album is used instead.
 export async function fetchByRef(client, type, id, albumArtist, { preferVinyl = true } = {}) {
   if (type === "master") return vinylFromMaster(client, id, albumArtist);
@@ -371,7 +371,7 @@ export async function marketplace(client, releaseId, { withMaster = false, withF
   };
 }
 
-// ---------- importing someone's Discogs collection or want list ----------
+// ---------- importing someone’s Discogs collection or want list ----------
 const SPACER = /spacer\.gif/;
 
 // One "basic_information" entry from Discogs → a record row for the app. The pressing is exact,
@@ -399,7 +399,7 @@ export function rowFromDiscogs(bi, status) {
 
 export class DiscogsUserError extends Error {}
 
-// One page (up to 100 records) of a user's collection ("collection") or want list ("wants").
+// One page (up to 100 records) of a user’s collection ("collection") or want list ("wants").
 export async function collectionPage(client, username, list = "collection", page = 1) {
   const user = encodeURIComponent(String(username || "").trim());
   if (!user) throw new DiscogsUserError("Enter a Discogs username.");
@@ -413,7 +413,7 @@ export async function collectionPage(client, username, list = "collection", page
     }
     throw e;
   }
-  if (!r) throw new DiscogsUserError(`There's no Discogs user called “${decodeURIComponent(user)}”. Check the spelling.`);
+  if (!r) throw new DiscogsUserError(`There’s no Discogs user called “${decodeURIComponent(user)}”. Check the spelling.`);
   const items = (list === "wants" ? r.wants : r.releases) || [];
   const status = list === "wants" ? "want" : "owned";
   return {
