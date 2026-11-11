@@ -8,8 +8,6 @@ const OWNER_KEY = "crate.owner.v1";
 const FULL_KEY = "crate.fullLoad.v1";          // when the whole collection was last downloaded
 const FULL_EVERY = 24 * 3600 * 1000;           // otherwise only changes are downloaded
 
-// Whether this device was last known to be the owner (used to draw the saved copy before checking).
-export const lastOwner = () => readLS(OWNER_KEY, true);
 const DEFAULTS = { siteName: "Garage Crates", guestEmail: "" };
 
 function readLS(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }

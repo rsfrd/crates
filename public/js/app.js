@@ -1,4 +1,4 @@
-import { createStore, cache, outbox, lastOwner } from "./store.js";
+import { createStore, cache, outbox } from "./store.js";
 import { parseCSV, FIELDS, looksLikeHeader, guessColumns, recordsFromRows, withoutDuplicates } from "./importer.js";
 import { collectionCSV, collectionBackup, readBackup } from "./exporter.js";
 import { buildIndex, search, personKey, roleLabel, creditKind, creditsFor, fold, fileAs, knownPeople, typeset, typesetAlbum } from "./search.js";
@@ -910,6 +910,9 @@ function openPanel(html, kind) {
   const panel = ov.querySelector(".panel");
   panel.dataset.view = location.hash;
   panel.scrollTop = scroll;
+  // iOS Safari can drop a scroll position set before the new content is laid out (or mid-fling):
+  // set it again on the next frame, so a page that refreshes (price, tracks) doesn't jump to the top.
+  if (sameView && scroll) requestAnimationFrame(() => { if (Math.abs(panel.scrollTop - scroll) > 1) panel.scrollTop = scroll; });
   document.body.classList.add("locked");
   if (wasHidden) { lastFocus = document.activeElement; listScroll = window.scrollY; }
   if (!sameView) panel.focus({ preventScroll: true });
@@ -1612,7 +1615,7 @@ function renderTools() {
   panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
   panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
   panel.querySelectorAll("[data-crate-delete]").forEach((b) => b.addEventListener("click", () => deleteCrate(b.dataset.crateDelete)));
-  panel.querySelector("#signout")?.addEventListener("click", async () => { pref.set(SIGNED_IN, ""); await state.store.signOut(); location.hash = ""; location.reload(); });
+  panel.querySelector("#signout")?.addEventListener("click", async () => { await state.store.signOut(); location.hash = ""; location.reload(); });
 }
 
 // A reply that isn’t from our function (Netlify’s "page not found") means the server file isn’t deployed.
@@ -1878,46 +1881,23 @@ window.addEventListener("hashchange", () => {
   renderOverlay();
 });
 
-const SIGNED_IN = "signedIn1";   // this device was signed in last time
-
 async function boot() {
   // Leftovers from the one-time catalogue check, no longer used.
-  try { localStorage.removeItem("crate.catnoChecked1"); localStorage.removeItem("crate.catnoPassDone1"); } catch {}
+  try { for (const k of ["crate.catnoChecked1", "crate.catnoPassDone1", "crate.signedIn1"]) localStorage.removeItem(k); } catch {}
   const cached = await cache.get();
-  // Signed in last time with a copy on this device: show it straight away, before any network calls.
-  let early = false;
-  if (cached && !new URLSearchParams(location.search).has("demo") && pref.get(SIGNED_IN, "") === "1") {
-    state.owner = lastOwner();
-    document.title = state.settings.siteName;
-    renderShell();
-    if (!state.owner) startViewOnly();
-    setAlbums(cached);
-    renderAll();
-    early = true;
-  }
-
   state.store = state.store || (await createStore());
-  const before = state.settings.siteName;
   state.settings = await state.store.settings().catch(() => state.settings);
   try { localStorage.setItem("crate.settings.v1", JSON.stringify(state.settings)); } catch {}
   document.title = state.settings.siteName;
   const session = await state.store.session();
-  if (!session) { pref.set(SIGNED_IN, ""); return renderLogin(); }
-  if (state.store.mode === "live") pref.set(SIGNED_IN, "1");
+  if (!session) return renderLogin();
 
-  const wasOwner = state.owner;
   state.owner = await state.store.isOwner();
   if (!state.owner) state.store.canEnrich = false;   // no lookups or automatic updates for guests
 
-  if (!early) {
-    renderShell();
-    if (!state.owner) startViewOnly();
-    if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
-  } else if (wasOwner !== state.owner) {
-    return location.reload();   // a different account than last time: start over with the right controls
-  } else if (before !== state.settings.siteName) {
-    $(".brand h1").textContent = state.settings.siteName;
-  }
+  renderShell();
+  if (!state.owner) startViewOnly();
+  if (state.store.mode === "live" && cached) { setAlbums(cached); renderAll(); }
   try {
     const synced = state.owner ? await outbox.flush(state.store) : [];
     const rows = await state.store.load(state.store.mode === "live" ? cached : null);
