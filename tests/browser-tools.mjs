@@ -180,5 +180,42 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   check(await g.getAttribute("#backup", "aria-disabled") === null && await g.getAttribute('a[href="#/import/backup"]', "aria-disabled") === "true", "guests can download a backup but not restore one");
 }
 
+// one-time catalogue number pass
+{
+  const albums = [
+    { id: "c1", artist: "Art Blakey", title: "Moanin’", status: "owned", enrich_status: "matched", discogs_id: 101, catno: "BLP 4003" },
+    { id: "c2", artist: "Horace Silver", title: "Song For My Father", status: "owned", enrich_status: "matched", discogs_id: 102, catno: "OLD-SHEET-1" },
+    { id: "c3", artist: "Lee Morgan", title: "The Sidewinder", status: "want", enrich_status: "matched", discogs_id: 103, catno: null },
+    { id: "c4", artist: "Hank Mobley", title: "Soul Station", status: "owned", enrich_status: "review", discogs_id: 104, catno: "KEEP" },
+    { id: "c5", artist: "Someone", title: "Not On Discogs", status: "owned", enrich_status: "manual", discogs_id: null, catno: "MINE" },
+  ].map((a) => ({ genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: "2026-01-01", ...a }));
+  const asked = [];
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.route(/fonts\.|jsdelivr/, (r) => r.abort());
+  await ctx.route("**/demo.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(albums) }));
+  await ctx.route("**/api/discogs?**", (r) => {
+    const u = new URL(r.request().url());
+    if (u.searchParams.get("op") !== "catno") return r.fulfill({ status: 404, body: "{}" });
+    const id = u.searchParams.get("id"); asked.push(id);
+    const catno = { 101: "BLP 4003", 102: "BLP 4185", 103: "BST 84157" }[id] || null;
+    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pressing: { catno, label: "Blue Note" }, rateRemaining: 50 }) });
+  });
+  const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
+  await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector("#catno");
+  check((await q.textContent(".card-row:has(#catno)")).includes("3 catalogue numbers to check"), "offers to check the 3 matched records (not the possible match or the one off Discogs)");
+  await q.screenshot({ path: path.join(OUT, "t08-catno.png") });
+  await q.click("#catno");
+  check(await q.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Updated 2 catalogue numbers"), null, { timeout: 15000 }).then(() => true, () => false), "updates the 2 that differ and says so");
+  check(asked.sort().join(",") === "101,102,103", "asked Discogs only about the matched records: " + asked.join(","));
+  check(!(await q.locator("#catno").count()), "the row goes away once every record is checked");
+  await q.goto("http://localhost:5189/?demo&demoapi#/album/c2"); await q.waitForSelector(".album-title");
+  check((await q.textContent(".album-meta")).includes("BLP 4185"), "the album page shows the new number");
+  await q.goto("http://localhost:5189/?demo&demoapi#/album/c4"); await q.waitForSelector(".album-title");
+  check((await q.textContent(".album-meta")).includes("KEEP"), "a possible match keeps its number");
+  await q.reload(); await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector(".sec");
+  check(!(await q.locator("#catno").count()), "and it stays gone after a reload");
+  await ctx.close();
+}
+
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); server.close();

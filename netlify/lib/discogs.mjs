@@ -371,6 +371,17 @@ export async function marketplace(client, releaseId, { withMaster = false, withF
   };
 }
 
+// Just a pressing's catalogue number and label: one light lookup, for checking records in bulk.
+export async function releaseCatno(client, releaseId) {
+  const rel = await client.get(`/releases/${releaseId}`);
+  if (!rel) return null;
+  const label = (rel.labels || [])[0];
+  return {
+    catno: label && label.catno && label.catno.toLowerCase() !== "none" ? label.catno : null,
+    label: label ? cleanName(label.name) : null,
+  };
+}
+
 // ---------- importing someone’s Discogs collection or want list ----------
 const SPACER = /spacer\.gif/;
 

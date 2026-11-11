@@ -367,3 +367,17 @@ test("marketplace: says whether the pressing is vinyl when asked", async () => {
   const lp = await marketplace(client, 2, { withFormat: true });
   assert.equal(lp.vinyl, true); assert.equal(lp.format, "Vinyl, LP, Red");
 });
+
+import { releaseCatno } from "../netlify/lib/discogs.mjs";
+
+test("catalogue number lookup: just the pressing's number and label", async () => {
+  const fake = async (url) => {
+    const u = new URL(url);
+    if (u.pathname === "/releases/5") return new Response(JSON.stringify({ id: 5, labels: [{ name: "Pablo (2)", catno: "2625 705" }, { name: "Other", catno: "X" }] }), { status: 200 });
+    if (u.pathname === "/releases/6") return new Response(JSON.stringify({ id: 6, labels: [{ name: "Self-released", catno: "none" }] }), { status: 200 });
+    return new Response("{}", { status: 404 });
+  };
+  const client = makeClient("t", fake);
+  assert.deepEqual(await releaseCatno(client, 5), { catno: "2625 705", label: "Pablo" });
+  assert.deepEqual(await releaseCatno(client, 6), { catno: null, label: "Self-released" });
+});
