@@ -452,3 +452,9 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .cands button { align-items: flex-start; padding: 12px 0; }
 .cands .thumb.mini { width: 56px; height: 56px; margin-top: 2px; }
 .cands .use { padding-top: 2px; }
+/* List rows: the cover sits at the top of the row, so long rows (song matches, personnel) read from the
+   top like the Fix match list. Short rows still look centred, because the row is then as tall as the
+   cover and the text centres beside it. Tags and the select mark stay level with the cover. */
+.row > .thumb, .row > .stack { align-self: flex-start; }
+.row > .tags { align-self: flex-start; min-height: 56px; justify-content: center; }
+.selecting .row > .pick { align-self: flex-start; margin-top: 15px; }

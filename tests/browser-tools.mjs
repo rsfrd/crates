@@ -217,5 +217,33 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   await ctx.close();
 }
 
+// rows: covers at the top of tall rows, short rows still centred
+{
+  const t = (pos, title) => ({ pos, title, dur: "3:00" });
+  const albums = [
+    { id: "s1", artist: "Ella Fitzgerald", title: "Sings The Cole Porter Song Book", tracks: [t("A1", "Love For Sale"), t("A2", "Just One Of Those Things"), t("B1", "I Love Paris"), t("B2", "From This Moment On"), t("C1", "So In Love"), t("C2", "Love Is Here To Stay")] },
+    { id: "s2", artist: "John Coltrane", title: "Ballads", tracks: [t("A1", "Say It (Over And Over Again)"), t("B1", "Too Young To Go Steady")] },
+    { id: "s3", artist: "Lee Morgan", title: "Love Story", status: "want", tracks: [] },
+  ].map((a) => ({ status: "owned", genres: ["Jazz"], crates: [], credits: [], personnel_hint: [], for_sale: false, created_at: "2026-01-01", enrich_status: "matched", ...a }));
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.route(/fonts\.|jsdelivr/, (r) => r.abort());
+  await ctx.route("**/demo.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(albums) }));
+  const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
+  await q.goto("http://localhost:5189/?demo"); await q.waitForSelector(".row");
+  await q.fill("#q", "love"); await q.waitForTimeout(400);
+  const rows = await q.$$eval("#results a.row", (els) => els.map((r) => {
+    const box = r.getBoundingClientRect(), th = r.querySelector(".thumb").getBoundingClientRect(), tx = r.querySelector(".row-text").getBoundingClientRect();
+    const tg = r.querySelector(".tags")?.getBoundingClientRect();
+    return { title: r.querySelector(".row-title").textContent, rowTop: box.top, thumbTop: th.top, thumbMid: th.top + th.height / 2, textTop: tx.top, textMid: tx.top + tx.height / 2, textH: tx.height, thumbH: th.height, tagMid: tg ? tg.top + tg.height / 2 : null };
+  }));
+  const tall = rows.find((r) => r.textH > r.thumbH + 10), short = rows.find((r) => r.textH < r.thumbH);
+  check(tall && Math.abs(tall.thumbTop - tall.textTop) < 2, "a tall row (song matches) has its cover level with the top of the text: " + JSON.stringify(tall && { thumbTop: tall.thumbTop, textTop: tall.textTop }));
+  check(short && Math.abs(short.thumbMid - short.textMid) < 2, "a short row still has its text centred beside the cover");
+  const want = rows.find((r) => r.tagMid != null);
+  check(want && Math.abs(want.tagMid - want.thumbMid) < 2, "tags stay level with the cover");
+  await q.screenshot({ path: path.join(OUT, "t09-rows.png") });
+  await ctx.close();
+}
+
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); server.close();
