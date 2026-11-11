@@ -1565,7 +1565,6 @@ function renderTools() {
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}
-          ${catnoQueue().length ? action(`${plural(catnoQueue().length, "catalogue number")} to check`, `A one-time check against each record’s Discogs pressing. About ${Math.max(1, Math.round(catnoQueue().length / 50))} min; you can stop and pick up later.`, `<button class="btn" id="catno">Check</button>`) : ""}
           ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Update to refresh track listing with compositions and composers.", `<button class="btn" id="works">Update</button>`) : ""}`
         : ""}
       </div>`)}
@@ -1606,7 +1605,6 @@ function renderTools() {
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
   panel.querySelector("#works")?.addEventListener("click", () => runQueue(state.albums.filter(needsWorks), refetchSamePressing, "Finished updating classical track lists"));
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
-  panel.querySelector("#catno")?.addEventListener("click", () => { catnoChanged = 0; runQueue(catnoQueue(), refreshCatno, catnoFinished); });
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
   panel.querySelector("#backup").addEventListener("click", exportBackup);
@@ -1720,33 +1718,6 @@ async function refetchSamePressing(a) {
   }
   await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));
   return r.rateRemaining;
-}
-
-// One-time pass: catalogue numbers used to be kept from the original spreadsheet even after a record
-// was matched or fixed to another pressing. Checks each matched record against its pressing on Discogs.
-const CATNO_CHECKED = "catnoChecked1", CATNO_DONE = "catnoPassDone1";
-const catnoChecked = () => new Set(JSON.parse(pref.get(CATNO_CHECKED, "[]")));
-function catnoQueue() {
-  if (pref.get(CATNO_DONE, "") === "1") return [];
-  const checked = catnoChecked();
-  return state.albums.filter((a) => !a._pending && a.discogs_id && (a.enrich_status === "matched" || a.enrich_status === "manual") && !checked.has(a.id));
-}
-let catnoChanged = 0;
-async function refreshCatno(a) {
-  let r;
-  try { r = await politeApi({ op: "catno", id: a.discogs_id }); }
-  catch (err) { if (/session expired/i.test(err.message)) throw err; return null; }   // try this one again next time
-  if (!r || !r.pressing) return r ? r.rateRemaining : null;
-  if (r.pressing.catno && r.pressing.catno !== a.catno) { await updateAlbum(a.id, { catno: r.pressing.catno }); catnoChanged++; }
-  const done = catnoChecked(); done.add(a.id); pref.set(CATNO_CHECKED, JSON.stringify([...done]));
-  return r.rateRemaining;
-}
-function catnoFinished() {
-  const left = catnoQueue().length;
-  if (!left) pref.set(CATNO_DONE, "1");
-  const msg = catnoChanged ? `Updated ${plural(catnoChanged, "catalogue number")}` : "All catalogue numbers already matched Discogs";
-  catnoChanged = 0;
-  return left ? `${msg}. ${plural(left, "record")} couldn’t be checked; try again later.` : msg + ".";
 }
 
 async function refetchVinyl(a) {
@@ -1868,7 +1839,7 @@ const EDIT_CONTROLS = [
   "#got-it", ".switch-row", "#for-sale", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
-  "#run", "#retry", "#vinyl", "#works", "#catno", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+  "#run", "#retry", "#vinyl", "#works", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 
 function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }
