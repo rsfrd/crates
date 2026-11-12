@@ -562,10 +562,10 @@ const SETUP_PRICES = "Prices aren’t set up yet. Run supabase/updates/005_price
 const PRICE_MAX_AGE = 12 * 3600 * 1000;
 
 // The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
-// "Released 1959 · this pressing 1972", or just the year when they're the same or one is unknown.
+// "Released 1959 · This pressing 1972", or just the year when they're the same or one is unknown.
 function candYears(c) {
   const o = c.original_year;
-  return o && c.year && String(o) !== String(c.year) ? [`Released ${o}`, `this pressing ${c.year}`] : [o || c.year];
+  return o && c.year && String(o) !== String(c.year) ? [`Released ${o}`, `This pressing ${c.year}`] : [o || c.year];
 }
 
 // The database has the original-year column (supabase/updates/008).

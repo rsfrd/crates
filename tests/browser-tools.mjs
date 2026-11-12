@@ -259,7 +259,7 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   await q.goto("http://localhost:5189/?demo&demoapi#/album/o1"); await q.waitForSelector("#fix-open");
   await q.click("#fix-open"); await q.waitForSelector("[data-ref]");
   const cands = await q.textContent(".cands");
-  check(cands.includes("Released 1959 · Any pressing") && cands.includes("Released 1959 · this pressing 1972 · US · Columbia KCS 8163") && cands.includes("1959 · US · Columbia CS 8163") && !cands.includes("Originally"), "Fix match: Released and this pressing");
+  check(cands.includes("Released 1959 · Any pressing") && cands.includes("Released 1959 · This pressing 1972 · US · Columbia KCS 8163") && cands.includes("1959 · US · Columbia CS 8163") && !cands.includes("Originally"), "Fix match: Released and this pressing");
 
   await q.goto("http://localhost:5189/?demo&demoapi#/album/o4"); await q.waitForSelector("#edit-open");
   await q.click("#edit-open"); await q.waitForSelector('input[name="original_year"]');
