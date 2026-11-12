@@ -1546,7 +1546,6 @@ function renderTools() {
   const by = (s) => state.albums.filter((a) => a._pending ? false : a.enrich_status === s);
   const pending = by("pending"), review = by("review"), missing = by("not_found"), errors = by("error"), done = by("matched"), kept = by("manual");
   const noSides = state.albums.filter(fromCDListing);
-  const flatClassical = state.albums.filter(needsWorks);
   const e = state.enrich;
   const mode = state.store.mode;
   const pct = e.total ? Math.round((e.done / e.total) * 100) : 0;
@@ -1592,8 +1591,7 @@ function renderTools() {
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
-          ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}
-          ${flatClassical.length ? action(plural(flatClassical.length, "classical record"), "Update to refresh track listing with compositions and composers.", `<button class="btn" id="works">Update</button>`) : ""}`
+          ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}`
         : ""}
       </div>`)}
 
@@ -1631,7 +1629,6 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
-  panel.querySelector("#works")?.addEventListener("click", () => runQueue(state.albums.filter(needsWorks), refetchSamePressing, "Finished updating classical track lists"));
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
@@ -1724,28 +1721,6 @@ function fromCDListing(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
   return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
-}
-
-// Classical records fetched before movements were grouped under their pieces.
-const WORKS_CHECKED = "worksChecked4";  // v4: composers on single-track pieces
-const CLASSICAL = /classical|opera|baroque|chamber|orchestral|choral|symphon|concert|romantic|renaissance|contemporary classical/i;
-function needsWorks(a) {
-  if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
-  if (!(a.genres || []).some((g) => CLASSICAL.test(g))) return false;
-  if (a.tracks.some((t) => t.by || t.wby)) return false;   // already has pieces and composers
-  return !new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))).has(a.id);
-}
-
-async function refetchSamePressing(a) {
-  const r = await politeApi({ op: "fetch", ref: `release/${a.discogs_id}`, artist: a.artist, exact: "1" });
-  if (!r || !r.release) return r ? r.rateRemaining : 0;
-  // Only count it as done when the server that answered knows about pieces;
-  // otherwise (an older deploy still serving) it stays in the list to try again.
-  if ((r.release.parser || 0) >= 4) {
-    const done = new Set(JSON.parse(pref.get(WORKS_CHECKED, "[]"))); done.add(a.id); pref.set(WORKS_CHECKED, JSON.stringify([...done]));
-  }
-  await updateAlbum(a.id, releasePatch(a, r.release, a.enrich_status === "review" ? "review" : "matched"));
-  return r.rateRemaining;
 }
 
 async function refetchVinyl(a) {
@@ -1868,7 +1843,7 @@ const EDIT_CONTROLS = [
   "#got-it", ".switch-row", "#for-sale", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
-  "#run", "#retry", "#vinyl", "#works", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+  "#run", "#retry", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 
 function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }
@@ -1908,7 +1883,7 @@ window.addEventListener("hashchange", () => {
 
 async function boot() {
   // Leftovers from the one-time catalogue check, no longer used.
-  try { for (const k of ["crate.catnoChecked1", "crate.catnoPassDone1", "crate.signedIn1"]) localStorage.removeItem(k); } catch {}
+  try { for (const k of ["crate.catnoChecked1", "crate.catnoPassDone1", "crate.signedIn1", "crate.worksChecked4"]) localStorage.removeItem(k); } catch {}
   const cached = await cache.get();
   state.store = state.store || (await createStore());
   state.settings = await state.store.settings().catch(() => state.settings);

@@ -251,19 +251,14 @@ check((await p.textContent(".tracks")).includes("A1"), "track list now has sides
 check((await p.getAttribute(".thumb.large img", "src")) === "/t/e.png", "a cover you chose survives the switch");
 await p.goto(BASE); await p.waitForSelector(".row");
 
-// --- classical records: re-pull the same pressing so movements sit under their pieces
+// --- classical records: refreshing a flat classical record puts movements under their pieces
 await p.goto(BASE + "#/tools"); await p.waitForSelector(".stat-strip");
-const toolsText = await p.textContent(".tools");
-check(toolsText.includes("1 classical record") && toolsText.includes("Update to refresh track listing with compositions and composers."), "Collection screen finds the flat classical record" + (toolsText.includes("classical record") ? "" : " (none listed)"));
-await p.click("#works");
-await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
-check(await p.locator("#works").count() === 1, "an answer from an old deploy doesn’t count as done; button stays");
-await p.waitForTimeout(3200);
-await p.evaluate(() => { document.querySelector("#toast").textContent = ""; });
-await p.click("#works");
-await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Finished updating classical"), null, { timeout: 8000 });
-check(fetchLog.includes("release/77 exact"), "classical update keeps the same pressing (exact)");
-check(!(await p.locator("#works").count()), "classical button goes away once updated");
+check(!(await p.locator("#works").count()) && !(await p.textContent(".tools")).includes("classical record"), "no classical update prompt on the Collection page");
+oldServer = false;
+await p.goto(BASE + "#/album/" + quartets.id); await p.waitForSelector("#refresh");
+await p.click("#refresh");
+await p.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Details refreshed"), null, { timeout: 8000 });
+check(fetchLog.includes("release/77"), "Refresh re-reads the record from Discogs");
 await p.goto(BASE + "#/album/" + quartets.id); await p.waitForSelector(".tracks");
 check(await p.locator(".tracks li.work").count() === 2, "two pieces shown as headers");
 check((await p.textContent(".tracks li.work >> nth=0")).includes(Q1) && (await p.textContent(".tracks li.work >> nth=0")).includes("13:50"), "piece header shows Discogs' time for the piece");
