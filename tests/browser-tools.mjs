@@ -212,8 +212,8 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
 {
   const base = { status: "owned", genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: "2026-01-01", enrich_status: "matched" };
   const albums = [
-    { ...base, id: "o1", artist: "Miles Davis", title: "Kind Of Blue", year: 1972, catno: "KCS 8163", label: "Columbia", discogs_id: 72, master_id: 5460 },
-    { ...base, id: "o2", artist: "Miles Davis", title: "’Round About Midnight", year: 2015, catno: "CL 949", label: "Columbia", discogs_id: 15, master_id: null },
+    { ...base, id: "o1", artist: "Miles Davis", title: "Kind Of Blue", year: 1972, original_year: 1959, catno: "KCS 8163", label: "Columbia", discogs_id: 72, master_id: 5460 },
+    { ...base, id: "o2", artist: "Miles Davis", title: "’Round About Midnight", year: 2015, original_year: 1957, catno: "CL 949", label: "Columbia", discogs_id: 15, master_id: null },
     { ...base, id: "o3", artist: "Miles Davis", title: "Sketches Of Spain", year: 1960, original_year: 1960, catno: "CS 8271", label: "Columbia", discogs_id: 60, master_id: 61 },
     { ...base, id: "o4", artist: "Someone", title: "Private Press", year: 1977, discogs_id: 77, master_id: null },
     { ...base, id: "o5", artist: "Bill Evans", title: "Possible Match", year: 1990, discogs_id: 90, enrich_status: "review" },
@@ -238,13 +238,8 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
     return r.fulfill({ status: 404, body: "{}" });
   });
   const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
-  await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector("#originals");
-  check((await q.textContent(".card-row:has(#originals)")).includes("3 original release years to look up"), "offers to look up the 3 records without one (not the possible match)");
-  await q.click("#originals");
-  check(await q.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Added 2 original release years."), null, { timeout: 15000 }).then(() => true, () => false), "adds the 2 Discogs knows and says so");
-  check(asked.sort().join(",") === "-/15,-/77,5460/72", "uses the album family when known, else the release: " + asked.join(","));
-  check(!(await q.locator("#originals").count()), "the row goes away when every record has been looked up");
-
+  await q.goto("http://localhost:5189/?demo&demoapi#/tools"); await q.waitForSelector(".stat-strip");
+  check(!(await q.locator("#originals").count()), "no original-years lookup row");
   await q.goto("http://localhost:5189/?demo&demoapi"); await q.waitForSelector(".row");
   await q.fill("#q", "miles davis"); await q.waitForTimeout(400);
   const order = await q.$$eval("#results section:last-of-type .row-title", (els) => els.map((e) => e.textContent));
@@ -252,9 +247,9 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   check((await q.textContent("#results")).includes("Miles Davis, 1959") && !(await q.textContent("#results")).includes("Miles Davis, 1972"), "rows show the year the album first came out");
 
   await q.goto("http://localhost:5189/?demo&demoapi#/album/o1"); await q.waitForSelector(".album-title");
-  check((await q.textContent(".album-meta")) === "1959, Columbia, KCS 8163, 1972 pressing", "album page: original year first, pressing year by the catalogue number");
+  check((await q.textContent(".album-meta")) === "1959 • Columbia, KCS 8163, 1972 pressing", "album page: original year, a dot, then the pressing’s details");
   await q.goto("http://localhost:5189/?demo&demoapi#/album/o3"); await q.waitForSelector(".album-title");
-  check((await q.textContent(".album-meta")) === "1960, Columbia, CS 8271", "an original pressing shows its year once");
+  check((await q.textContent(".album-meta")) === "1960 • Columbia, CS 8271", "an original pressing shows its year once");
 
   await q.goto("http://localhost:5189/?demo&demoapi#/album/o1"); await q.waitForSelector("#fix-open");
   await q.click("#fix-open"); await q.waitForSelector("[data-ref]");
@@ -265,7 +260,7 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   await q.click("#edit-open"); await q.waitForSelector('input[name="original_year"]');
   await q.fill('input[name="original_year"]', "1975"); await q.click('#edit-form button.primary');
   await q.waitForSelector(".album-meta");
-  check((await q.textContent(".album-meta")).startsWith("1975") && (await q.textContent(".album-meta")).includes("1977 pressing"), "the edit form saves the first-released year");
+  check((await q.textContent(".album-meta")) === "1975 • 1977 pressing", "the edit form saves the first-released year: " + (await q.textContent(".album-meta")));
   await ctx.close();
 }
 

@@ -1067,7 +1067,9 @@ function renderAlbum(id) {
       <span class="what">${roleSpans(roleLabel(c))} ${trackNote(c)}</span></a></li>`;
   // Original year first; the pressing's own year sits by its catalogue number when it differs.
   const reissue = a.original_year && a.year && a.year !== a.original_year ? `${a.year} pressing` : "";
-  const meta = [firstYear(a), a.label, a.catno, reissue].filter(Boolean).map(esc).join(", ");
+  // "1959 • Columbia, KCS 8163, 1972 pressing": the year it came out, then this pressing's details.
+  const pressing = [a.label, a.catno, reissue].filter(Boolean).map(esc).join(", ");
+  const meta = [firstYear(a) ? esc(firstYear(a)) : "", pressing].filter(Boolean).join(" • ");
   const canEnrich = state.store.canEnrich;
 
   const statusBlock = a.status === "want"
@@ -1611,7 +1613,6 @@ function renderTools() {
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
-          ${originalQueue().length ? action(`${plural(originalQueue().length, "original release year")} to look up`, `A one-time lookup on Discogs, so albums show and file by the year they first came out. About ${Math.max(1, Math.round(originalQueue().length / 50))} min; you can stop and pick up later.`, `<button class="btn" id="originals">Look up</button>`) : ""}
           ${state.store.mode === "live" && !originalReady() ? `<div class="card-row"><p class="hint">To show the year each album first came out, run supabase/updates/008_original_year.sql in Supabase, then reload.</p></div>` : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}`
         : ""}
@@ -1651,7 +1652,6 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
-  panel.querySelector("#originals")?.addEventListener("click", () => { origFound = 0; runQueue(originalQueue(), lookUpOriginal, originalFinished); });
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
@@ -1745,36 +1745,6 @@ function fromCDListing(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
   return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
-}
-
-// One-time: when albums first came out, for records fetched before that was kept. Records new or
-// refreshed from now on get it with their details.
-const ORIG_TRIED = "origTried1";   // looked up, but Discogs has no year for the album family
-const origTried = () => new Set(JSON.parse(pref.get(ORIG_TRIED, "[]")));
-function originalQueue() {
-  if (!originalReady()) return [];
-  const tried = origTried();
-  return state.albums.filter((a) => !a._pending && a.discogs_id && !a.original_year && a.enrich_status !== "review" && !tried.has(a.id));
-}
-let origFound = 0;
-async function lookUpOriginal(a) {
-  let r;
-  try { r = await politeApi({ op: "original", master: a.master_id || "", id: a.discogs_id }); }
-  catch (err) { if (/session expired/i.test(err.message)) throw err; return null; }   // try this one again next time
-  if (!r) return null;
-  if (r.original_year) {
-    await updateAlbum(a.id, { original_year: r.original_year, ...(!a.master_id && r.master_id && pricesReady() ? { master_id: r.master_id } : {}) });
-    origFound++;
-  } else {
-    const tried = origTried(); tried.add(a.id); pref.set(ORIG_TRIED, JSON.stringify([...tried]));
-  }
-  return r.rateRemaining;
-}
-function originalFinished() {
-  const left = originalQueue().length;
-  const msg = `Added ${plural(origFound, "original release year")}`;
-  origFound = 0;
-  return left ? `${msg}. ${plural(left, "record")} couldn’t be looked up; try again later.` : msg + ".";
 }
 
 async function refetchVinyl(a) {
@@ -1897,7 +1867,7 @@ const EDIT_CONTROLS = [
   "#got-it", ".switch-row", "#for-sale", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
-  "#run", "#retry", "#originals", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+  "#run", "#retry", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 
 function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }
@@ -1937,7 +1907,7 @@ window.addEventListener("hashchange", () => {
 
 async function boot() {
   // Leftovers from the one-time catalogue check, no longer used.
-  try { for (const k of ["crate.catnoChecked1", "crate.catnoPassDone1", "crate.signedIn1", "crate.worksChecked4"]) localStorage.removeItem(k); } catch {}
+  try { for (const k of ["crate.catnoChecked1", "crate.catnoPassDone1", "crate.signedIn1", "crate.worksChecked4", "crate.origTried1"]) localStorage.removeItem(k); } catch {}
   const cached = await cache.get();
   state.store = state.store || (await createStore());
   state.settings = await state.store.settings().catch(() => state.settings);

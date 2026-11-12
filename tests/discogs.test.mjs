@@ -368,7 +368,7 @@ test("marketplace: says whether the pressing is vinyl when asked", async () => {
   assert.equal(lp.vinyl, true); assert.equal(lp.format, "Vinyl, LP, Red");
 });
 
-import { fetchByRef, originalYear } from "../netlify/lib/discogs.mjs";
+import { fetchByRef } from "../netlify/lib/discogs.mjs";
 
 test("original year: a reissue keeps its own year and gets its album's first year", async () => {
   const calls = [];
@@ -387,9 +387,6 @@ test("original year: a reissue keeps its own year and gets its album's first yea
   const solo = await fetchByRef(client, "release", 99, "x", { preferVinyl: false });
   assert.equal(solo.year, 1980);
   assert.equal(solo.original_year, null, "no album family, no original year");
-  assert.deepEqual(await originalYear(client, { masterId: 5460 }), { original_year: 1959, master_id: 5460 });
-  assert.deepEqual(await originalYear(client, { releaseId: 72 }), { original_year: 1959, master_id: 5460 });
-  assert.deepEqual(await originalYear(client, { releaseId: 99 }), { original_year: null, master_id: null });
 });
 
 test("search: pressings get their album's original year", async () => {

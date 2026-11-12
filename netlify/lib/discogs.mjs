@@ -301,16 +301,6 @@ export async function fetchByRef(client, type, id, albumArtist, { preferVinyl = 
   return normalizeRelease(rel, albumArtist, master || undefined);
 }
 
-// When an album first came out: its family's year. With only a release number, the release is read first
-// to find its family.
-export async function originalYear(client, { masterId, releaseId }) {
-  let mid = masterId;
-  if (!mid && releaseId) { const rel = await client.get(`/releases/${releaseId}`); mid = rel && rel.master_id; }
-  if (!mid) return { original_year: null, master_id: null };
-  const m = await client.get(`/masters/${mid}`);
-  return { original_year: (m && m.year) || null, master_id: mid };
-}
-
 export function parseDiscogsRef(input = "") {
   const s = String(input).trim();
   let m = s.match(/(release|master)s?\/(\d+)/i);

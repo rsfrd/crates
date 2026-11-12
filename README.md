@@ -84,7 +84,7 @@ To rename the site, run `update site_settings set value = 'Your Name Here' where
 
 If your site was set up with the older numbered files, run [`supabase/updates/007_owner_and_guests.sql`](supabase/updates/007_owner_and_guests.sql) once in the SQL Editor. It makes your account (the first one on the project) the owner, keeps everything else readable to signed-in accounts, and adds the settings for a guest passphrase. The site keeps working either way; until it's run there's simply no guest access.
 
-To show the year each album first came out (a 1972 reissue of a 1959 album shows and files as 1959), run [`supabase/updates/008_original_year.sql`](supabase/updates/008_original_year.sql) once, then use **Look up** on the Collection page to fill in years for records you already have.
+To show the year each album first came out (a 1972 reissue of a 1959 album shows and files as 1959), run [`supabase/updates/008_original_year.sql`](supabase/updates/008_original_year.sql) once. Records pick up the year the next time their details are fetched or refreshed.
 
 The other files in `supabase/updates/` are earlier updates that `setup.sql` already includes.
 
