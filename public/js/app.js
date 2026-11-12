@@ -67,7 +67,7 @@ const state = {
 
 function setAlbums(rows) {
   state.albums = rows.map(typesetAlbum);   // real apostrophes and " • " between translated titles
-  state.index = buildIndex(rows);
+  state.index = buildIndex(state.albums);
   if (state.store?.mode === "live") cache.set(rows.filter((r) => !r._pending));
 }
 const byId = (id) => state.albums.find((a) => a.id === id);
@@ -241,6 +241,11 @@ function renderHeader() {
 }
 
 function renderResults() {
+  // The list is hidden while a page is open over it: redrawing 700 rows there is wasted work on a phone,
+  // so it's redrawn once, when the page closes.
+  const ov = $("#overlay");
+  if (ov && !ov.hidden) { state.listStale = true; renderHeader(); return; }
+  state.listStale = false;
   const res = search(state.index, state.q, { status: state.status, genre: state.genre, crate: state.crate });
   $("#clear").hidden = !state.q;
   const el = $("#results");
@@ -945,6 +950,7 @@ function hideOverlay() {
   if (!ov || ov.hidden) return;
   ov.hidden = true; ov.innerHTML = "";
   document.body.classList.remove("locked");
+  if (state.listStale) renderResults();
   lastFocus?.focus?.({ preventScroll: true });
   // Back to where the list was. Closing sets the address to "#", which jumps to the top, and iOS Safari
   // sometimes leaves the list unpainted until it scrolls; a real scroll repaints it and loads the covers.

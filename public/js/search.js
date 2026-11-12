@@ -23,7 +23,20 @@ export function typesetAlbum(a) {
   return changed ? out : a;
 }
 
+// Folding is called many thousands of times while indexing (the same names, roles and titles again and
+// again), so results are remembered. The memory is cleared if it grows very large.
+const folded = new Map();
 export function fold(s = "") {
+  const key = String(s);
+  let out = folded.get(key);
+  if (out === undefined) {
+    if (folded.size > 50000) folded.clear();
+    out = foldUncached(key);
+    folded.set(key, out);
+  }
+  return out;
+}
+function foldUncached(s) {
   return String(s)
     .normalize("NFKD").replace(/[̀-ͯ]/g, "")
     .toLowerCase()
@@ -127,8 +140,25 @@ export function creditsFor(album) {
   }));
 }
 
+// What search needs from one album, kept per album object: an album that hasn't changed is the same
+// object, so after an edit only the edited album is worked out again.
+const entries = new WeakMap();
+function entryFor(a) {
+  let e = entries.get(a);
+  if (!e) {
+    e = {
+      hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
+      tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
+    };
+    entries.set(a, e);
+  }
+  return e;
+}
+
 export function buildIndex(albums) {
   const individuals = knownPeople(albums);
+  const sorts = new Map();   // each album's filing position, worked out once per build
+  const sortOf = (a) => { let k = sorts.get(a); if (k === undefined) { k = sortKey(a, individuals); sorts.set(a, k); } return k; };
   const people = new Map();
   const list = albums.map((a) => {
     const credits = creditsFor(a);
@@ -137,18 +167,15 @@ export function buildIndex(albums) {
       if (!key) continue;
       let p = people.get(key);
       if (!p) { p = { key, name: c.name, fold: fold(c.name), items: [] }; people.set(key, p); }
-      if (!p.items.some((i) => i.album.id === a.id)) p.items.push({ album: a, roles: c.roles || [], leader: !!c.leader, kind: c.kind, tracks: c.tracks || [] });
+      if (p.last !== a) { p.last = a; p.items.push({ album: a, roles: c.roles || [], leader: !!c.leader, kind: c.kind, tracks: c.tracks || [] }); }
     }
-    return {
-      album: a,
-      hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
-      tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
-      sort: sortKey(a, individuals),
-    };
+    const e = entryFor(a);
+    return { album: a, hay: e.hay, tracks: e.tracks, sort: sortOf(a) };
   });
   list.sort((x, y) => (x.sort < y.sort ? -1 : x.sort > y.sort ? 1 : 0));
   for (const p of people.values()) {
-    p.items.sort((x, y) => (x.leader !== y.leader ? (x.leader ? -1 : 1) : sortKey(x.album, individuals) < sortKey(y.album, individuals) ? -1 : 1));
+    delete p.last;
+    p.items.sort((x, y) => (x.leader !== y.leader ? (x.leader ? -1 : 1) : sortOf(x.album) < sortOf(y.album) ? -1 : 1));
   }
   const genres = [...new Set(albums.flatMap((a) => a.genres || []))].sort((a, b) => a.localeCompare(b));
   const crateCounts = new Map();
