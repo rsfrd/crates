@@ -111,7 +111,9 @@ function tags(a) {
   return t ? `<span class="tags">${t}</span>` : "";
 }
 
-function sub(a) { return esc(a.artist) + (a.year ? `, ${a.year}` : ""); }
+// The year an album first came out (from its Discogs album family), else the pressing's own year.
+const firstYear = (a) => a.original_year || a.year;
+function sub(a) { return esc(a.artist) + (firstYear(a) ? `, ${firstYear(a)}` : ""); }
 
 const picked = (a) => (state.select && state.select.has(a.id) ? " is-selected" : "");
 const pickMark = `<span class="pick" aria-hidden="true">${ICON.check}</span>`;
@@ -508,7 +510,7 @@ function renderPick() {
         <a class="pick-card" href="#/album/${encodeURIComponent(a.id)}" id="pick-card">
           ${thumb(a, "large pick-art")}
           <span class="pick-title">${esc(a.title)}</span>
-          <span class="pick-artist">${esc(a.artist)}${a.year ? `, ${a.year}` : ""}</span>
+          <span class="pick-artist">${esc(a.artist)}${firstYear(a) ? `, ${firstYear(a)}` : ""}</span>
         </a>
         <p class="hint pick-pool">${pool.length === 1 ? "The only record" : `One of ${plural(pool.length, "record")}`}${pk.crate || pk.genre ? ` in ${esc([pk.crate, pk.genre].filter(Boolean).join(" + "))}` : " in your collection"}.</p>
         <div class="pick-actions">
@@ -560,6 +562,19 @@ const SETUP_PRICES = "Prices aren’t set up yet. Run supabase/updates/005_price
 const PRICE_MAX_AGE = 12 * 3600 * 1000;
 
 // The database has the price columns once 005_prices.sql has run (rows then carry a "price" key).
+// "Released 1959 · this pressing 1972", or just the year when they're the same or one is unknown.
+function candYears(c) {
+  const o = c.original_year;
+  return o && c.year && String(o) !== String(c.year) ? [`Released ${o}`, `this pressing ${c.year}`] : [o || c.year];
+}
+
+// The database has the original-year column (supabase/updates/008).
+function originalReady() {
+  if (state.store && state.store.mode !== "live") return true;
+  const sample = state.albums.find((a) => !a._pending);
+  return !sample || "original_year" in sample;
+}
+
 function pricesReady() {
   if (state.store && state.store.mode !== "live") return true;
   return state.albums.some((a) => !a._pending && Object.prototype.hasOwnProperty.call(a, "price"));
@@ -672,13 +687,13 @@ async function checkPrice(a, force = false, quiet = false) {
 // ---------- importing ----------
 // state.imp holds the import in progress: { list, username, vinylOnly, reading, page, pages, found[], error, saving, saved }
 
-const IMPORT_COLUMNS = new Set(["artist", "title", "year", "label", "catno", "genres", "notes", "personnel_hint", "status", "enrich_status",
+const IMPORT_COLUMNS = new Set(["artist", "title", "year", "original_year", "label", "catno", "genres", "notes", "personnel_hint", "status", "enrich_status",
   "discogs_id", "master_id", "discogs_url", "cover_url", "thumb_url"]);
 
 // Only send columns this site’s database has (older sites may not have master_id yet).
 function forDatabase(r) {
   const out = {};
-  for (const [k, v] of Object.entries(r)) if (IMPORT_COLUMNS.has(k) && !(k === "master_id" && !pricesReady())) out[k] = v;
+  for (const [k, v] of Object.entries(r)) if (IMPORT_COLUMNS.has(k) && !(k === "master_id" && !pricesReady()) && !(k === "original_year" && !originalReady())) out[k] = v;
   return out;
 }
 
@@ -1050,7 +1065,9 @@ function renderAlbum(id) {
   const credit = (c) => `<li><a href="#/person/${encodeURIComponent(personKey(c.name))}">
       <span class="who">${esc(c.name)}</span>
       <span class="what">${roleSpans(roleLabel(c))} ${trackNote(c)}</span></a></li>`;
-  const meta = [a.year, a.label, a.catno].filter(Boolean).map(esc).join(", ");
+  // Original year first; the pressing's own year sits by its catalogue number when it differs.
+  const reissue = a.original_year && a.year && a.year !== a.original_year ? `${a.year} pressing` : "";
+  const meta = [firstYear(a), a.label, a.catno, reissue].filter(Boolean).map(esc).join(", ");
   const canEnrich = state.store.canEnrich;
 
   const statusBlock = a.status === "want"
@@ -1068,9 +1085,10 @@ function renderAlbum(id) {
       <label>Artist<input name="artist" value="${esc(a.artist)}" required></label>
       <label>Album<input name="title" value="${esc(a.title)}" required></label>
       <div class="two">
-        <label>Year<input name="year" inputmode="numeric" value="${esc(a.year || "")}"></label>
-        <label>Catalogue no.<input name="catno" value="${esc(a.catno || "")}"></label>
+        ${originalReady() ? `<label>First released<input name="original_year" inputmode="numeric" value="${esc(a.original_year || "")}"></label>` : ""}
+        <label>${originalReady() ? "This pressing" : "Year"}<input name="year" inputmode="numeric" value="${esc(a.year || "")}"></label>
       </div>
+      <label>Catalogue no.<input name="catno" value="${esc(a.catno || "")}"></label>
       <label><span>Genres<span class="hint">separate with commas</span></span><input name="genres" value="${esc((a.genres || []).join(", "))}"></label>
       ${sortReady() ? `<label><span>File under<span class="hint">leave empty to file people by surname; applies to every record by this artist</span></span><input name="sort_as" value="${esc(a.sort_as || "")}" placeholder="${esc(fileUnderGuess(a))}"></label>` : ""}
       <div class="actions"><button class="btn primary" type="submit">Save changes</button><button class="btn" type="button" id="edit-cancel">Cancel</button></div>
@@ -1161,11 +1179,13 @@ function renderAlbum(id) {
     e.preventDefault();
     const f = new FormData(e.target);
     const year = parseInt(f.get("year"), 10);
+    const first = parseInt(f.get("original_year"), 10);
     state.editing = false;
     await updateAlbum(a.id, {
       artist: f.get("artist").trim(), title: f.get("title").trim(),
       year: Number.isFinite(year) ? year : null, catno: f.get("catno").trim() || null,
       genres: f.get("genres").split(",").map((s) => s.trim()).filter(Boolean),
+      ...(f.has("original_year") ? { original_year: Number.isFinite(first) ? first : null } : {}),
     }).catch(() => {});
     // "File under" belongs to the artist, so it’s set on every record by them.
     if (f.has("sort_as")) {
@@ -1221,8 +1241,8 @@ function renderFix(a) {
             <span class="thumb mini">${c.thumb ? `<img src="${esc(c.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="blank" style="--h:${hue(c.title)}"><span class="disc"></span></span>`}</span>
             <span class="row-text"><span class="row-title">${esc(typeset(c.title))}</span>
             ${c.type === "master"
-              ? `<span class="cand-line">${esc([c.year, "Any pressing: uses the original LP"].filter(Boolean).join(" · "))}</span>`
-              : `<span class="cand-line">${esc([c.year, c.country, [c.label, c.catno].filter(Boolean).join(" ")].filter(Boolean).join(" · "))}</span>
+              ? `<span class="cand-line">${esc([c.year && `Released ${c.year}`, "Any pressing: uses the original LP"].filter(Boolean).join(" · "))}</span>`
+              : `<span class="cand-line">${esc([...candYears(c), c.country, [c.label, c.catno].filter(Boolean).join(" ")].filter(Boolean).join(" · "))}</span>
                  ${c.format ? `<span class="cand-format">${esc(c.format)}</span>` : ""}`}</span>
             <span class="use">Use this</span>
           </button></li>`).join("")}</ul>`
@@ -1591,6 +1611,8 @@ function renderTools() {
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
+          ${originalQueue().length ? action(`${plural(originalQueue().length, "original release year")} to look up`, `A one-time lookup on Discogs, so albums show and file by the year they first came out. About ${Math.max(1, Math.round(originalQueue().length / 50))} min; you can stop and pick up later.`, `<button class="btn" id="originals">Look up</button>`) : ""}
+          ${state.store.mode === "live" && !originalReady() ? `<div class="card-row"><p class="hint">To show the year each album first came out, run supabase/updates/008_original_year.sql in Supabase, then reload.</p></div>` : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}`
         : ""}
       </div>`)}
@@ -1629,6 +1651,7 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
+  panel.querySelector("#originals")?.addEventListener("click", () => { origFound = 0; runQueue(originalQueue(), lookUpOriginal, originalFinished); });
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
@@ -1660,6 +1683,7 @@ function releasePatch(a, rel, status) {
   const patch = {
     discogs_id: rel.discogs_id, discogs_url: rel.discogs_url, year: rel.year, label: rel.label,
     ...(pricesReady() ? { master_id: rel.master_id ?? null } : {}),
+    ...(originalReady() && rel.original_year ? { original_year: rel.original_year } : {}),
     cover_url: rel.cover_url, thumb_url: rel.thumb_url, tracks: rel.tracks, credits: rel.credits,
     enrich_status: status,
   };
@@ -1721,6 +1745,36 @@ function fromCDListing(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
   return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
+}
+
+// One-time: when albums first came out, for records fetched before that was kept. Records new or
+// refreshed from now on get it with their details.
+const ORIG_TRIED = "origTried1";   // looked up, but Discogs has no year for the album family
+const origTried = () => new Set(JSON.parse(pref.get(ORIG_TRIED, "[]")));
+function originalQueue() {
+  if (!originalReady()) return [];
+  const tried = origTried();
+  return state.albums.filter((a) => !a._pending && a.discogs_id && !a.original_year && a.enrich_status !== "review" && !tried.has(a.id));
+}
+let origFound = 0;
+async function lookUpOriginal(a) {
+  let r;
+  try { r = await politeApi({ op: "original", master: a.master_id || "", id: a.discogs_id }); }
+  catch (err) { if (/session expired/i.test(err.message)) throw err; return null; }   // try this one again next time
+  if (!r) return null;
+  if (r.original_year) {
+    await updateAlbum(a.id, { original_year: r.original_year, ...(!a.master_id && r.master_id && pricesReady() ? { master_id: r.master_id } : {}) });
+    origFound++;
+  } else {
+    const tried = origTried(); tried.add(a.id); pref.set(ORIG_TRIED, JSON.stringify([...tried]));
+  }
+  return r.rateRemaining;
+}
+function originalFinished() {
+  const left = originalQueue().length;
+  const msg = `Added ${plural(origFound, "original release year")}`;
+  origFound = 0;
+  return left ? `${msg}. ${plural(left, "record")} couldn’t be looked up; try again later.` : msg + ".";
 }
 
 async function refetchVinyl(a) {
@@ -1843,7 +1897,7 @@ const EDIT_CONTROLS = [
   "#got-it", ".switch-row", "#for-sale", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
-  "#run", "#retry", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+  "#run", "#retry", "#originals", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 
 function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }

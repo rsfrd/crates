@@ -31,7 +31,7 @@ function query(table) {
     if (!who()) return { data: [], error: null };
     let set = rows.filter((r) => q.filters.every(([k, v]) => r[k] === v) && (!q.since || r.updated_at >= q.since));
     if (q.op === "select") {
-      if (table === "albums" && (!q.range || q.range[0] === 0)) log(q.cols === "id" ? "ids" : q.since ? "changes" : "everything");
+      if (table === "albums" && !q.sample && (!q.range || q.range[0] === 0)) log(q.cols === "id" ? "ids" : q.since ? "changes" : "everything");
       if (q.range) set = set.slice(q.range[0], q.range[1] + 1);
       return { data: q.cols === "id" ? set.map((r) => ({ id: r.id })) : set, error: null };
     }
@@ -45,7 +45,7 @@ function query(table) {
     if (q.op === "delete") { for (const r of set) rows.splice(rows.indexOf(r), 1); save(); return { data: null, error: null }; }
   };
   const b = {
-    select(cols) { if (q.op === "select" && cols) q.cols = cols; return b; }, order() { return b; }, gte(k, v) { q.since = v; return b; }, range(a, z) { q.range = [a, z]; return b; },
+    select(cols) { if (q.op === "select" && cols) q.cols = cols; return b; }, order() { return b; }, gte(k, v) { q.since = v; return b; }, range(a, z) { q.range = [a, z]; return b; }, limit(n) { q.range = [0, n - 1]; q.sample = true; return b; },
     insert(p) { q.op = "insert"; q.payload = p; return b; }, update(p) { q.op = "update"; q.payload = p; return b; }, delete() { q.op = "delete"; return b; },
     eq(k, v) { q.filters.push([k, v]); return b; }, single() { q.one = true; return b; },
     then(ok, no) { return run().then(ok, no); },
@@ -192,6 +192,18 @@ const cnt = await p.textContent("#count"); check(cnt.includes("452 records"), "t
   await v.waitForTimeout(500);
   check(await v.evaluate(() => document.querySelector("#overlay .panel")?.dataset.marker === "kept"), "an open album page isn’t redrawn when the sync brings no changes for it");
   await v.goto("http://localhost:5188/");
+
+  // a database update adds a field: the next visit downloads everything, so every record has it
+  await v.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem("fake-db"));
+    for (const r of db) r.original_year = null;
+    localStorage.setItem("fake-db", JSON.stringify(db));
+    localStorage.removeItem("fake-log");
+  });
+  await v.goto("http://localhost:5188/"); await v.reload(); await v.waitForSelector(".row");
+  const refetched = await v.waitForFunction(() => JSON.parse(localStorage.getItem("fake-log") || "[]").includes("everything"), null, { timeout: 10000 }).then(() => true, () => false);
+  check(refetched, "after a database update adds a field, the next visit downloads everything: " + (await logOf()).join(", "));
+  await v.waitForTimeout(1500);
 
   // a day later, the whole collection is downloaded once as a safety net
   await v.evaluate(() => { localStorage.setItem("crate.fullLoad.v1", String(Date.now() - 25 * 3600 * 1000)); localStorage.removeItem("fake-log"); });

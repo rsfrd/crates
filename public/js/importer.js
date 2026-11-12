@@ -35,7 +35,8 @@ export function parseCSV(text) {
 export const FIELDS = [
   { key: "artist", label: "Artist", required: true, words: /^(artist|artists|band|performer|musician|by|artist name)$/ },
   { key: "title", label: "Album", required: true, words: /^(title|album|album title|release|record|name|album name)$/ },
-  { key: "year", label: "Year", words: /^(year|released|release year|date|release date|original year)$/ },
+  { key: "year", label: "Year", words: /^(year|released|release year|date|release date|pressing year|year of pressing)$/ },
+  { key: "original_year", label: "First released", words: /^(original year|first released|originally released|original release|original release year)$/ },
   { key: "label", label: "Label", words: /^(label|record label|labels)$/ },
   { key: "catno", label: "Catalogue no.", words: /^(cat|catno|cat no|cat#|catalog|catalogue|catalog number|catalogue number|catalog no|catalogue no|cat number)$/ },
   { key: "genres", label: "Genre", words: /^(genre|genres|style|styles|category)$/ },
@@ -75,6 +76,7 @@ export function recordsFromRows(rows, map, status = "owned") {
     const artist = get("artist"), title = get("title");
     if (!artist || !title) { skipped.push(i); return; }
     const y = get("year").match(/\b(1[89]\d{2}|20\d{2})\b/);
+    const oy = get("original_year").match(/\b(1[89]\d{2}|20\d{2})\b/);
     // A status column ("Owned", "Wanted") decides per row; otherwise everything goes where the import was pointed.
     const st = get("status");
     const rowStatus = /want|wish/i.test(st) ? "want" : /own|have|collection/i.test(st) ? "owned" : status;
@@ -84,6 +86,7 @@ export function recordsFromRows(rows, map, status = "owned") {
     out.push({
       artist, title, status: rowStatus,
       year: y ? Number(y[1]) : null,
+      original_year: oy ? Number(oy[1]) : null,
       label: get("label") || null,
       catno: get("catno") || null,
       genres: splitList(get("genres"), /\s*[\/,;|]\s*/),

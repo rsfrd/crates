@@ -124,10 +124,14 @@ async function supabaseStore(cfg) {
       const since = Array.isArray(saved) && saved.length && Date.now() - readLS(FULL_KEY, 0) < FULL_EVERY
         ? saved.reduce((m, r) => (r.updated_at && r.updated_at > m ? r.updated_at : m), "") : "";
       if (!since) return full();
-      const [ids, changed] = await Promise.all([
+      const [ids, changed, sample] = await Promise.all([
         all(() => sb.from("albums").select("id").order("id")),
         all(() => sb.from("albums").select("*").gte("updated_at", since).order("updated_at")),
+        sb.from("albums").select("*").limit(1).then(one),
       ]);
+      // A database update added or removed a field: the copy can't be patched, so start fresh.
+      const fields = (r) => Object.keys(r || {}).sort().join(",");
+      if (sample[0] && fields(sample[0]) !== fields(saved.find((r) => !r._pending))) return full();
       const present = new Set(ids.map((r) => r.id));
       const byId = new Map(saved.filter((r) => present.has(r.id)).map((r) => [r.id, r]));
       for (const r of changed) byId.set(r.id, r);

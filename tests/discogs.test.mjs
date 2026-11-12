@@ -367,3 +367,43 @@ test("marketplace: says whether the pressing is vinyl when asked", async () => {
   const lp = await marketplace(client, 2, { withFormat: true });
   assert.equal(lp.vinyl, true); assert.equal(lp.format, "Vinyl, LP, Red");
 });
+
+import { fetchByRef, originalYear } from "../netlify/lib/discogs.mjs";
+
+test("original year: a reissue keeps its own year and gets its album's first year", async () => {
+  const calls = [];
+  const fake = async (url) => {
+    const u = new URL(url); calls.push(u.pathname);
+    if (u.pathname === "/releases/72") return new Response(JSON.stringify({ id: 72, master_id: 5460, year: 1972, title: "Kind Of Blue", artists: [{ name: "Miles Davis" }],
+      formats: [{ name: "Vinyl", descriptions: ["LP", "Reissue"] }], labels: [{ name: "Columbia", catno: "KCS 8163" }], tracklist: [] }), { status: 200 });
+    if (u.pathname === "/masters/5460") return new Response(JSON.stringify({ id: 5460, year: 1959 }), { status: 200 });
+    if (u.pathname === "/releases/99") return new Response(JSON.stringify({ id: 99, master_id: 0, year: 1980, formats: [{ name: "Vinyl" }], labels: [], tracklist: [] }), { status: 200 });
+    return new Response("{}", { status: 404 });
+  };
+  const client = makeClient("t", fake);
+  const r = await fetchByRef(client, "release", 72, "Miles Davis", { preferVinyl: false });
+  assert.equal(r.year, 1972);
+  assert.equal(r.original_year, 1959);
+  const solo = await fetchByRef(client, "release", 99, "x", { preferVinyl: false });
+  assert.equal(solo.year, 1980);
+  assert.equal(solo.original_year, null, "no album family, no original year");
+  assert.deepEqual(await originalYear(client, { masterId: 5460 }), { original_year: 1959, master_id: 5460 });
+  assert.deepEqual(await originalYear(client, { releaseId: 72 }), { original_year: 1959, master_id: 5460 });
+  assert.deepEqual(await originalYear(client, { releaseId: 99 }), { original_year: null, master_id: null });
+});
+
+test("search: pressings get their album's original year", async () => {
+  const fake = async (url) => {
+    const u = new URL(url);
+    if (u.pathname === "/database/search") return new Response(JSON.stringify({ results: [
+      { type: "release", id: 1, master_id: 5460, title: "Miles Davis - Kind Of Blue", year: "1972", format: ["Vinyl", "LP"] },
+      { type: "release", id: 2, master_id: 777, title: "Other - Thing", year: "2001", format: ["Vinyl", "LP"] },
+      { type: "master", id: 777, title: "Other - Thing", year: "1968", format: ["Vinyl"] },
+    ] }), { status: 200 });
+    if (u.pathname === "/masters/5460") return new Response(JSON.stringify({ id: 5460, year: 1959 }), { status: 200 });
+    return new Response("{}", { status: 404 });
+  };
+  const [a, b] = await searchDiscogs(makeClient("t", fake), "x");
+  assert.equal(a.original_year, 1959);
+  assert.equal(b.original_year, "1968", "taken from the family already in the results");
+});

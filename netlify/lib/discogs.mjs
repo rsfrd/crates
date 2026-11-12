@@ -205,7 +205,8 @@ export function normalizeRelease(release, albumArtist, master) {
     discogs_id: release.id,
     master_id: release.master_id || (master && master.id) || null,
     discogs_url: release.uri || `https://www.discogs.com/release/${release.id}`,
-    year: (master && master.year) || release.year || null,
+    year: release.year || (master && master.year) || null,          // this pressing
+    original_year: (master && master.year) || null,                  // when the album first came out
     label: label ? cleanName(label.name) : null,
     label_catno: label && label.catno !== "none" ? label.catno : null,
     cover_url: img ? img.uri : null,
@@ -295,7 +296,19 @@ export async function fetchByRef(client, type, id, albumArtist, { preferVinyl = 
     const vinyl = await vinylFromMaster(client, rel.master_id, albumArtist);
     if (vinyl) return vinyl;
   }
-  return normalizeRelease(rel, albumArtist);
+  // The album family holds the year it first came out.
+  const master = rel.master_id ? await client.get(`/masters/${rel.master_id}`).catch(() => null) : null;
+  return normalizeRelease(rel, albumArtist, master || undefined);
+}
+
+// When an album first came out: its family's year. With only a release number, the release is read first
+// to find its family.
+export async function originalYear(client, { masterId, releaseId }) {
+  let mid = masterId;
+  if (!mid && releaseId) { const rel = await client.get(`/releases/${releaseId}`); mid = rel && rel.master_id; }
+  if (!mid) return { original_year: null, master_id: null };
+  const m = await client.get(`/masters/${mid}`);
+  return { original_year: (m && m.year) || null, master_id: mid };
 }
 
 export function parseDiscogsRef(input = "") {
@@ -428,6 +441,15 @@ export async function collectionPage(client, username, list = "collection", page
 export async function search(client, q, { anyFormat = false } = {}) {
   const r = await client.get("/database/search", { q, per_page: 50, ...(anyFormat ? {} : { format: "Vinyl" }) });
   const all = ((r && r.results) || []).filter((x) => x.type === "release" || x.type === "master");
-  const keep = anyFormat ? all : all.filter((x) => x.type === "master" || (x.format || []).includes("Vinyl"));
-  return keep.slice(0, 30).map(toCandidate);
+  const keep = (anyFormat ? all : all.filter((x) => x.type === "master" || (x.format || []).includes("Vinyl"))).slice(0, 30).map(toCandidate);
+  // Each pressing's original year comes from its album family: from a family in the results, else looked
+  // up (a search is usually one or two albums, so one or two extra lookups).
+  const years = new Map(keep.filter((c) => c.type === "master").map((c) => [c.id, c.year]));
+  const missing = [...new Set(keep.filter((c) => c.type === "release" && c.master_id && !years.has(c.master_id)).map((c) => c.master_id))].slice(0, 3);
+  for (const id of missing) {
+    const m = await client.get(`/masters/${id}`).catch(() => null);
+    if (m && m.year) years.set(id, m.year);
+  }
+  for (const c of keep) if (c.type === "release" && years.get(c.master_id)) c.original_year = years.get(c.master_id);
+  return keep;
 }

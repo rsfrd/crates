@@ -32,7 +32,7 @@ test("rows become records; incomplete rows are skipped", () => {
   const { records, skipped } = recordsFromRows(rows, { artist: 0, title: 1, year: 2, genres: 3, personnel: 4 }, "want");
   assert.deepEqual(skipped, [1]);
   assert.equal(records.length, 2);
-  assert.deepEqual(records[0], { artist: "Charles Mingus", title: "Mingus Ah Um", status: "want", year: 1959, label: null, catno: null,
+  assert.deepEqual(records[0], { artist: "Charles Mingus", title: "Mingus Ah Um", status: "want", year: 1959, original_year: null, label: null, catno: null,
     genres: ["Jazz", "Post Bop"], notes: null, personnel_hint: ["Jimmy Knepper", "Dannie Richmond"], enrich_status: "pending" });
   assert.equal(records[1].year, 2016);
 });
@@ -78,4 +78,13 @@ test("collection and want-list pages, and clear errors", async () => {
   await assert.rejects(collectionPage(client, "nobody"), /no Discogs user called “nobody”/);
   await assert.rejects(collectionPage(client, "private"), /private on Discogs/);
   await assert.rejects(collectionPage(client, "  "), /Enter a Discogs username/);
+});
+
+test("original and pressing years are separate columns", () => {
+  const header = ["Artist", "Album", "Original year", "Pressing year"];
+  const map = guessColumns(header, true);
+  assert.deepEqual(map, { artist: 0, title: 1, original_year: 2, year: 3 });
+  const { records } = recordsFromRows([["Miles Davis", "Kind Of Blue", "1959", "1972"]], map);
+  assert.equal(records[0].original_year, 1959);
+  assert.equal(records[0].year, 1972);
 });

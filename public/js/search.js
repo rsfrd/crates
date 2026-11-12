@@ -101,7 +101,7 @@ export function fileAs(artist, people = new Set(), sortAs = "") {
 }
 
 export function sortKey(a, people) {
-  return `${fileAs(a.artist, people, a.sort_as)}\u0000${String(a.year || 9999).padStart(4, "0")}\u0000${fold(a.title)}`;
+  return `${fileAs(a.artist, people, a.sort_as)}\u0000${String(a.original_year || a.year || 9999).padStart(4, "0")}\u0000${fold(a.title)}`;
 }
 
 const MUSICAL_SKIP = /produc|engineer|record|mix|master|lacquer|liner|photo|design|art|cover|layout|written|composed|lyrics|music by|words by|executive|notes|supervis|coordinat|transfer|edit|illustrat|publish|technician|assistant|compiled|sleeve|direction|licens|manufactur|distribut|market|cut by/i;
@@ -147,7 +147,7 @@ function entryFor(a) {
   let e = entries.get(a);
   if (!e) {
     e = {
-      hay: fold([a.artist, a.title, a.catno, a.label, a.year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
+      hay: fold([a.artist, a.title, a.catno, a.label, a.year, a.original_year, (a.genres || []).join(" "), (a.crates || []).join(" ")].join(" ")),
       tracks: (a.tracks || []).map((t) => ({ t, f: fold(t.title), w: t.work ? fold(t.work) : "", fw: fold(`${t.work || ""} ${t.title}`) })),
     };
     entries.set(a, e);

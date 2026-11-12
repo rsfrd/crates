@@ -4,8 +4,9 @@
 //   ?op=search&q=…                             Discogs candidates to pick from
 //   ?op=images&artist=…&title=…&discogs_id=…   alternative covers (Apple Music, Cover Art Archive, Discogs)
 //   ?op=price&id=<release id>[&master=1]       lowest marketplace price in USD + copies for sale
+//   ?op=original&master=N (or &id=release)          when the album first came out
 //   ?op=collection&username=…&list=collection|wants&page=N   one page of someone’s Discogs collection or want list
-import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, collectionPage, DiscogsUserError, RateLimited } from "../lib/discogs.mjs";
+import { makeClient, match, fetchByRef, parseDiscogsRef, search, marketplace, collectionPage, DiscogsUserError, RateLimited, originalYear } from "../lib/discogs.mjs";
 import { findImages } from "../lib/images.mjs";
 import { ownerOnly, json } from "../lib/auth.mjs";
 
@@ -27,6 +28,10 @@ export default async (req) => {
       if (!ref) return json({ error: "That isn’t a Discogs link or release number" }, 400);
       const release = await fetchByRef(client, ref.type, ref.id, p.get("artist") || "", { preferVinyl: p.get("exact") !== "1" });
       body = release ? { status: "matched", release } : { status: "not_found", release: null };
+    } else if (op === "original") {
+      const masterId = Number(p.get("master")) || null, releaseId = Number(p.get("id")) || null;
+      if (!masterId && !releaseId) return json({ error: "Missing a Discogs release or master number" }, 400);
+      body = await originalYear(client, { masterId, releaseId });
     } else if (op === "search") {
       body = { candidates: await search(client, p.get("q") || "", { anyFormat: p.get("any") === "1" }) };
     } else if (op === "price") {
