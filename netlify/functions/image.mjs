@@ -13,7 +13,7 @@ export default async (req) => {
     return json({ error: "That doesn’t look like a link to an image" }, 400);
   }
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 8000);
+  const timer = setTimeout(() => ctl.abort(), 15000);   // the Cover Art Archive forwards through the Internet Archive, which can be slow
   try {
     const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (GarageCrates image fetch)", Accept: "image/*" }, signal: ctl.signal, redirect: "follow" });
     const type = res.headers.get("content-type") || "";

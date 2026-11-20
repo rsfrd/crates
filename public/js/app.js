@@ -1421,6 +1421,12 @@ function wireCover(panel, a) {
   panel.querySelectorAll(".cover-opt img").forEach((img) => img.addEventListener("error", () => img.closest(".cover-opt")?.remove()));
   panel.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", async () => {
     const im = state.cover.images[Number(b.dataset.pick)];
+    // From a slow source: keep our own copy, so it loads as quickly as the rest.
+    if (slowCover(im.url) && state.store.mode === "live") {
+      setCover({ busy: "Saving a copy of that image…", error: "" });
+      try { return await saveOwnImage(a, await downloadImage(im.url), setCover); }
+      catch (err) { return setCover({ busy: "", error: err.message }); }
+    }
     state.cover = null;
     await updateAlbum(a.id, { cover_url: im.url, thumb_url: im.thumb || im.url, cover_locked: true }).then(() => toast("Cover updated")).catch(() => {});
   }));
@@ -1437,15 +1443,24 @@ function wireCover(panel, a) {
       return updateAlbum(a.id, { cover_url: url, thumb_url: url, cover_locked: true }).then(() => toast("Cover updated")).catch(() => {});
     }
     setCover({ busy: "Downloading that image…", error: "" });
-    try {
-      const token = await state.store.token();
-      const res = await fetch(`/api/image?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!/json|image/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("image"));
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn’t download that image.");
-      await saveOwnImage(a, await res.blob(), setCover);
-    } catch (err) { setCover({ busy: "", error: err.message }); }
+    try { await saveOwnImage(a, await downloadImage(url), setCover); }
+    catch (err) { setCover({ busy: "", error: err.message }); }
   });
 }
+
+// Downloads an image through the app's server (most sites can't be fetched from the browser directly).
+async function downloadImage(url) {
+  const token = await state.store.token();
+  const res = await fetch(`/api/image?${new URLSearchParams({ url })}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!/json|image/.test(res.headers.get("content-type") || "")) throw new Error(missingFunction("image"));
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn’t download that image.");
+  return res.blob();
+}
+
+// Covers that load slowly from where they live: the Cover Art Archive forwards each image through the
+// Internet Archive, and iTunes images are served at full size. A cover chosen from there is saved to
+// your own storage instead, with a small copy for lists.
+const slowCover = (url) => /coverartarchive\.org|archive\.org|mzstatic\.com/i.test(url || "");
 
 async function saveOwnImage(a, blob, setCover) {
   setCover({ busy: "Saving your image…", error: "" });
@@ -1652,6 +1667,7 @@ function renderTools() {
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
+          ${slowCovers().length ? action(`${plural(slowCovers().length, "cover")} loading slowly`, "Chosen from the Cover Art Archive or iTunes, which are slow to serve images. Save a copy to your own storage so they load like the rest.", `<button class="btn" id="copy-covers">Save copies</button>`) : ""}
           ${state.store.mode === "live" && !washReady() ? `<div class="card-row"><p class="hint">To keep a wash queue, run supabase/updates/009_wash_queue.sql in Supabase, then reload.</p></div>` : ""}
           ${state.store.mode === "live" && !originalReady() ? `<div class="card-row"><p class="hint">To show the year each album first came out, run supabase/updates/008_original_year.sql in Supabase, then reload.</p></div>` : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}`
@@ -1692,6 +1708,7 @@ function renderTools() {
 
   panel.querySelector("#run")?.addEventListener("click", () => runEnrich(["pending"]));
   panel.querySelector("#retry")?.addEventListener("click", () => runEnrich(["not_found", "error"]));
+  panel.querySelector("#copy-covers")?.addEventListener("click", () => { coversCopied = 0; coversFailed = 0; runQueue(slowCovers(), copySlowCover, coversFinished); });
   panel.querySelector("#vinyl")?.addEventListener("click", () => runQueue(state.albums.filter(fromCDListing), refetchVinyl, "Finished switching to vinyl pressings"));
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
@@ -1785,6 +1802,25 @@ function fromCDListing(a) {
   if (a._pending || !a.discogs_id || !(a.tracks || []).length) return false;
   if (a.tracks.some((t) => /^[A-Za-z]/.test(String(t.pos || "")))) return false;
   return !vinylChecked().has(a.id);   // already tried; Discogs has no sided vinyl listing
+}
+
+// One-time: covers chosen from slow sources before they were copied, copied now.
+const slowCovers = () => (state.store?.mode === "live" ? state.albums.filter((a) => !a._pending && slowCover(a.cover_url)) : []);
+let coversCopied = 0, coversFailed = 0;
+async function copySlowCover(a) {
+  try {
+    const blob = await downloadImage(a.cover_url);
+    const [full, small] = await Promise.all([resizeImage(blob, 1400, false), resizeImage(blob, 320, true)]);
+    await updateAlbum(a.id, { ...(await state.store.uploadCover(a.id, full, small)), cover_locked: true });
+    coversCopied++;
+  } catch { coversFailed++; }   // left as it is; it can be tried again
+  return 60;                     // not a Discogs lookup: no need to wait between covers
+}
+function coversFinished() {
+  const msg = `Saved ${plural(coversCopied, "cover")} to your storage`;
+  const failed = coversFailed;
+  coversCopied = 0; coversFailed = 0;
+  return failed ? `${msg}. ${plural(failed, "cover")} couldn’t be downloaded; try again later.` : msg + ".";
 }
 
 async function refetchVinyl(a) {
@@ -1907,7 +1943,7 @@ const EDIT_CONTROLS = [
   "#got-it", ".switch-row", "#for-sale", "#needs-wash", "#sel-washed", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
-  "#run", "#retry", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
+  "#run", "#retry", "#copy-covers", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
 ].join(", ");
 
 function viewOnly() { toast("This is a view-only copy. Only the owner can make changes."); }

@@ -71,14 +71,21 @@ export function createClient() {
       if (!cfg.rules) return err("Could not find the function public.is_owner without parameters in the schema cache", "PGRST202");
       return { data: isOwner(), error: null };
     },
-    storage: { from() { return { async upload() { return cfg.rules && !isOwner() ? err("new row violates row-level security policy") : { data: {}, error: null }; }, getPublicUrl(n) { return { data: { publicUrl: "/covers/" + n } }; } }; } },
+    storage: { from() { return { async upload(name) { if (cfg.rules && !isOwner()) return err("new row violates row-level security policy"); log("upload " + name.split("/").pop().split("-")[0].length); return { data: {}, error: null }; }, getPublicUrl(n) { return { data: { publicUrl: "/covers/" + n } }; } }; } },
   };
 }`;
 
+const imageFetches = [];
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
 const srv = http.createServer((rq, res) => {
   const u = new URL(rq.url, "http://x");
   if (u.pathname === "/api/config") { res.writeHead(200, { "content-type": "application/json" }); return res.end('{"supabaseUrl":"https://fake.supabase.co","supabaseAnonKey":"anon"}'); }
+  if (u.pathname === "/api/image") {
+    imageFetches.push(u.searchParams.get("url"));
+    // a 4x4 grey PNG
+    res.writeHead(200, { "content-type": "image/png" });
+    return res.end(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEklEQVR4nGNoaGhgwA0YRqZ0AHKGCYEjJCxNAAAAAElFTkSuQmCC", "base64"));
+  }
   if (u.pathname.startsWith("/api/")) { res.writeHead(404); return res.end(); }
   const f = path.join(ROOT, u.pathname === "/" ? "index.html" : u.pathname);
   if (!fs.existsSync(f)) { res.writeHead(404); return res.end(); }
@@ -248,6 +255,33 @@ const cnt = await p.textContent("#count"); check(cnt.includes("452 records"), "t
   await f.reload(); await f.waitForTimeout(1500);
   check(await f.locator(".row").count() > 0 && !(await f.locator(".login").count()), "and after another");
   check((await f.evaluate(() => new Promise((ok) => { const r = indexedDB.open("garage-crates"); r.onsuccess = () => { const q = r.result.transaction("kv").objectStore("kv").get("crate.cache.v1"); q.onsuccess = () => ok(Array.isArray(q.result) ? q.result.length : -1); }; }))) === 3, "the saved copy now lives in the browser's database");
+}
+
+// ---- covers chosen from a slow source get saved to your own storage
+{
+  const c = await site({
+    rules: true, ownerEmail: "me@example.com",
+    users: [{ email: "me@example.com", password: "owner-pw" }],
+    settings: [{ key: "site_name", value: "Covers" }],
+    rows: [
+      rec(1, { title: "Burnin’ In Bordeaux", cover_url: "https://coverartarchive.org/release-group/abc/front", thumb_url: "https://coverartarchive.org/release-group/abc/front-250", cover_locked: true }),
+      rec(2, { title: "Poppin’ In Paris", cover_url: "https://coverartarchive.org/release-group/def/front", thumb_url: "https://coverartarchive.org/release-group/def/front-250", cover_locked: true }),
+      rec(3, { title: "Moanin’", cover_url: "https://i.discogs.com/abc.jpg", thumb_url: "https://i.discogs.com/abc-150.jpg" }),
+    ],
+  });
+  await c.route(/^https:\/\/(coverartarchive\.org|i\.discogs\.com)\//, (r) => r.abort());
+  await c.goto("http://localhost:5188/"); await c.waitForSelector(".login");
+  await c.fill('input[name="email"]', "me@example.com"); await c.fill('input[name="password"]', "owner-pw"); await c.click("#login button");
+  await c.waitForSelector(".row");
+  await c.goto("http://localhost:5188/#/tools"); await c.waitForSelector(".stat-strip");
+  check((await c.textContent(".card-row:has(#copy-covers)").catch(() => "")).includes("2 covers loading slowly"), "the Collection page offers to copy the 2 slow covers (not the Discogs one)");
+  await c.click("#copy-covers");
+  const savedOk = await c.waitForFunction(() => document.querySelector("#toast")?.textContent.includes("Saved 2 covers to your storage."), null, { timeout: 15000 }).then(() => true, () => false); check(savedOk, "both are saved: " + (await c.textContent("#toast")) + " fetches=" + imageFetches.length);
+  check(imageFetches.length === 2 && imageFetches.every((u) => u.includes("coverartarchive.org")), "each was downloaded once through the app’s server");
+  const covers = await c.evaluate(() => JSON.parse(localStorage.getItem("fake-db")).map((r) => [r.title, r.cover_url, r.thumb_url]));
+  check(covers[0][1].startsWith("/covers/") && covers[0][2].startsWith("/covers/") && covers[0][1] !== covers[0][2], "each gets its own full-size copy and a small one for lists");
+  check(covers[2][1] === "https://i.discogs.com/abc.jpg", "the Discogs cover is left as it is");
+  check(!(await c.locator("#copy-covers").count()), "and the row goes away");
 }
 
 // ---- a site set up before owners and guests existed: unchanged
