@@ -28,12 +28,12 @@ export function creditLines(album) {
   const allPos = new Set((album.tracks || []).map((t) => t.pos));
   const order = { leader: 0, player: 1, composer: 2 };
   const line = (c) => {
-    const role = roleLabel(c);
+    const role = roleLabel(c, album);
     const on = c.tracks && c.tracks.length && c.tracks.length < allPos.size ? ` (on ${c.tracks.join(", ")})` : "";
     return c.name + (role ? `: ${role}` : "") + on;
   };
-  const players = credits.filter((c) => creditKind(c) in order).sort((x, y) => order[creditKind(x)] - order[creditKind(y)]);
-  const others = credits.filter((c) => !(creditKind(c) in order));
+  const players = credits.filter((c) => creditKind(c, album) in order).sort((x, y) => order[creditKind(x, album)] - order[creditKind(y, album)]);
+  const others = credits.filter((c) => !(creditKind(c, album) in order));
   return { personnel: players.map(line).join("\n"), other: others.map(line).join("\n") };
 }
 

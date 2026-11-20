@@ -1058,13 +1058,13 @@ function renderAlbum(id) {
   if (!a) return hideOverlay();
   const credits = creditsFor(a);
   const order = { leader: 0, player: 1, composer: 2 };
-  const players = credits.filter((c) => creditKind(c) in order).sort((x, y) => order[creditKind(x)] - order[creditKind(y)]);
-  const others = credits.filter((c) => !(creditKind(c) in order));
+  const players = credits.filter((c) => creditKind(c, a) in order).sort((x, y) => order[creditKind(x, a)] - order[creditKind(y, a)]);
+  const others = credits.filter((c) => !(creditKind(c, a) in order));
   const allPos = new Set((a.tracks || []).map((t) => t.pos));
   const trackNote = (c) => c.tracks && c.tracks.length && c.tracks.length < allPos.size ? `<span class="on">on ${c.tracks.map(esc).join(", ")}</span>` : "";
   const credit = (c) => `<li><a href="#/person/${encodeURIComponent(personKey(c.name))}">
       <span class="who">${esc(c.name)}</span>
-      <span class="what">${roleSpans(roleLabel(c))} ${trackNote(c)}</span></a></li>`;
+      <span class="what">${roleSpans(roleLabel(c, a))} ${trackNote(c)}</span></a></li>`;
   // Original year first; the pressing's own year sits by its catalogue number when it differs.
   const reissue = a.original_year && a.year && a.year !== a.original_year ? `${a.year} pressing` : "";
   // "1959 • Columbia, KCS 8163, 1972 pressing": the year it came out, then this pressing's details.

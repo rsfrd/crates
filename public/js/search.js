@@ -110,20 +110,25 @@ const MUSICAL_SKIP = /produc|engineer|record|mix|master|lacquer|liner|photo|desi
 const COMPOSER = /compos|written|music by|^music$/i;
 
 // What kind of credit this is: "leader", "player", "composer" or "other".
-export function creditKind(entry) {
+// Classical records name the composer as the album's artist; there, a composer credit means the piece is
+// theirs and others play it. Elsewhere (a band credited "Written-By" on its own album) it's their record.
+export const isClassical = (album) => !!album && ((album.genres || []).some((g) => /classical/i.test(g)) || (album.tracks || []).some((t) => t && (t.work || t.wby)));
+
+export function creditKind(entry, album = entry.album) {
   const roles = entry.roles || [];
   const musical = roles.filter((r) => !MUSICAL_SKIP.test(r));
-  if (!musical.length && roles.some((r) => COMPOSER.test(r))) return "composer";
+  const writes = !musical.length && roles.some((r) => COMPOSER.test(r));
+  if (writes && (!entry.leader || isClassical(album))) return "composer";
   if (entry.leader) return "leader";
   if (musical.length || entry.kind === "musician") return "player";
   return "other";
 }
 
-export function roleLabel(entry) {
+export function roleLabel(entry, album = entry.album) {
   const musical = entry.roles.filter((r) => !MUSICAL_SKIP.test(r));
   const other = entry.roles.filter((r) => MUSICAL_SKIP.test(r));
   // Composers (often named as album artists on classical records) are composers, not band leaders.
-  if (creditKind(entry) === "composer") return "Composer";
+  if (creditKind(entry, album) === "composer") return "Composer";
   if (entry.leader) return musical.length ? `Leader, ${musical.join(", ")}` : "Leader";
   if (musical.length) return musical.join(", ");
   if (other.length) return other.join(", ");
