@@ -102,14 +102,16 @@ const fp = await p.locator(".fab-pick").boundingBox(), fa = await p.locator('a.f
 check(fp.x + fp.width > 390 / 2 && fp.x + fp.width < fa.x && fa.x - (fp.x + fp.width) < 60, `shuffle button sits just left of Add (${Math.round(fa.x - fp.x - fp.width)}px gap)`);
 await p.click(".fab-pick"); await p.waitForSelector(".pick-card");
 check((await p.evaluate(() => location.hash)) === "#/pick", "Pick for me opens");
-const ownedTitles = new Set((await owned()).map((r) => r.title));
+// Titles as the app shows them: real apostrophes and " • " between translations.
+const shown = (t) => String(t).replace(/[’‘]/g, "'").replace(/ • /g, " = ");
+const ownedTitles = new Set((await owned()).map((r) => shown(r.title)));
 const seen = [];
 for (let i = 0; i < 6; i++) {
   seen.push(await p.textContent(".pick-title"));
   await p.click("#pick-again"); await p.waitForFunction((t) => document.querySelector(".pick-title")?.textContent !== t && !document.querySelector("#pick-again")?.disabled, seen.at(-1), { timeout: 4000 });
 }
 seen.push(await p.textContent(".pick-title"));
-check(seen.every((t) => ownedTitles.has(t)), "picks only records you own (never the want list)");
+check(seen.every((t) => ownedTitles.has(shown(t))), "picks only records you own (never the want list)");
 check(new Set(seen).size === seen.length, `seven picks in a row, no repeats (${seen.length})`);
 await shot("k07-pick");
 await p.selectOption("#pick-crate", "Japanese"); await p.waitForTimeout(200);

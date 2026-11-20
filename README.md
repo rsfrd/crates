@@ -9,6 +9,7 @@ Your vinyl collection and want list, searchable from your phone in a record stor
 - **Crates**: your own groupings, like "Japanese" or "Late night". **Pick for me** chooses something to play, from everything or one crate or genre.
 - **Filed like a record shop**: people by surname (Frank Zappa under Z), bands by name ignoring "The". **File under** fixes the odd exception.
 - **For sale**: mark records and filter to just those.
+- **Wash queue**: mark a record **To wash** when it sounds dirty; on wash day, filter to **To wash**, select the ones you washed and tap **Mark washed**. Each record remembers when it was last washed.
 - **Share it with a passphrase**: friends can browse everything; only you can change anything.
 - **Works with a weak signal**: the app opens with the copy saved on your phone, and want-list adds made offline sync later.
 
@@ -85,6 +86,8 @@ To rename the site, run `update site_settings set value = 'Your Name Here' where
 If your site was set up with the older numbered files, run [`supabase/updates/007_owner_and_guests.sql`](supabase/updates/007_owner_and_guests.sql) once in the SQL Editor. It makes your account (the first one on the project) the owner, keeps everything else readable to signed-in accounts, and adds the settings for a guest passphrase. The site keeps working either way; until it's run there's simply no guest access.
 
 To show the year each album first came out (a 1972 reissue of a 1959 album shows and files as 1959), run [`supabase/updates/008_original_year.sql`](supabase/updates/008_original_year.sql) once. Records pick up the year the next time their details are fetched or refreshed.
+
+To keep a wash queue (mark records **To wash**, then **Mark washed** several at once), run [`supabase/updates/009_wash_queue.sql`](supabase/updates/009_wash_queue.sql) once.
 
 The other files in `supabase/updates/` are earlier updates that `setup.sql` already includes.
 

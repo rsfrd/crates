@@ -29,6 +29,8 @@ create table if not exists public.albums (
   discogs_url     text,
   master_id       bigint,                          -- Discogs album family (all pressings)
   original_year   int,                             -- when the album first came out (its family's year); year is this pressing's
+  to_wash_since   timestamptz,                     -- in the wash queue since (null = not waiting for a wash)
+  washed_at       timestamptz,                     -- last washed
   price           jsonb,                           -- last marketplace check for want-list records
   tracks          jsonb   not null default '[]',   -- [{pos, title, dur}]
   credits         jsonb   not null default '[]',   -- [{name, id, roles[], kind, leader, tracks}]

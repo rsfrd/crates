@@ -5,7 +5,8 @@
   --ink: #17191B;
   --muted: #61676C;
   --line: #CCD2D2;
-  --accent: #1F3FD1;     /* cobalt, used for actions and the for-sale tag only */
+  --accent: #1F3FD1;     /* cobalt, used for actions and the to-wash tag only */
+  --sale: #19703A;       /* green, the for-sale tag */
   --accent-ink: #FFFFFF;
   --warn: #9A5B00;
   --blank-l: 80%;
@@ -19,7 +20,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #16191C; --surface: #1E2226; --ink: #E8ECEC; --muted: #969DA3; --line: #2F353A;
-    --accent: #8FA2FF; --accent-ink: #0E1430; --warn: #E2A84B;
+    --accent: #8FA2FF; --accent-ink: #0E1430; --warn: #E2A84B; --sale: #6FD08F;
     --blank-l: 26%; --blank-s: 12%;
     --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 28px -12px rgba(0,0,0,.8);
     color-scheme: dark;
@@ -102,7 +103,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .tag .glyph { width: 13px; height: 13px; stroke-width: 1.4; }
 .tag-want { border: 1px dashed color-mix(in srgb, var(--ink) 50%, transparent); color: var(--ink); }
-.tag-sale { border-color: var(--accent); color: var(--accent); padding-left: 8px; }
+.tag-sale { border-color: var(--sale); color: var(--sale); padding-left: 8px; }
 
 .person-row .stack { display: flex; flex: none; width: 56px; height: 56px; position: relative; }
 .person-row .stack .thumb { position: absolute; width: 40px; height: 40px; box-shadow: 0 0 0 2px var(--paper); }
@@ -458,3 +459,14 @@ textarea:focus, .edit input:focus, .add input:focus, .fix-form input:focus, .log
 .row > .thumb, .row > .stack { align-self: flex-start; }
 .row > .tags { align-self: flex-start; min-height: 56px; justify-content: center; }
 .selecting .row > .pick { align-self: flex-start; margin-top: 15px; }
+
+/* Wash queue */
+.tag-wash { color: var(--accent); border-color: var(--accent); }
+.tag-wash svg { width: 12px; height: 12px; margin-right: 3px; fill: currentColor; stroke: none; }
+.selrow .btn svg { width: 16px; height: 16px; margin-right: 6px; vertical-align: -3px; fill: currentColor; stroke: none; }
+.wash-hint { margin: 4px 0 14px; font-size: 14px; color: var(--muted); }
+.wash-hint svg { width: 16px; height: 16px; vertical-align: -3px; }
+.switch-card { background: var(--surface); border-radius: 16px; overflow: hidden; margin-top: 18px; }
+.switch-card .switch-row { background: none; border-radius: 0; margin: 0; }
+.switch-card .switch-row + .switch-row { border-top: 1px solid var(--line); }
+

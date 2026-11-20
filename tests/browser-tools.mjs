@@ -264,5 +264,74 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   await ctx.close();
 }
 
+// wash queue
+{
+  const base = { status: "owned", genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: "2026-01-01", enrich_status: "matched" };
+  const albums = [
+    { ...base, id: "w1", artist: "Art Blakey", title: "Moanin’", to_wash_since: "2026-11-14T18:00:00Z" },
+    { ...base, id: "w2", artist: "Bill Evans", title: "Sunday At The Village Vanguard", to_wash_since: "2026-11-17T18:00:00Z", for_sale: true },
+    { ...base, id: "w3", artist: "Dexter Gordon", title: "Go", washed_at: "2026-11-03T18:00:00Z" },
+    { ...base, id: "w4", artist: "Hank Mobley", title: "Soul Station" },
+    { ...base, id: "w5", artist: "Sonny Clark", title: "Cool Struttin’", status: "want" },
+  ];
+  const setup = async (query = "") => {
+    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await ctx.route(/fonts\.|jsdelivr/, (r) => r.abort());
+    await ctx.route("**/demo.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(albums) }));
+    const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
+    await q.goto("http://localhost:5189/?demo" + query); await q.waitForSelector(".row");
+    return q;
+  };
+  const q = await setup();
+  const tagsOf = async (title) => q.locator("#results a.row", { hasText: title }).locator(".tags").textContent().catch(() => "");
+  check((await tagsOf("Moanin")).includes("Wash") && !(await tagsOf("Moanin")).includes("To wash") && (await tagsOf("Sunday")).includes("For sale"), "rows in the queue show a Wash tag");
+  const colours = await q.evaluate(() => { const c = (sel) => getComputedStyle(document.querySelector(sel)).color; return { wash: c(".tag-wash"), sale: c(".tag-sale"), accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
+  check(colours.wash === "rgb(31, 63, 209)" && colours.sale === "rgb(25, 112, 58)", "Wash is blue, For sale is green: " + JSON.stringify(colours));
+  await q.click('[data-status="wash"]'); await q.waitForTimeout(300);
+  const queue = await q.$$eval("#results a.row .row-title", (els) => els.map((e) => e.textContent));
+  check(queue.join(" | ") === "Moanin’ | Sunday At The Village Vanguard", "the To wash filter shows the queue: " + queue.join(" | "));
+  check((await q.textContent(".wash-hint")).includes("2 records in your wash queue"), "with a line saying how many");
+
+  // add one from its page
+  await q.goto("http://localhost:5189/?demo#/album/w4"); await q.waitForSelector("#needs-wash");
+  const order = await q.evaluate(() => { const at = (sel) => document.querySelector(sel).getBoundingClientRect().top; return at("#notes") < at(".switch-card") && at(".switch-card") < at(".footer-actions"); });
+  check(order, "For sale and To wash sit below Notes, above the buttons");
+  check((await q.textContent(".switch-card")).includes("To wash") && (await q.textContent(".switch-card")).includes("Adds it to your wash queue."), "the switch is called To wash");
+  await q.click('label:has(#needs-wash)');
+  check(await toastHas(q, "Added to your wash queue"), "turning it on adds it to the queue");
+  await q.waitForTimeout(300); check((await q.textContent(".switch-card")).includes("In your wash queue since"), "and the page says since when: " + (await q.textContent(".switch-card")).replace(/\s+/g, " "));
+  await q.goto("http://localhost:5189/?demo#/album/w3"); await q.waitForSelector("#needs-wash");
+  check((await q.textContent(".switch-card")).includes("Last washed Nov"), "a washed record says when it was last washed");
+
+  // wash day: mark several washed at once
+  await q.goto("http://localhost:5189/?demo"); await q.waitForSelector(".row");
+  await q.click('[data-status="wash"]'); await q.waitForTimeout(300);
+  check((await q.$$("#results a.row")).length === 3, "the queue now has 3");
+  await q.click("#select-toggle"); await q.waitForTimeout(200);
+  await q.click('#results a.row[href="#/album/w1"]'); await q.click('#results a.row[href="#/album/w4"]');
+  check(await q.locator("#sel-washed").count() === 1 && !(await q.locator("#sel-remove").count()), "in the queue, the select bar offers Mark washed");
+  await q.click("#sel-washed");
+  check(await toastHas(q, "Washed 2 records"), "Mark washed takes them out of the queue");
+  await q.waitForTimeout(300);
+  const left = await q.$$eval("#results a.row .row-title", (els) => els.map((e) => e.textContent));
+  check(left.join(" | ") === "Sunday At The Village Vanguard", "leaving the one that wasn’t washed: " + left.join(" | "));
+  await q.goto("http://localhost:5189/?demo#/album/w1"); await q.waitForSelector("#needs-wash");
+  check(!(await q.isChecked("#needs-wash")) && (await q.textContent(".switch-card")).includes("Last washed"), "and each one remembers when it was washed");
+  await q.goto("http://localhost:5189/?demo#/tools"); await q.waitForSelector(".tools-sub");
+  check((await q.textContent(".tools-sub")).includes("1 to wash"), "the Collection page counts the queue");
+  const [dl] = await Promise.all([q.waitForEvent("download"), q.click("#export")]);
+  const csv = fs.readFileSync(await dl.path(), "utf8");
+  check(csv.split("\n")[0].includes("In wash queue since,Last washed"), "the CSV has the wash dates");
+  await q.context().close();
+
+  // guests: can see the queue, can't change it
+  const g = await setup("&guest");
+  await g.click('[data-status="wash"]'); await g.waitForTimeout(300);
+  check(!(await g.locator(".wash-hint").count()), "guests don’t get the how-to line");
+  await g.goto("http://localhost:5189/?demo&guest#/album/w1"); await g.waitForSelector("#needs-wash");
+  check(await g.getAttribute("#needs-wash", "aria-disabled") === "true", "guests can’t change To wash");
+  await g.context().close();
+}
+
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); server.close();

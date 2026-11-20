@@ -193,6 +193,7 @@ export function passes(album, { status = "all", genre = "", crate = "" } = {}) {
   if (status === "owned" && album.status !== "owned") return false;
   if (status === "want" && album.status !== "want") return false;
   if (status === "sale" && !(album.status === "owned" && album.for_sale)) return false;
+  if (status === "wash" && !(album.status === "owned" && album.to_wash_since)) return false;
   if (genre && !(album.genres || []).includes(genre)) return false;
   if (crate && !(album.crates || []).includes(crate)) return false;
   return true;

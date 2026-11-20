@@ -53,6 +53,8 @@ export const CSV_COLUMNS = [
   ["Personnel", (a) => creditLines(a).personnel],
   ["Other credits", (a) => creditLines(a).other],
   ["Notes", (a) => a.notes],
+  ["In wash queue since", (a) => (a.to_wash_since ? String(a.to_wash_since).slice(0, 10) : "")],
+  ["Last washed", (a) => (a.washed_at ? String(a.washed_at).slice(0, 10) : "")],
   ["Lowest price", (a) => (a.price && a.price.value != null ? `${Number(a.price.value).toFixed(2)} ${a.price.currency || ""}`.trim() : "")],
   ["Price checked", (a) => (a.price && a.price.checked_at ? a.price.checked_at.slice(0, 10) : "")],
   ["Discogs", (a) => a.discogs_url],

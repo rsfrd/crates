@@ -147,7 +147,7 @@ await shot(p, "11-search-mixed");
 await p.click(".row:has-text('Mingus Ah Um')"); await p.waitForSelector(".status-block.want");
 await shot(p, "12-want-album");
 await p.click("#got-it"); await p.waitForTimeout(250);
-check(await p.locator(".switch-row").count() === 1, "moved to collection shows for-sale switch");
+check(await p.locator("#for-sale").count() === 1, "moved to collection shows for-sale switch");
 await p.click("button[data-close]");
 
 // Persistence after reload

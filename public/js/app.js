@@ -33,6 +33,7 @@ const ICON = {
   signout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg>',
   disc: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/></svg>',
   sheet: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M3.5 14.5h17M10 4v16"/></svg>',
+  drop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5c3 4 5.5 7.2 5.5 10.2a5.5 5.5 0 0 1-11 0C6.5 10.7 9 7.5 12 3.5z"/></svg>',
   // Hollow record = not on the shelf yet
   want: '<svg viewBox="0 0 16 16" aria-hidden="true" class="glyph"><circle cx="8" cy="8" r="6.25" fill="none" stroke-dasharray="2.2 1.6"/><circle cx="8" cy="8" r="1.4" fill="none"/></svg>',
 };
@@ -107,6 +108,7 @@ function tags(a) {
   if (a.status === "want") t += `<span class="tag tag-want">${ICON.want}Want</span>`;
   if (a.status === "want" && a.price && a.price.value != null) t += `<span class="tag tag-price">${money(a.price)}</span>`;
   if (a.status === "owned" && a.for_sale) t += `<span class="tag tag-sale">For sale</span>`;
+  if (a.status === "owned" && a.to_wash_since) t += `<span class="tag tag-wash">${ICON.drop}Wash</span>`;
   if (a._pending) t += `<span class="tag">Not synced</span>`;
   return t ? `<span class="tags">${t}</span>` : "";
 }
@@ -175,7 +177,7 @@ function renderShell() {
       </label>
       <div class="filters">
         <div class="seg" role="radiogroup" aria-label="Show">
-          ${[["all", "All"], ["owned", "Owned"], ["want", "Want"], ["sale", "For sale"]]
+          ${[["all", "All"], ["owned", "Owned"], ["want", "Want"], ["sale", "For sale"], ...(washReady() ? [["wash", "To wash"]] : [])]
             .map(([v, l]) => `<button role="radio" data-status="${v}" aria-checked="${state.status === v}">${l}</button>`).join("")}
         </div>
         <select id="crate" aria-label="Crate" hidden></select>
@@ -266,11 +268,14 @@ function renderResults() {
       el.innerHTML = emptyState(state.status === "want"
         ? "Your want list is empty. Add an album you heard and it’ll be here when you’re in the store."
         : state.status === "sale" ? "Nothing is marked for sale. Open a record and turn on “For sale” to queue it."
+        : state.status === "wash" ? "Your wash queue is empty. When a record sounds dirty, open it and turn on “To wash”."
         : state.crate ? `Nothing in “${esc(state.crate)}” matches these filters.`
         : "Nothing here yet.");
       return;
     }
-    el.innerHTML = albumBlock(res.albums);
+    el.innerHTML = (state.status === "wash" && !state.select && state.owner
+      ? `<p class="wash-hint">${plural(res.albums.length, "record")} in your wash queue. After a wash, tap ${ICON.select} to select the ones you washed, then <strong>Mark washed</strong>.</p>` : "")
+      + albumBlock(res.albums);
     return;
   }
 
@@ -307,7 +312,8 @@ function renderAll() {
   renderResults();
   // Don’t redraw a panel out from under someone who is typing in it.
   const active = document.activeElement;
-  if (active && active.closest?.("#overlay") && /input|textarea/i.test(active.tagName)) return;
+  const typing = active && (active.tagName === "TEXTAREA" || (active.tagName === "INPUT" && !/^(checkbox|radio|button|submit|file)$/i.test(active.type)));
+  if (typing && active.closest?.("#overlay")) return;
   renderOverlay();
 }
 
@@ -348,14 +354,22 @@ function renderSelbar() {
       <button class="btn" id="sel-done">Done</button>
     </div>
     <div class="selrow">
-      <button class="btn primary" id="sel-add" ${n ? "" : "disabled"}>Add to crate</button>
-      <button class="btn" id="sel-remove" ${n ? "" : "disabled"}>Remove from crate</button>
+      ${state.status === "wash" ? `<button class="btn primary" id="sel-washed" ${n ? "" : "disabled"}>${ICON.drop}Mark washed</button>
+      <button class="btn" id="sel-add" ${n ? "" : "disabled"}>Add to crate</button>`
+      : `<button class="btn primary" id="sel-add" ${n ? "" : "disabled"}>Add to crate</button>
+      <button class="btn" id="sel-remove" ${n ? "" : "disabled"}>Remove from crate</button>`}
     </div>`;
   bar.querySelector("#sel-all").addEventListener("click", () => {
     state.select = all ? new Set() : new Set(state.visibleIds); renderResults();
   });
   bar.querySelector("#sel-add").addEventListener("click", () => { state.selPanel = state.selPanel === "add" ? null : "add"; renderSelbar(); $("#new-crate-name")?.focus(); });
-  bar.querySelector("#sel-remove").addEventListener("click", () => { state.selPanel = state.selPanel === "remove" ? null : "remove"; renderSelbar(); });
+  bar.querySelector("#sel-remove")?.addEventListener("click", () => { state.selPanel = state.selPanel === "remove" ? null : "remove"; renderSelbar(); });
+  bar.querySelector("#sel-washed")?.addEventListener("click", async () => {
+    const now = new Date().toISOString(), ids = [...state.select];
+    for (const id of ids) await updateAlbum(id, { to_wash_since: null, washed_at: now }).catch(() => {});
+    toast(`Washed ${plural(ids.length, "record")}`);
+    endSelect();
+  });
   bar.querySelector("#sel-done").addEventListener("click", endSelect);
   const addTo = async (name) => {
     name = cleanCrate(name); if (!name) return;
@@ -567,6 +581,14 @@ function candYears(c) {
   const o = c.original_year;
   return o && c.year && String(o) !== String(c.year) ? [`Released ${o}`, `This pressing ${c.year}`] : [o || c.year];
 }
+
+// The database has the wash queue columns (supabase/updates/009).
+function washReady() {
+  if (state.store && state.store.mode !== "live") return true;
+  const sample = state.albums.find((a) => !a._pending);
+  return !sample || "to_wash_since" in sample;
+}
+const shortDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 // The database has the original-year column (supabase/updates/008).
 function originalReady() {
@@ -1077,10 +1099,19 @@ function renderAlbum(id) {
         <p>${ICON.want} ${a.created_at ? `Wanted since ${new Date(a.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}` : "On your want list"}</p>
         <button class="btn primary" id="got-it">Move to collection</button>
       </div>`
-    : `<label class="switch-row">
+    : "";
+  // For sale and To wash sit below the notes, above the buttons (owned records only).
+  const switches = a.status === "want" ? "" : `<div class="switch-card">
+      <label class="switch-row">
         <span><strong>For sale</strong><span class="hint">Shows up under the “For sale” filter.</span></span>
         <input type="checkbox" role="switch" id="for-sale" ${a.for_sale ? "checked" : ""}>
-      </label>`;
+      </label>
+      ${washReady() ? `<label class="switch-row">
+        <span><strong>To wash</strong><span class="hint">${a.to_wash_since ? `In your wash queue since ${shortDate(a.to_wash_since)}. Turn off once it’s washed.`
+          : a.washed_at ? `Last washed ${shortDate(a.washed_at)}.` : "Adds it to your wash queue."}</span></span>
+        <input type="checkbox" role="switch" id="needs-wash" ${a.to_wash_since ? "checked" : ""}>
+      </label>` : ""}
+    </div>`;
 
   const edit = state.editing ? `
     <form class="edit" id="edit-form">
@@ -1142,6 +1173,8 @@ function renderAlbum(id) {
         <textarea id="notes" rows="2" placeholder="Condition, pressing, price paid…">${esc(a.notes || "")}</textarea>
       </section>
 
+      ${switches}
+
       ${edit}
       ${fix}
 
@@ -1162,6 +1195,11 @@ function renderAlbum(id) {
   }));
   panel.querySelector("#got-it")?.addEventListener("click", async () => {
     await updateAlbum(a.id, { status: "owned" }); toast("Moved to your collection");
+  });
+  panel.querySelector("#needs-wash")?.addEventListener("change", async (e) => {
+    const now = new Date().toISOString();
+    await updateAlbum(a.id, e.target.checked ? { to_wash_since: now } : { to_wash_since: null, washed_at: now }).catch(() => {});
+    toast(e.target.checked ? "Added to your wash queue" : "Washed. Out of your wash queue.");
   });
   panel.querySelector("#for-sale")?.addEventListener("change", async (e) => {
     await updateAlbum(a.id, { for_sale: e.target.checked }).catch(() => {});
@@ -1573,6 +1611,7 @@ function renderTools() {
   const pct = e.total ? Math.round((e.done / e.total) * 100) : 0;
 
   const owned = state.albums.filter((x) => x.status !== "want").length, wanted = state.albums.length - owned;
+  const toWash = state.albums.filter((x) => x.status === "owned" && x.to_wash_since).length;
   const notFound = missing.length + errors.length;
   const cdWants = state.albums.filter((x) => !x._pending && x.status === "want" && notVinyl(x) && x.enrich_status === "matched");
   const sec = (title, note, body) => `<section class="sec">
@@ -1592,7 +1631,7 @@ function renderTools() {
       <button class="icon-btn" data-close aria-label="Close">${ICON.close}</button>
     </div>
     <div class="tools">
-      <p class="tools-sub">${plural(owned, "record")}${wanted ? ` · ${wanted} wanted` : ""}${state.index.crates.length ? ` · ${plural(state.index.crates.length, "crate")}` : ""}</p>
+      <p class="tools-sub">${plural(owned, "record")}${wanted ? ` · ${wanted} wanted` : ""}${toWash ? ` · ${toWash} to wash` : ""}${state.index.crates.length ? ` · ${plural(state.index.crates.length, "crate")}` : ""}</p>
       ${mode === "demo" ? `<p class="note">You’re looking at demo mode with a small sample collection. Changes stay in this browser. Connect Supabase and Discogs (see the README) to use your own records.</p>` : ""}
       ${mode === "offline" ? `<p class="note">You’re offline, showing the copy saved on this device. Want-list adds will sync when you reconnect.</p>` : ""}
 
@@ -1613,6 +1652,7 @@ function renderTools() {
         : lookups ? `
           ${pending.length ? action(`${plural(pending.length, "record")} to fetch`, `About ${Math.max(1, Math.round(pending.length * 4 / 60))} min. Keep this screen open; you can stop and pick up later.`, `<button class="btn primary" id="run">Fetch</button>`) : ""}
           ${notFound ? action(`${plural(notFound, "record")} ${notFound === 1 ? "wasn’t" : "weren’t"} found on Discogs.`, "", `<button class="btn" id="retry">Try again</button>`) : ""}
+          ${state.store.mode === "live" && !washReady() ? `<div class="card-row"><p class="hint">To keep a wash queue, run supabase/updates/009_wash_queue.sql in Supabase, then reload.</p></div>` : ""}
           ${state.store.mode === "live" && !originalReady() ? `<div class="card-row"><p class="hint">To show the year each album first came out, run supabase/updates/008_original_year.sql in Supabase, then reload.</p></div>` : ""}
           ${noSides.length ? action(`${plural(noSides.length, "track list")} ${noSides.length === 1 ? "looks" : "look"} like ${noSides.length === 1 ? "a CD" : "CDs"}`, "No sides listed. Switch to the vinyl LP.", `<button class="btn" id="vinyl">Switch</button>`) : ""}`
         : ""}
@@ -1864,7 +1904,7 @@ function renderLogin(error = "", mode) {
 // The database refuses guest changes regardless; this just keeps the screen honest.
 const EDIT_CONTROLS = [
   'a.fab[href="#/add"]', '.empty a.btn[href^="#/add"]', "#select-toggle",
-  "#got-it", ".switch-row", "#for-sale", "#notes",
+  "#got-it", ".switch-row", "#for-sale", "#needs-wash", "#sel-washed", "#notes",
   "#cover-find", "#cover-own", "#crate-add-open", "[data-crate-rm]",
   "#fix-open", "#keep-as-is", "#refresh", "#edit-open", "#delete", "#price-refresh",
   "#run", "#retry", "#vinyl", "#prices-all", "[data-crate-rename]", "[data-crate-delete]", "[data-import]",
