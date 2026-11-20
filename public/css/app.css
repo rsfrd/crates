@@ -7,6 +7,7 @@
   --line: #CCD2D2;
   --accent: #1F3FD1;     /* cobalt, used for actions and the to-wash tag only */
   --sale: #19703A;       /* green, the for-sale tag */
+  --sale-ink: #FFFFFF;   /* text on a filled for-sale tag */
   --accent-ink: #FFFFFF;
   --warn: #9A5B00;
   --blank-l: 80%;
@@ -20,7 +21,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #16191C; --surface: #1E2226; --ink: #E8ECEC; --muted: #969DA3; --line: #2F353A;
-    --accent: #8FA2FF; --accent-ink: #0E1430; --warn: #E2A84B; --sale: #6FD08F;
+    --accent: #8FA2FF; --accent-ink: #0E1430; --warn: #E2A84B; --sale: #6FD08F; --sale-ink: #0F2A18;
     --blank-l: 26%; --blank-s: 12%;
     --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 28px -12px rgba(0,0,0,.8);
     color-scheme: dark;
@@ -120,7 +121,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .tile-sub { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile .tags { position: absolute; top: 6px; left: 6px; align-items: flex-start; }
 .tile .tag-want { display: none; }
-.tile .tag-sale { background: var(--accent); color: var(--accent-ink); }
+.tile .tag-sale { background: var(--sale); color: var(--sale-ink); border-color: var(--sale); }
+.tile .tag-wash { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
 .empty { padding: 56px 8px; text-align: center; color: var(--muted); }
 .empty p { max-width: 34ch; margin: 0 auto 18px; }

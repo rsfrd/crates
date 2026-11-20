@@ -1,5 +1,5 @@
 // Keeps the app shell available with a weak signal in a store. Data comes from Supabase (cached by the app itself).
-const CACHE = "crate-shell-v44";
+const CACHE = "crate-shell-v45";
 const SHELL = ["/", "/index.html", "/css/app.css", "/js/app.js", "/js/store.js", "/js/search.js", "/js/importer.js", "/js/exporter.js", "/icon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
