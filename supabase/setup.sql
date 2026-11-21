@@ -32,11 +32,11 @@ create table if not exists public.albums (
   to_wash_since   timestamptz,                     -- in the wash queue since (null = not waiting for a wash)
   washed_at       timestamptz,                     -- last washed
   price           jsonb,                           -- last marketplace check for want-list records
-  tracks          jsonb   not null default '[]',   -- [{pos, title, dur}]
+  tracks          jsonb   not null default '[]',   -- [{pos, title, dur, by?, work?, wi?, wby?}] (work/wby: classical piece and its composer)
   credits         jsonb   not null default '[]',   -- [{name, id, roles[], kind, leader, tracks}]
   personnel_hint  text[]  not null default '{}',   -- player names from an imported spreadsheet
 
-  -- pending | matched | review | not_found | error
+  -- pending | matched | review | not_found | error | manual ("It's fine as it is")
   enrich_status   text    not null default 'pending',
 
   created_at      timestamptz not null default now(),

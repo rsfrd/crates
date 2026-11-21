@@ -8,9 +8,11 @@ Your vinyl collection and want list, searchable from your phone in a record stor
 - **Covers, tracks and personnel** come from Discogs, always the vinyl pressing. For a release that isn't on Discogs, paste its Bandcamp link. If a cover is wrong, **Find a better image** offers alternatives, or use your own photo.
 - **Crates**: your own groupings, like "Japanese" or "Late night". **Pick for me** chooses something to play, from everything or one crate or genre.
 - **Filed like a record shop**: people by surname (Frank Zappa under Z), bands by name ignoring "The". **File under** fixes the odd exception.
+- **Filed by first release**: a 1972 reissue of a 1959 album shows and files as 1959, with the pressing's own year beside its catalogue number.
 - **For sale**: mark records and filter to just those.
 - **Wash queue**: mark a record **To wash** when it sounds dirty; on wash day, filter to **To wash**, select the ones you washed and tap **Mark washed**. Each record remembers when it was last washed.
 - **Share it with a passphrase**: friends can browse everything; only you can change anything.
+- **Download or back up everything**: a CSV of every album with tracks, personnel and notes, or a complete backup you can restore.
 - **Works with a weak signal**: the app opens with the copy saved on your phone, and want-list adds made offline sync later.
 
 Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Discogs** supplies album details.
@@ -54,7 +56,7 @@ When it finishes, open the site and sign in. Optional: under **Domain management
 Your new site invites you to import:
 
 - **From Discogs**: type your Discogs username. Your collection (or want list) comes in as the exact pressings you've catalogued. Leave **Vinyl only** ticked to skip CDs and tapes.
-- **From a spreadsheet**: export it as CSV (comma, tab or semicolon separated all work). The app matches the columns from your headings (artist, album, year, label, catalogue number, genre, notes, players), shows a preview, and leaves out duplicates.
+- **From a spreadsheet**: export it as CSV (comma, tab or semicolon separated all work). The app matches the columns from your headings (artist, album, year, original year, label, catalogue number, genre, notes, players, owned or wanted), shows a preview, and leaves out duplicates.
 
 Then open **Collection** (the record icon, top right) and, under **Album details**, tap **Fetch** for covers, track lists and personnel. Discogs allows about 60 lookups a minute, so 700 records take about 45 minutes. Keep the screen open; you can stop and carry on later. Records imported from a spreadsheet are matched by name. Anything uncertain lands under **Needs a look**, where **Fix match** lets you pick the right pressing or paste its Discogs link. For a record that isn't on Discogs or Bandcamp at all, fill in what you know with **Edit details**, then tap **It's fine as it is** so it stops asking.
 
@@ -81,15 +83,21 @@ To rename the site, run `update site_settings set value = 'Your Name Here' where
 
 ---
 
-## Updating a site set up before setup.sql existed
+## Updating your copy
 
-If your site was set up with the older numbered files, run [`supabase/updates/007_owner_and_guests.sql`](supabase/updates/007_owner_and_guests.sql) once in the SQL Editor. It makes your account (the first one on the project) the owner, keeps everything else readable to signed-in accounts, and adds the settings for a guest passphrase. The site keeps working either way; until it's run there's simply no guest access.
+New features sometimes need a small database update. They live in [`supabase/updates/`](supabase/updates/), numbered in the order they were added; a fresh `setup.sql` already includes all of them.
 
-To show the year each album first came out (a 1972 reissue of a 1959 album shows and files as 1959), run [`supabase/updates/008_original_year.sql`](supabase/updates/008_original_year.sql) once. Records pick up the year the next time their details are fetched or refreshed.
+When you pull in a newer version of this project, run any update files you haven't run yet in the Supabase SQL Editor, in number order. Every file is safe to run again, so if you're not sure, run them all. The site keeps working before you do; the features that need an update simply stay hidden, and the Collection page tells you which file turns them on.
 
-To keep a wash queue (mark records **To wash**, then **Mark washed** several at once), run [`supabase/updates/009_wash_queue.sql`](supabase/updates/009_wash_queue.sql) once.
-
-The other files in `supabase/updates/` are earlier updates that `setup.sql` already includes.
+| File | Adds |
+|---|---|
+| `002_covers.sql` | storage for your own cover photos |
+| `004_crates.sql` | crates |
+| `005_prices.sql` | want-list prices |
+| `006_file_under.sql` | **File under** |
+| `007_owner_and_guests.sql` | owner-only changes and the guest passphrase (makes the first account on the project the owner) |
+| `008_original_year.sql` | the year each album first came out; records pick it up the next time their details are fetched or refreshed |
+| `009_wash_queue.sql` | the wash queue |
 
 ---
 
@@ -116,12 +124,12 @@ public/                  the website (plain HTML, CSS, JS; no build step)
 netlify/functions/       small server functions (the site owner only)
   discogs.mjs            Discogs matching, collection import, prices and cover search
   bandcamp.mjs           reads one Bandcamp album page you paste a link to
-  image.mjs              downloads an image from a pasted link
+  image.mjs              downloads a cover from a pasted link or a slow source, to save your own copy
   config.mjs             hands the site its Supabase settings
   keepalive.mjs          daily ping so Supabase doesn't pause
 netlify/lib/             the logic behind those, plus the owner check
 supabase/setup.sql       everything a new site's database needs
-supabase/updates/        updates for sites set up before setup.sql
+supabase/updates/        updates for copies set up before a feature existed
 tests/                   node --test tests/*.test.mjs; browser walkthroughs: node tests/browser*.mjs <folder>
 ```
 
