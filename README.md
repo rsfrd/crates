@@ -7,7 +7,7 @@ I found myself flipping through bins in record stores trying to remember whether
 What else can it do?
 
 - **Import your records** from your Discogs collection or from any spreadsheet saved as CSV. You can add all sorts of fields to the CSV, including catalogue number, but all you need at a minimum is artist and title and the rest will come in via Discogs. If what it pulls isn't right, you can choose from other pressings or versions.
-- **Covers, tracks and personnel** come from Discogs and the app always selects the vinyl edition. For a release that isn't on Discogs but is on Bandcamp, you can paste that link and the app will pull in the release infor. If a cover is wrong or not great, **Find a better image** offers alternatives, or you can upload your own photo.
+- **Covers, tracks and personnel** come from Discogs and the app always selects the vinyl edition. For a release that isn't on Discogs but is on Bandcamp, you can paste that link and the app will pull in the release info. If a cover is wrong or not great, **Find a better image** offers alternatives, or you can upload your own photo.
 - **Crates**: allow you to make your own groupings beyond genre, like "Late Night" or "Matador Releases."
 - **Pick for me** pulls a title at random and you can narrow its choice by crate or genre.
 - **Want list**: Tap **Add**, enter an artist and album and you're done. Want list records show in search with a dashed outline, so you can tell at a glance you don't own them yet. Each one shows the lowest price for its pressing on the Discogs marketplace, with links to that pressing's US sellers or all sellers. (The Discogs marketplace API isn't super great, so use this price as a ballpark).
