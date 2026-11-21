@@ -849,6 +849,7 @@ function renderImportCSV() {
       <button class="btn" id="imp-again">Choose another file</button>`;
   } else {
     body = `
+      <p>Add to your collection or want list after choosing a file.</p>
       <p>Any spreadsheet saved as CSV works: one row per record, with at least an artist and an album. Year, label, catalogue number, genre, notes and players are used if they’re there.</p>
       <label class="btn primary big" for="imp-file">Choose a file</label>
       <input type="file" id="imp-file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" class="visually-hidden">
