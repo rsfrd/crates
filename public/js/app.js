@@ -419,8 +419,8 @@ async function changeCrates(ids, fn) {
   return changes.length;
 }
 
-function renameCrate(from) {
-  const to = cleanCrate(prompt(`Rename “${from}” to:`, from));
+async function renameCrate(from) {
+  const to = cleanCrate(await askConfirm(`Rename “${from}” to:`, { yes: "Rename", input: from }));
   if (!to || to === from) return;
   const ids = state.albums.filter((a) => (a.crates || []).includes(from)).map((a) => a.id);
   changeCrates(ids, (cs) => cs.map((c) => (c === from ? to : c))).then((n) => {
@@ -428,9 +428,9 @@ function renameCrate(from) {
   });
 }
 
-function deleteCrate(name) {
+async function deleteCrate(name) {
   const ids = state.albums.filter((a) => (a.crates || []).includes(name)).map((a) => a.id);
-  if (!confirm(`Delete the crate “${name}”? The ${plural(ids.length, "record")} in it stay in your collection.`)) return;
+  if (!(await askConfirm(`Delete the crate “${name}”? The ${plural(ids.length, "record")} in it stay in your collection.`, { yes: "Delete crate", danger: true }))) return;
   changeCrates(ids, (cs) => cs.filter((c) => c !== name)).then((n) => {
     if (n != null) { if (state.crate === name) state.crate = ""; toast(`Deleted ${name}`); renderAll(); }
   });
@@ -1244,7 +1244,7 @@ function renderAlbum(id) {
   });
   panel.querySelector("#delete").addEventListener("click", async () => {
     const msg = a.status === "want" ? `Remove “${a.title}” from your want list?` : `Delete “${a.title}” from your collection? This can’t be undone.`;
-    if (!confirm(msg)) return;
+    if (!(await askConfirm(msg, { yes: a.status === "want" ? "Remove" : "Delete", danger: true }))) return;
     try {
       await state.store.remove(a.id);
       setAlbums(state.albums.filter((x) => x.id !== a.id));
@@ -1582,7 +1582,7 @@ function renderAdd(prefill) {
     if (crate) row.crates = [crate];
     if (bandcamp && !/^https?:\/\//i.test(bandcamp)) { toast("Paste the full Bandcamp link, starting with https://"); return; }
     const dupe = state.albums.find((a) => fold(a.artist) === fold(row.artist) && fold(a.title) === fold(row.title));
-    if (dupe && !confirm(dupe.status === "want" ? "That’s already on your want list. Add it again?" : "You already own that one. Add it anyway?")) return;
+    if (dupe && !(await askConfirm(dupe.status === "want" ? "That’s already on your want list. Add it again?" : "You already own that one. Add it anyway?", { yes: "Add anyway" }))) return;
     $("#add-submit").disabled = true;
     try {
       let saved;
@@ -1889,6 +1889,43 @@ function setQuery(q) {
 }
 
 let toastTimer;
+// The app's own "Are you sure?". The browser's confirm() popup is unreliable on iOS, especially in an app
+// added to the home screen, where it can fail to appear, so a tap on Remove did nothing.
+// With `input`, it also asks for some text (prefilled with `input`) and answers with it, or null on Cancel.
+function askConfirm(message, { yes = "OK", danger = false, input } = {}) {
+  return new Promise((resolve) => {
+    document.querySelector(".confirm-sheet")?.remove();
+    const sheet = document.createElement("div");
+    sheet.className = "confirm-sheet";
+    sheet.innerHTML = `<div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+        <p id="confirm-msg">${esc(message)}</p>
+        ${input !== undefined ? `<input type="text" class="confirm-input" aria-labelledby="confirm-msg" value="${esc(input)}">` : ""}
+        <div class="confirm-actions">
+          <button class="btn" data-answer="no">Cancel</button>
+          <button class="btn ${danger ? "danger-fill" : "primary"}" data-answer="yes">${esc(yes)}</button>
+        </div>
+      </div>`;
+    const field = () => sheet.querySelector(".confirm-input");
+    const done = (answer) => {
+      document.removeEventListener("keydown", onKey, true); sheet.remove();
+      resolve(input !== undefined ? (answer ? field()?.value ?? "" : null) : answer);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(false); }
+      else if (e.key === "Enter" && e.target === field()) { e.preventDefault(); done(true); }
+    };
+    sheet.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-answer]");
+      if (b) done(b.dataset.answer === "yes");
+      else if (e.target === sheet) done(false);   // tapping outside the card cancels
+    });
+    document.addEventListener("keydown", onKey, true);
+    document.body.append(sheet);
+    if (field()) { field().focus({ preventScroll: true }); field().select(); }
+    else sheet.querySelector('[data-answer="no"]').focus({ preventScroll: true });
+  });
+}
+
 function toast(msg) {
   const t = $("#toast"); if (!t) return;
   t.textContent = msg; t.classList.add("show");

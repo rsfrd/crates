@@ -333,5 +333,39 @@ await q.fill("#q", "Better Git It In Your Soul"); await q.waitForTimeout(300);
   await g.context().close();
 }
 
+// removing from the want list uses the app's own confirmation (browser popups are unreliable on iOS)
+{
+  const base = { genres: ["Jazz"], crates: [], tracks: [], credits: [], personnel_hint: [], for_sale: false, created_at: "2026-01-01", enrich_status: "matched" };
+  const albums = [
+    { ...base, id: "r1", artist: "Sonny Clark", title: "Cool Struttin’", status: "want" },
+    { ...base, id: "r2", artist: "Hank Mobley", title: "Soul Station", status: "owned" },
+  ];
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await ctx.route(/fonts\.|jsdelivr/, (r) => r.abort());
+  await ctx.route("**/demo.json", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(albums) }));
+  const q = await ctx.newPage(); q.on("pageerror", (e) => errors.push(e.message));
+  const popups = []; q.on("dialog", (d) => { popups.push(d.message()); d.dismiss(); });
+  await q.goto("http://localhost:5189/?demo#/album/r1"); await q.waitForSelector("#delete");
+  await q.click("#delete"); await q.waitForSelector(".confirm-sheet");
+  check((await q.textContent(".confirm-sheet")).includes("Remove “Cool Struttin’” from your want list?"), "Remove from want list asks in the app’s own panel");
+  await q.waitForTimeout(400); await q.screenshot({ path: path.join(OUT, "t10-confirm.png") });
+  await q.click('.confirm-sheet [data-answer="no"]');
+  check(!(await q.locator(".confirm-sheet").count()) && (await q.locator(".album-title").count()) === 1, "Cancel leaves it where it is");
+  await q.click("#delete"); await q.click('.confirm-sheet [data-answer="yes"]');
+  check(await toastHas(q, "Removed from want list"), "Remove takes it off the want list");
+  check(await q.waitForFunction(() => document.querySelector("#overlay")?.hidden && !document.querySelector("#results").textContent.includes("Cool Struttin"), null, { timeout: 4000 }).then(() => true, () => false), "and it’s gone from the list");
+  await q.goto("http://localhost:5189/?demo#/album/r2"); await q.waitForSelector("#delete");
+  await q.click("#delete"); await q.waitForSelector(".confirm-sheet");
+  await q.keyboard.press("Escape");
+  check(!(await q.locator(".confirm-sheet").count()) && (await q.locator(".album-title").count()) === 1, "Escape cancels too");
+  await q.goto("http://localhost:5189/?demo#/add"); await q.waitForSelector("#add-submit");
+  await q.fill('input[name="artist"]', "Hank Mobley"); await q.fill('input[name="title"]', "Soul Station"); await q.click("#add-submit");
+  await q.waitForSelector(".confirm-sheet");
+  check((await q.textContent(".confirm-sheet")).includes("You already own that one"), "adding a duplicate asks in the app’s own panel");
+  await q.click('.confirm-sheet [data-answer="no"]');
+  check(!popups.length, "no browser popups at all: " + popups.join(" | "));
+  await ctx.close();
+}
+
 console.log(errors.length ? "\nERRORS:\n" + errors.join("\n") : "\nno errors");
 await b.close(); server.close();
