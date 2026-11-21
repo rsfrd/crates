@@ -1,21 +1,29 @@
 # Garage Crates
 
-Your vinyl collection and want list, searchable from your phone in a record store. Set up your own copy in about 20 minutes, on free accounts.
+This is Garage Crates, a record collection app that makes it easy to keep track of the albums you own, want to buy, want to sell, and need to wash. You can get started quickly by importing from Discogs, uploading a CSV, or adding your records one by one — even this is easy because all you need is most of the artist and most of the title and the app will look up the rest through the Discogs API.
 
-- **Search everything**: artist, album, song, genre, crate, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument. Classical records show each piece above its movements, with its composer.
-- **Want list**: tap **Add**, type an artist and album, done. Wanted records show in search with a dashed outline, so you can tell at a glance you don't own them yet. Each one shows the lowest price for its pressing on the Discogs marketplace, with links to that pressing's US sellers or all sellers.
-- **Import your records** from your Discogs collection (exact pressings, nothing to match) or from any spreadsheet saved as CSV.
-- **Covers, tracks and personnel** come from Discogs, always the vinyl pressing. For a release that isn't on Discogs, paste its Bandcamp link. If a cover is wrong, **Find a better image** offers alternatives, or use your own photo.
-- **Crates**: your own groupings, like "Japanese" or "Late night". **Pick for me** chooses something to play, from everything or one crate or genre.
-- **Filed like a record shop**: people by surname (Frank Zappa under Z), bands by name ignoring "The". **File under** fixes the odd exception.
-- **Filed by first release**: a 1972 reissue of a 1959 album shows and files as 1959, with the pressing's own year beside its catalogue number.
-- **For sale**: mark records and filter to just those.
-- **Wash queue**: mark a record **To wash** when it sounds dirty; on wash day, filter to **To wash**, select the ones you washed and tap **Mark washed**. Each record remembers when it was last washed.
-- **Share it with a passphrase**: friends can browse everything; only you can change anything.
-- **Download or back up everything**: a CSV of every album with tracks, personnel and notes, or a complete backup you can restore.
-- **Works with a weak signal**: the app opens with the copy saved on your phone, and want-list adds made offline sync later.
+I found myself flipping through bins in record stores trying to remember whether I already had the title I was looking at and this was the solution. It's also handy for when you're listening, don't have the sleeve nearby and want to know the name of a track or who's playing on it.  It runs on the free tier of Netlify and Supabase, so you can take it anywhere. 
 
-Hosting is free: **Supabase** holds the data, **Netlify** hosts the site, **Discogs** supplies album details.
+What else can it do?
+
+- **Import your records** from your Discogs collection or from any spreadsheet saved as CSV. You can add all sorts of fields to the CSV, including catalogue number, but all you need at a minimum is artist and title and the rest will come in via Discogs. If what it pulls isn't right, you can choose from other pressings or versions.
+- **Covers, tracks and personnel** come from Discogs and the app always selects the vinyl edition. For a release that isn't on Discogs but is on Bandcamp, you can paste that link and the app will pull in the release infor. If a cover is wrong or not great, **Find a better image** offers alternatives, or you can upload your own photo.
+- **Crates**: allow you to make your own groupings beyond genre, like "Late Night" or "Matador Releases."
+- **Pick for me** pulls a title at random and you can narrow its choice by crate or genre.
+- **Want list**: Tap **Add**, enter an artist and album and you're done. Want list records show in search with a dashed outline, so you can tell at a glance you don't own them yet. Each one shows the lowest price for its pressing on the Discogs marketplace, with links to that pressing's US sellers or all sellers. (The Discogs marketplace API isn't super great, so use this price as a ballpark).
+- **For sale**: Mark records you want to remember to sell and filter to just those.
+- **Wash queue**: Mark a record **To wash** when it sounds dirty; on wash day, filter to **To wash**, select the ones you've washed and tap **Mark washed**. Each record remembers when it was last washed.
+
+- **Filed like a record shop**: Everything is listed alphabetically like you'd find the records in a shop, but sometimes this gets tricky so if the app gets it wrong, you can force a record into the right position by editing its details and adding how you'd like it sorted in the **File under** field.
+- **Filed by first release**: A 2024 reissue of a 1975 album shows up as 1975, with the pressing's own year beside its catalogue number.
+- **Search everything**: artist, album, song, genre, crate, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument. 
+ 
+- **Share it with a passphrase**: Friends can browse everything; only you can change stuff.
+- **Download or back up everything**: a CSV of every album with tracks, personnel and notes, or a complete JSON backup you can restore from later.
+- **Works with a weak signal**: the app opens with the copy saved on your phone, and want-list adds sync later when you're back online.
+
+Set up your own copy in about 20 minutes, on free accounts:
+**Supabase** holds the data, **Netlify** hosts the site, **Discogs** supplies album details.
 
 Want to look first? Open your site with `?demo` on the end of the address (or run it before setting anything up) to try it with a small sample collection that's saved only in your browser.
 
