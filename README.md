@@ -14,9 +14,13 @@ What else can it do?
 - **For sale**: Mark records you want to remember to sell and filter to just those.
 - **Wash queue**: Mark a record **To wash** when it sounds dirty; on wash day, filter to **To wash**, select the ones you've washed and tap **Mark washed**. Each record remembers when it was last washed.
 
+ Here's how it organizes:
+
 - **Filed like a record shop**: Everything is listed alphabetically like you'd find the records in a shop, but sometimes this gets tricky so if the app gets it wrong, you can force a record into the right position by editing its details and adding how you'd like it sorted in the **File under** field.
 - **Filed by first release**: A 2024 reissue of a 1975 album shows up as 1975, with the pressing's own year beside its catalogue number.
-- **Search everything**: artist, album, song, genre, crate, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument. 
+- **Search everything**: artist, album, song, genre, crate, or player. Searching a musician lists every record they're on, whether it's their album or they're a sideman, with their instrument.
+
+ And that's not all:
  
 - **Share it with a passphrase**: Friends can browse everything; only you can change stuff.
 - **Download or back up everything**: a CSV of every album with tracks, personnel and notes, or a complete JSON backup you can restore from later.
