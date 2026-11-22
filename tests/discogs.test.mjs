@@ -404,3 +404,58 @@ test("search: pressings get their album's original year", async () => {
   assert.equal(a.original_year, 1959);
   assert.equal(b.original_year, "1968", "taken from the family already in the results");
 });
+
+import { isVideoFormat, formatPenalty } from "../netlify/lib/discogs.mjs";
+
+// Steely Dan's Aja: Discogs' best title match is the Classic Albums documentary, a CD-only family comes next,
+// and the LP only third. The match should land on the LP.
+function fakeAja(calls, { dvdFormatListed = true } = {}) {
+  const rel = (id, formats, master_id) => ({ id, master_id, title: "Aja", year: 1977, artists: [{ id: 1, name: "Steely Dan" }], formats,
+    tracklist: [{ type_: "track", position: formats[0].name === "Vinyl" ? "A1" : "1", title: "Black Cow" }] });
+  const releases = {
+    900: rel(900, [{ name: "DVD", descriptions: ["DVD-Video", "PAL"] }], 90),
+    800: rel(800, [{ name: "CD", descriptions: ["Compilation"] }], 80),
+    700: rel(700, [{ name: "Vinyl", descriptions: ["LP", "Album"] }], 70),
+    701: rel(701, [{ name: "Vinyl", descriptions: ['7"', "Single"] }], 71),
+  };
+  return async (url) => {
+    const u = new URL(url); calls.push(u.pathname + u.search);
+    let m;
+    const body =
+      u.pathname === "/database/search" && u.searchParams.get("type") === "master" ? { results: [
+        { type: "master", id: 90, title: "Steely Dan - Aja", ...(dvdFormatListed ? { format: ["DVD", "DVD-Video"] } : {}) },
+        { type: "master", id: 80, title: "Steely Dan - Aja", format: ["CD", "Compilation"] },
+        { type: "master", id: 71, title: "Steely Dan - Aja", format: ["Vinyl", '7"', "Single"] },
+        { type: "master", id: 70, title: "Steely Dan - Aja", format: ["Vinyl", "LP", "Album"] },
+      ] }
+      : (m = u.pathname.match(/^\/masters\/(\d+)\/versions$/)) ? { versions: Number(m[1]) === 70 ? [{ id: 700, format: "LP, Album", major_formats: ["Vinyl"], released: "1977" }] : Number(m[1]) === 71 ? [{ id: 701, format: '7", Single', major_formats: ["Vinyl"], released: "1978" }] : [] }
+      : (m = u.pathname.match(/^\/masters\/(\d+)$/)) ? { id: Number(m[1]), year: 1977, main_release: Number(m[1]) * 10 }
+      : (m = u.pathname.match(/^\/releases\/(\d+)$/)) ? releases[m[1]]
+      : { results: [] };
+    return new Response(JSON.stringify(body || {}), { status: body ? 200 : 404 });
+  };
+}
+
+test("films are never a match, and LP families come before CD-only ones and singles", async () => {
+  const r = await match(makeClient("t", fakeAja([])), { artist: "Steely Dan", title: "Aja" });
+  assert.equal(r.release.discogs_id, 700);
+  assert.ok(!r.candidates.some((c) => c.id === 90));
+});
+
+test("a film found only after fetching is passed over for the next candidate", async () => {
+  const calls = [];
+  const r = await match(makeClient("t", fakeAja(calls, { dvdFormatListed: false })), { artist: "Steely Dan", title: "Aja" });
+  assert.equal(r.release.discogs_id, 700);
+  assert.ok(calls.some((c) => c === "/releases/900"));
+});
+
+test("format helpers", () => {
+  assert.ok(isVideoFormat("DVD, DVD-Video, PAL"));
+  assert.ok(isVideoFormat("Blu-ray"));
+  assert.ok(!isVideoFormat("Vinyl, LP + DVD"));
+  assert.ok(!isVideoFormat("CD, Album"));
+  assert.equal(formatPenalty("Vinyl, LP, Album"), 0);
+  assert.equal(formatPenalty('Vinyl, 7", Single'), 0.1);
+  assert.equal(formatPenalty("CD, Album"), 0.15);
+  assert.equal(formatPenalty(""), 0);
+});

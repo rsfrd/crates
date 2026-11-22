@@ -310,6 +310,18 @@ export function parseDiscogsRef(input = "") {
   return null;
 }
 
+// Films and documentaries about an album (Classic Albums DVDs and the like) are never the record.
+const VIDEO = /\b(DVD|Blu-ray|VHS|Laserdisc|HD DVD|UMD|Video)\b/i;
+export const isVideoFormat = (text = "") => VIDEO.test(text) && !/\bVinyl\b/i.test(text);
+
+// How far a search result's format pulls it down: CD-only and cassette-only families after vinyl ones,
+// singles after LPs. Results with no format listed are left alone.
+export function formatPenalty(text = "") {
+  if (!text) return 0;
+  if (/\bVinyl\b|\bLP\b/i.test(text)) return /\bLP\b/i.test(text) || !/\b(7"|Single|45 RPM|EP)\b/i.test(text) ? 0 : 0.1;
+  return 0.15;
+}
+
 export async function match(client, { artist, title, catno }) {
   const seen = new Map();
   const consider = (results) => {
@@ -317,7 +329,8 @@ export async function match(client, { artist, title, catno }) {
       const key = `${r.type}:${r.id}`;
       if (seen.has(key)) continue;
       const c = toCandidate(r);
-      c.score = scoreCandidate(r, artist, title);
+      if (isVideoFormat(c.format || "")) continue;
+      c.score = scoreCandidate(r, artist, title) - formatPenalty(c.format || "");
       seen.set(key, c);
     }
   };
@@ -347,9 +360,18 @@ export async function match(client, { artist, title, catno }) {
   const top = candidates[0];
   if (!top || top.score < 0.45) return { status: "not_found", release: null, candidates };
 
-  const release = await fetchByRef(client, top.type, top.id, artist);
-  if (!release) return { status: "not_found", release: null, candidates };
-  return { status: top.score >= 0.75 ? "matched" : "review", release, candidates, score: top.score };
+  // The best candidate that turns out to be a vinyl record wins; a film never does. If none of the
+  // first few is vinyl, the best non-film one is kept (the app then marks it "Not vinyl").
+  let chosen = null, fallback = null;
+  for (const c of candidates.filter((x) => x.score >= 0.45).slice(0, 3)) {
+    const rel = await fetchByRef(client, c.type, c.id, artist);
+    if (!rel || isVideoFormat(rel.format || "")) continue;
+    if (/\bVinyl\b/.test(rel.format || "")) { chosen = { c, rel }; break; }
+    fallback ||= { c, rel };
+  }
+  const pick = chosen || fallback;
+  if (!pick) return { status: "not_found", release: null, candidates };
+  return { status: pick.c.score >= 0.75 ? "matched" : "review", release: pick.rel, candidates, score: pick.c.score };
 }
 
 // Marketplace figures for one release, in US dollars: the lowest listed price (any seller, before shipping)
