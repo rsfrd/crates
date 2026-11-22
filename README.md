@@ -6,7 +6,7 @@ This is Garage Crates, a record collection app that makes it easy to keep track 
 <img width="179" height="320" alt="IMG_5598 Small" src="https://github.com/user-attachments/assets/a9ffdd62-2c1d-4ed0-80d5-06824dd1ca62" />
 <img width="179" height="320" alt="IMG_5599 Small" src="https://github.com/user-attachments/assets/349958fd-ccb0-47b3-b79b-c801a9f572b6" />
 <img width="182" height="320" alt="IMG_5600 Small" src="https://github.com/user-attachments/assets/91a21788-6e2f-4c7d-97dd-31ec29086209" />
-
+<br><br>
 
 I found myself flipping through bins in record stores trying to remember whether I already had the title I was looking at and this was the solution. It's also handy for when you're listening, don't have the sleeve nearby and want to know the name of a track or who's playing on it.  It runs on the free tier of Netlify and Supabase, so you can take it anywhere. 
 
