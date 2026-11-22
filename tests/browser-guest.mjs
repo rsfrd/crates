@@ -24,7 +24,7 @@ p.on("pageerror", (e) => errors.push(e.message));
 p.on("dialog", (d) => { errors.push("unexpected dialog: " + d.message()); d.dismiss(); });
 await p.route(/fonts\.|jsdelivr/, (r) => r.abort());
 const BASE = "http://localhost:5186/?demo&demoapi&guest";
-const stored = () => p.evaluate(() => localStorage.getItem("crate.demo.v1"));
+const stored = () => p.evaluate(() => localStorage.getItem("crate.demo.v2"));
 const toastSays = (t) => p.waitForFunction((t) => document.querySelector("#toast")?.textContent.includes(t), t, { timeout: 3000 }).then(() => true, () => false);
 
 await p.goto(BASE); await p.waitForSelector(".row");

@@ -186,7 +186,7 @@ function offlineStore() {
 }
 
 function demoStore() {
-  const KEY = "crate.demo.v1";
+  const KEY = "crate.demo.v2";   // bump when demo.json changes, so visitors get the new sample
   const save = (rows) => writeLS(KEY, rows);
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
   return {

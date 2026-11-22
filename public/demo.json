@@ -3,25 +3,62 @@
   "id": "demo-01",
   "artist": "Miles Davis",
   "title": "Kind Of Blue",
-  "catno": null,
+  "catno": "KLP893",
   "genres": [
    "Jazz"
   ],
-  "crates": [],
+  "crates": [
+   "Late night"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1959,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Coronet",
+  "cover_url": "https://i.discogs.com/WF_Ha3qXTmoXwzfrwIWn4iu0P5NKCQKYw4ZSoV8QzKs/rs:fit/g:sm/q:90/h:595/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI2Njc3/Mjc0LTE2ODA4NjE0/NzAtMTcwMi5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/_LiSqi2bHzi2Kq3BySA3b0bk1H-pz7k9VtmIb4L2ZXk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI2Njc3/Mjc0LTE2ODA4NjE0/NzAtMTcwMi5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 26677274,
+  "discogs_url": "https://www.discogs.com/release/26677274-Miles-Davis-Kind-Of-Blue",
+  "master_id": 5460,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "So What",
+    "dur": ""
+   },
+   {
+    "pos": "A2",
+    "title": "Freddie Freeloader",
+    "dur": ""
+   },
+   {
+    "pos": "A3",
+    "title": "Blue In Green",
+    "dur": ""
+   },
+   {
+    "pos": "B1",
+    "title": "All Blues",
+    "dur": ""
+   },
+   {
+    "pos": "B2",
+    "title": "Flamenco Sketches",
+    "dur": ""
+   }
+  ],
+  "credits": [
+   {
+    "name": "Miles Davis",
+    "id": 23755,
+    "roles": [],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   }
+  ],
   "personnel_hint": [
    "Miles Davis",
    "Cannonball Adderley",
@@ -31,98 +68,140 @@
    "Paul Chambers",
    "Jimmy Cobb"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-02",
-  "artist": "John Coltrane",
-  "title": "A Love Supreme",
-  "catno": null,
-  "genres": [
-   "Jazz"
-  ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1965,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [
-   "John Coltrane",
-   "McCoy Tyner",
-   "Jimmy Garrison",
-   "Elvin Jones"
-  ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-03",
-  "artist": "John Coltrane",
-  "title": "Blue Train",
-  "catno": null,
-  "genres": [
-   "Jazz"
-  ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1957,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [
-   "John Coltrane",
-   "Lee Morgan",
-   "Curtis Fuller",
-   "Kenny Drew",
-   "Paul Chambers",
-   "Philly Joe Jones"
-  ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1959,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-04",
   "artist": "Wayne Shorter",
   "title": "Speak No Evil",
-  "catno": null,
+  "catno": "BST 84194",
   "genres": [
    "Jazz"
   ],
-  "crates": [],
+  "crates": [
+   "Blue Note"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1966,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Blue Note",
+  "cover_url": "https://i.discogs.com/3Ad_vk1ox4vGf2I3HJlDtBibv2odx61cRLzuTqbwp-0/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE2NzI3/MDM3LTE2MDk0ODI5/NDAtNzc0NC5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/ExuTsyI6ZwN7BTzwQqmWtnnMKY4GDMGJUduvXq_oJew/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE2NzI3/MDM3LTE2MDk0ODI5/NDAtNzc0NC5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 16727037,
+  "discogs_url": "https://www.discogs.com/release/16727037-Wayne-Shorter-Speak-No-Evil",
+  "master_id": 140424,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Witch Hunt",
+    "dur": ""
+   },
+   {
+    "pos": "A2",
+    "title": "Fee-Fi-Fo-Fum",
+    "dur": ""
+   },
+   {
+    "pos": "A3",
+    "title": "Dance Cadaverous",
+    "dur": ""
+   },
+   {
+    "pos": "B1",
+    "title": "Speak No Evil",
+    "dur": ""
+   },
+   {
+    "pos": "B2",
+    "title": "Infant Eyes",
+    "dur": ""
+   },
+   {
+    "pos": "B3",
+    "title": "Wild Flower",
+    "dur": ""
+   }
+  ],
+  "credits": [
+   {
+    "name": "Wayne Shorter",
+    "id": 29979,
+    "roles": [
+     "Tenor Saxophone",
+     "Written-By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Ron Carter",
+    "id": 95088,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Elvin Jones",
+    "id": 135885,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Herbie Hancock",
+    "id": 3865,
+    "roles": [
+     "Piano"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Freddie Hubbard",
+    "id": 55745,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Rudy Van Gelder",
+    "id": 252966,
+    "roles": [
+     "Lacquer Cut By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Don Heckman",
+    "id": 598751,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Wayne Shorter",
    "Freddie Hubbard",
@@ -130,32 +209,157 @@
    "Ron Carter",
    "Elvin Jones"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1966,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-05",
   "artist": "Herbie Hancock",
   "title": "Maiden Voyage",
-  "catno": null,
+  "catno": "BLP 4195",
   "genres": [
    "Jazz"
   ],
-  "crates": [],
+  "crates": [
+   "Blue Note"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1965,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Blue Note",
+  "cover_url": "https://i.discogs.com/V9JaqpXn6hVVKnol9haBggBDHhQXcUkJRLWB_jYy-b8/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE2Mjkz/MjUxLTE2MDY3MTY3/NTUtMjQwNy5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/RAdcQMsqGtIStAdXhAaLJWtpwgL3h_O7ZwUZgiHPwUE/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE2Mjkz/MjUxLTE2MDY3MTY3/NTUtMjQwNy5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 16293251,
+  "discogs_url": "https://www.discogs.com/release/16293251-Herbie-Hancock-Maiden-Voyage",
+  "master_id": 47828,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Maiden Voyage",
+    "dur": ""
+   },
+   {
+    "pos": "A2",
+    "title": "The Eye Of The Hurricane",
+    "dur": ""
+   },
+   {
+    "pos": "A3",
+    "title": "Little One",
+    "dur": ""
+   },
+   {
+    "pos": "B1",
+    "title": "Survival Of The Fittest",
+    "dur": ""
+   },
+   {
+    "pos": "B2",
+    "title": "Dolphin Dance",
+    "dur": ""
+   }
+  ],
+  "credits": [
+   {
+    "name": "Herbie Hancock",
+    "id": 3865,
+    "roles": [
+     "Piano",
+     "Written-By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Ron Carter",
+    "id": 95088,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Anthony Williams",
+    "id": 261295,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "George Coleman",
+    "id": 253367,
+    "roles": [
+     "Tenor Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Freddie Hubbard",
+    "id": 55745,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Nora Kelly",
+    "id": 1722806,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Rudy Van Gelder",
+    "id": 252966,
+    "roles": [
+     "Mastered By",
+     "Recording By Recorded By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Reid Miles",
+    "id": 490780,
+    "roles": [
+     "Cover Photography By",
+     "Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Alfred Lion",
+    "id": 252962,
+    "roles": [
+     "Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Herbie Hancock",
    "Freddie Hubbard",
@@ -163,112 +367,254 @@
    "Ron Carter",
    "Tony Williams"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-06",
-  "artist": "Charles Mingus",
-  "title": "Mingus Ah Um",
-  "catno": null,
-  "genres": [
-   "Jazz"
-  ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1959,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [
-   "Charles Mingus",
-   "John Handy",
-   "Booker Ervin",
-   "Jimmy Knepper",
-   "Horace Parlan",
-   "Dannie Richmond"
-  ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-07",
-  "artist": "Art Blakey and the Jazz Messengers",
-  "title": "Moanin'",
-  "catno": null,
-  "genres": [
-   "Jazz"
-  ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1958,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [
-   "Art Blakey",
-   "Lee Morgan",
-   "Benny Golson",
-   "Bobby Timmons",
-   "Jymie Merritt"
-  ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1965,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-08",
-  "artist": "Bill Evans Trio",
+  "artist": "The Bill Evans Trio Featuring Scott LaFaro",
   "title": "Sunday At The Village Vanguard",
-  "catno": null,
+  "catno": "RLP 376",
   "genres": [
    "Jazz"
   ],
-  "crates": [],
+  "crates": [
+   "Late night"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1961,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Riverside Records",
+  "cover_url": "https://i.discogs.com/3UDbDd8uanBxzMiRLsEcujBw4Bc8qjqrNHDbpdrtYNg/rs:fit/g:sm/q:90/h:592/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI1NTkw/MjctMTc4NDc1NzY1/NC02NTgzLmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/-GrkgaszjQM7vkDUIjIatH4XhSL2lddI05iQn_zQQMo/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI1NTkw/MjctMTc4NDc1NzY1/NC02NTgzLmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 2559027,
+  "discogs_url": "https://www.discogs.com/release/2559027-Bill-Evans-Trio-Featuring-Scott-La-Faro-Sunday-At-The-Village-Vanguard",
+  "master_id": 104372,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Gloria's Step",
+    "dur": "6:05",
+    "by": "Scott LaFaro"
+   },
+   {
+    "pos": "A2",
+    "title": "My Man's Gone Now",
+    "dur": "6:21",
+    "by": "George & Ira Gershwin"
+   },
+   {
+    "pos": "A3",
+    "title": "Solar",
+    "dur": "8:51",
+    "by": "Miles Davis"
+   },
+   {
+    "pos": "B1",
+    "title": "Alice In Wonderland",
+    "dur": "8:25",
+    "by": "Bob Hilliard, Sammy Fain"
+   },
+   {
+    "pos": "B2",
+    "title": "All Of You",
+    "dur": "8:20",
+    "by": "Cole Porter"
+   },
+   {
+    "pos": "B3",
+    "title": "Jade Visions",
+    "dur": "3:41",
+    "by": "Scott LaFaro"
+   }
+  ],
+  "credits": [
+   {
+    "name": "The Bill Evans Trio",
+    "id": 301147,
+    "roles": [],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Scott LaFaro",
+    "id": 272982,
+    "roles": [
+     "Bass",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "B3"
+    ],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Bill Evans",
+    "id": 252310,
+    "roles": [
+     "Piano"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Paul Motian",
+    "id": 255882,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Ken Deardoff",
+    "id": 1838307,
+    "roles": [
+     "Album Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "David Jones",
+    "id": 445545,
+    "roles": [
+     "Recording Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Ira Gitler",
+    "id": 334380,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Orrin Keepnews",
+    "id": 254946,
+    "roles": [
+     "Liner Notes",
+     "Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Steve Schapiro",
+    "id": 1760950,
+    "roles": [
+     "Back Liner Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Donald Silverstein",
+    "id": 2240028,
+    "roles": [
+     "Front Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "George & Ira Gershwin",
+    "id": 640665,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Miles Davis",
+    "id": 23755,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A3"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Bob Hilliard",
+    "id": 632719,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "B1"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Sammy Fain",
+    "id": 290093,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "B1"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Cole Porter",
+    "id": 264026,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "B2"
+    ],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Bill Evans",
    "Scott LaFaro",
    "Paul Motian"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1961,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-09",
   "artist": "Tatsuro Yamashita",
   "title": "For You",
-  "catno": null,
+  "catno": "RAL-8801",
   "genres": [
    "City Pop"
   ],
@@ -279,54 +625,730 @@
   "for_sale": false,
   "notes": null,
   "year": 1982,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Air Records",
+  "cover_url": "https://i.discogs.com/89NIpTkkt8TZ1VxSDxvjbienMDRg-CYZiAVjXnjp5OA/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIxNzkz/NzQtMTcwNTc3NzA3/My0yNTcyLmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/vxyxFNqpv_pUdJQnktORyl1qbMc4y6oJo-3CfQk6DWw/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIxNzkz/NzQtMTcwNTc3NzA3/My0yNTcyLmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 2179374,
+  "discogs_url": "https://www.discogs.com/release/2179374-Tatsuro-Yamashita-For-You",
+  "master_id": 351396,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Sparkle",
+    "dur": "4:13",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By, Composed By: Tatsuro Yamashita; Lyrics By: Minako Yoshida"
+   },
+   {
+    "pos": "A2",
+    "title": "Music Book",
+    "dur": "5:08",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By, Composed By: Tatsuro Yamashita; Lyrics By: Minako Yoshida"
+   },
+   {
+    "pos": "A3",
+    "title": "Interlude A Part I",
+    "dur": "0:23"
+   },
+   {
+    "pos": "A4",
+    "title": "Morning Glory",
+    "dur": "3:28",
+    "by": "Tatsuro Yamashita",
+    "note": "Lyrics By, Arranged By, Composed By: Tatsuro Yamashita"
+   },
+   {
+    "pos": "A5",
+    "title": "Interlude A Part II",
+    "dur": "0:25"
+   },
+   {
+    "pos": "A6",
+    "title": "Futari",
+    "dur": "5:46",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By, Composed By: Tatsuro Yamashita; Lyrics By: Minako Yoshida"
+   },
+   {
+    "pos": "B1",
+    "title": "Loveland, Island",
+    "dur": "4:29",
+    "by": "Tatsuro Yamashita",
+    "note": "Lyrics By, Arranged By, Composed By: Tatsuro Yamashita"
+   },
+   {
+    "pos": "B2",
+    "title": "Interlude B Part I",
+    "dur": "0:16"
+   },
+   {
+    "pos": "B3",
+    "title": "Love Talkin' (Honey It's You)",
+    "dur": "5:50",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By, Composed By: Tatsuro Yamashita; Lyrics By: Minako Yoshida"
+   },
+   {
+    "pos": "B4",
+    "title": "Hey Reporter!",
+    "dur": "5:33",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By, Composed By, Lyrics By: Tatsuro Yamashita"
+   },
+   {
+    "pos": "B5",
+    "title": "Interlude B Part II",
+    "dur": "0:17"
+   },
+   {
+    "pos": "B6",
+    "title": "Your Eyes",
+    "dur": "3:14",
+    "by": "Tatsuro Yamashita",
+    "note": "Arranged By: Hiroyuki Inui; Arranged By, Composed By: Tatsuro Yamashita; Lyrics By: Alan O'Day"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Tatsuro Yamashita",
+    "id": 119485,
+    "roles": [
+     "Producer",
+     "Arranged By",
+     "Composed By",
+     "Electric Guitar",
+     "Electric Piano",
+     "Percussion",
+     "Backing Vocals",
+     "Piano",
+     "Marimba",
+     "Lyrics By",
+     "Strings Synthesizer",
+     "Glockenspiel",
+     "Electric Sitar"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4",
+     "A6",
+     "B1",
+     "B3",
+     "B4",
+     "B6"
+    ],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Minako Yoshida",
+    "id": 315098,
+    "roles": [
+     "Backing Vocals",
+     "Lyrics By"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A6",
+     "B3"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Shunzo Sunahara",
+    "id": 556513,
+    "roles": [
+     "Baritone Saxophone"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Koki Ito",
+    "id": 1286443,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [
+     "A1",
+     "A4",
+     "A6",
+     "B1",
+     "B3",
+     "B4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jun Aoyama",
+    "id": 547646,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [
+     "A1",
+     "A4",
+     "A6",
+     "B1",
+     "B3",
+     "B4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Hiroyuki Namba",
+    "id": 221916,
+    "roles": [
+     "Piano",
+     "Synthesizer",
+     "Electric Piano"
+    ],
+    "tracks": [
+     "A1",
+     "A4",
+     "A6",
+     "B1",
+     "B3",
+     "B4",
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Takeru Muraoka",
+    "id": 552922,
+    "roles": [
+     "Tenor Saxophone"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Shigeharu Mukai",
+    "id": 621280,
+    "roles": [
+     "Trombone",
+     "Solo Trombone"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Tadanori Konakawa",
+    "id": 842094,
+    "roles": [
+     "Trombone"
+    ],
+    "tracks": [
+     "A1",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Masahiro Kobayashi",
+    "id": 326455,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Susumu Kazuhara",
+    "id": 488318,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Akira Okazawa",
+    "id": 546128,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Yuichi Togashiki",
+    "id": 623519,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Tsunehide Matsuki",
+    "id": 623505,
+    "roles": [
+     "Electric Guitar"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Hiroshi Sato",
+    "id": 259143,
+    "roles": [
+     "Electric Piano",
+     "Piano"
+    ],
+    "tracks": [
+     "A2",
+     "A6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Motoya Hamaguchi",
+    "id": 119482,
+    "roles": [
+     "Percussion"
+    ],
+    "tracks": [
+     "A2",
+     "B1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Ohno Group",
+    "id": 2841980,
+    "roles": [
+     "Strings"
+    ],
+    "tracks": [
+     "A2",
+     "A6",
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Sumio Okada",
+    "id": 556512,
+    "roles": [
+     "Trombone"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Yasuo Hirauchi",
+    "id": 556502,
+    "roles": [
+     "Trombone"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Hidefumi Toki",
+    "id": 1158911,
+    "roles": [
+     "Solo Alto Saxophone",
+     "Alto Saxophone"
+    ],
+    "tracks": [
+     "A4",
+     "A6",
+     "B1",
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Kazuo Shiina",
+    "id": 898360,
+    "roles": [
+     "Electric Guitar"
+    ],
+    "tracks": [
+     "A4",
+     "B1",
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Keiko Yamakawa",
+    "id": 621289,
+    "roles": [
+     "Harp"
+    ],
+    "tracks": [
+     "B1",
+     "B3"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Chuei Yoshikawa",
+    "id": 520084,
+    "roles": [
+     "Acoustic Guitar"
+    ],
+    "tracks": [
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Hiroyuki Inui",
+    "id": 4278842,
+    "roles": [
+     "Strings Arranged By"
+    ],
+    "tracks": [
+     "B6"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Hiroshi Takahara",
+    "id": 3478464,
+    "roles": [
+     "Art Direction",
+     "Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Nobumasa Uchida",
+    "id": 2428832,
+    "roles": [
+     "Production Co-ordinator Coordinator"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Akira Fukada",
+    "id": 722837,
+    "roles": [
+     "Assistant Engineer Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Masato Ohmori",
+    "id": 231335,
+    "roles": [
+     "Assistant Engineer Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Shigemi Watanabe",
+    "id": 1299098,
+    "roles": [
+     "Assistant Engineer Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Tamotsu Yoshida",
+    "id": 420617,
+    "roles": [
+     "Re-mix Engineer Engineer",
+     "Recording Engineer Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Toshiro Ito",
+    "id": 1149306,
+    "roles": [
+     "Recording Engineer Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Eizin Suzuki",
+    "id": 3088536,
+    "roles": [
+     "Cover Illustration"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Kentaro Hattori",
+    "id": 2917412,
+    "roles": [
+     "Artist Management"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Masayuki Matsumoto",
+    "id": 4232445,
+    "roles": [
+     "Artist Management"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Kenichi Nomura",
+    "id": 1993997,
+    "roles": [
+     "Copyright Management"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Tohru Kotetsu",
+    "id": 409230,
+    "roles": [
+     "Mastered By (Disc Mastering Engineer)"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Nobuo Kubota",
+    "id": 562495,
+    "roles": [
+     "Inner Photograph Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Ryuzo Kosugi",
+    "id": 548691,
+    "roles": [
+     "Associate Producer Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Alan O'Day",
+    "id": 398438,
+    "roles": [
+     "Lyrics By"
+    ],
+    "tracks": [
+     "B6"
+    ],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1982,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-10",
   "artist": "Hiroshi Yoshimura",
   "title": "Music For Nine Post Cards",
-  "catno": null,
+  "catno": "WN 001",
   "genres": [
    "Ambient"
   ],
   "crates": [
-   "Japanese"
+   "Japanese",
+   "Late night"
   ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1982,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Sound Process",
+  "cover_url": "https://i.discogs.com/SKafNmDe2Bk1ZyXu4yMImQmW8kK6--ELl62fUrXTVdU/rs:fit/g:sm/q:90/h:600/w:598/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTM2OTc0/NzktMTQ5NjIxNzY0/Ny01NTA5LmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/tX8yjagit4_LDm9jmCfJuuRPgs9qC5LONXXoPK855PM/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTM2OTc0/NzktMTQ5NjIxNzY0/Ny01NTA5LmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 3697479,
+  "discogs_url": "https://www.discogs.com/release/3697479-Hiroshi-Yoshimura-Music-For-Nine-Post-Cards",
+  "master_id": 552512,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Water Copy",
+    "dur": "6:02"
+   },
+   {
+    "pos": "A2",
+    "title": "Clouds",
+    "dur": "5:50"
+   },
+   {
+    "pos": "A3",
+    "title": "Blink",
+    "dur": "4:39"
+   },
+   {
+    "pos": "A4",
+    "title": "Dance PM",
+    "dur": "6:28"
+   },
+   {
+    "pos": "B1",
+    "title": "Ice Copy",
+    "dur": "2:52"
+   },
+   {
+    "pos": "B2",
+    "title": "Soto Wa Ame",
+    "dur": "4:30"
+   },
+   {
+    "pos": "B3",
+    "title": "View From My Window",
+    "dur": "6:10"
+   },
+   {
+    "pos": "B4",
+    "title": "Urban Snow",
+    "dur": "4:41"
+   },
+   {
+    "pos": "B5",
+    "title": "Dream",
+    "dur": "5:20"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Hiroshi Yoshimura",
+    "id": 691250,
+    "roles": [
+     "Composed By (All compositions by)",
+     "Strings",
+     "Vocoder",
+     "Multi-Recording Recorded By",
+     "Design",
+     "Electric Piano",
+     "Electric Organ"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Michinori Yamazaki",
+    "id": 2812137,
+    "roles": [
+     "Engineer",
+     "Mastered By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Satoshi Ashikawa",
+    "id": 2812132,
+    "roles": [
+     "Produced by Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1982,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-11",
   "artist": "Talking Heads",
   "title": "Remain In Light",
-  "catno": null,
+  "catno": "S 60.529",
   "genres": [
    "Rock",
    "New Wave"
@@ -334,82 +1356,397 @@
   "crates": [],
   "status": "owned",
   "for_sale": false,
-  "notes": null,
+  "notes": "Spanish pressing, with the song titles in English and Spanish.",
   "year": 1980,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Sire",
+  "cover_url": "https://i.discogs.com/8NPMDSaBoxALC82WDbJOgLLp5CsnLA7fErBixgjYQ1Q/rs:fit/g:sm/q:90/h:500/w:500/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIzMTc5/NzQtMTM0ODY5MTkw/Ny0yMDIxLmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/64hl7r_ZstP8PHtUk4HMDCAOawHEj6okzfuSSamRqZs/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIzMTc5/NzQtMTM0ODY5MTkw/Ny0yMDIxLmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 2317974,
+  "discogs_url": "https://www.discogs.com/release/2317974-Talking-Heads-Remain-In-Light",
+  "master_id": 25688,
   "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-12",
-  "artist": "Steely Dan",
-  "title": "Aja",
-  "catno": null,
-  "genres": [
-   "Rock",
-   "Jazz"
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Born Under Punches (The Heat Goes On) = Nacido A Puñetazos (El Calor Continúa)",
+    "dur": "5:46",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "A2",
+    "title": "Crosseyed And Painless = Bizco Y Sin Dolor",
+    "dur": "4:45",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "A3",
+    "title": "The Great Curve = La Gran Curva",
+    "dur": "6:26",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "B1",
+    "title": "Once In A Lifetime = Solo Una Vez En La Vida",
+    "dur": "4:19",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "B2",
+    "title": "Houses In Motion = Casas En Movimiento",
+    "dur": "4:30",
+    "by": "Brian Eno, David Byrne, Jerry Harrison"
+   },
+   {
+    "pos": "B3",
+    "title": "Seen And Not Seen = Visto Y No Visto",
+    "dur": "3:20",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "B4",
+    "title": "Listening Wind = El Viento Escucha",
+    "dur": "4:42",
+    "by": "Brian Eno, David Byrne"
+   },
+   {
+    "pos": "B5",
+    "title": "The Overload = La Sobrecarga",
+    "dur": "6:00",
+    "by": "Brian Eno, David Byrne, Jerry Harrison"
+   }
   ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1977,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
+  "credits": [
+   {
+    "name": "Talking Heads",
+    "id": 22854,
+    "roles": [],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Brian Eno",
+    "id": 634,
+    "roles": [
+     "Bass",
+     "Keyboards",
+     "Mixed By",
+     "Percussion",
+     "Producer",
+     "Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A3",
+     "B1",
+     "B2",
+     "B3",
+     "B4",
+     "B5"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "David Byrne",
+    "id": 3918,
+    "roles": [
+     "Bass",
+     "Guitar",
+     "Keyboards",
+     "Mixed By",
+     "Percussion",
+     "Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A3",
+     "B1",
+     "B2",
+     "B3",
+     "B4",
+     "B5"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jerry Harrison",
+    "id": 126729,
+    "roles": [
+     "Bass",
+     "Guitar",
+     "Keyboards",
+     "Percussion",
+     "Written-By"
+    ],
+    "tracks": [
+     "B2",
+     "B5"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Tina Weymouth",
+    "id": 47111,
+    "roles": [
+     "Bass",
+     "Keyboards",
+     "Percussion"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Chris Frantz",
+    "id": 47110,
+    "roles": [
+     "Drums",
+     "Keyboards",
+     "Percussion"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Adrian Belew",
+    "id": 55902,
+    "roles": [
+     "Guitar"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jose Rossy",
+    "id": 314825,
+    "roles": [
+     "Percussion"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Robert Palmer",
+    "id": 40409,
+    "roles": [
+     "Percussion"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Nona Hendryx",
+    "id": 30092,
+    "roles": [
+     "Vocals"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jon Hassell",
+    "id": 32212,
+    "roles": [
+     "Horns"
+    ],
+    "tracks": [
+     "B2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Dave Jerden",
+    "id": 189216,
+    "roles": [
+     "Engineer",
+     "Mixed By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Jack Nuber",
+    "id": 295825,
+    "roles": [
+     "Additional Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "John Potoker",
+    "id": 23902,
+    "roles": [
+     "Additional Engineer",
+     "Mixed By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Rhett Davies",
+    "id": 60621,
+    "roles": [
+     "Additional Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Steven Stanley",
+    "id": 15826,
+    "roles": [
+     "Additional Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Marta Alvear",
+    "id": 7955830,
+    "roles": [
+     "Lacquer Cut By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Greg Calbi",
+    "id": 244135,
+    "roles": [
+     "Mastered By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1980,
+  "to_wash_since": "2026-10-18T00:00:00Z",
+  "washed_at": null
  },
  {
   "id": "demo-13",
   "artist": "Joni Mitchell",
   "title": "Blue",
-  "catno": null,
+  "catno": "RRC 2038",
   "genres": [
    "Folk"
   ],
-  "crates": [],
+  "crates": [
+   "Late night"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
   "year": 1971,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Reprise Records",
+  "cover_url": "https://i.discogs.com/Z-d7v9vzAtXR3Inghp16JUiXSHQstLWveLEvWLqeqxQ/rs:fit/g:sm/q:90/h:589/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5NTQy/NjctMTQzODQyMjQy/My04NTQ1LmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/9WMDAqNzjh5aPFWOgTUeGY6vtqWtLfAVwasxhmVrzBY/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU5NTQy/NjctMTQzODQyMjQy/My04NTQ1LmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 5954267,
+  "discogs_url": "https://www.discogs.com/release/5954267-Joni-Mitchell-Blue",
+  "master_id": 47744,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "All I Want",
+    "dur": "3:32"
+   },
+   {
+    "pos": "A2",
+    "title": "My Old Man",
+    "dur": "3:33"
+   },
+   {
+    "pos": "A3",
+    "title": "Little Green",
+    "dur": "3:25"
+   },
+   {
+    "pos": "A4",
+    "title": "Carey",
+    "dur": "3:00"
+   },
+   {
+    "pos": "A5",
+    "title": "Blue",
+    "dur": "3:00"
+   },
+   {
+    "pos": "B1",
+    "title": "California",
+    "dur": "3:48"
+   },
+   {
+    "pos": "B2",
+    "title": "This Flight Tonight",
+    "dur": "2:50"
+   },
+   {
+    "pos": "B3",
+    "title": "River",
+    "dur": "4:00"
+   },
+   {
+    "pos": "B4",
+    "title": "A Case Of You",
+    "dur": "4:20"
+   },
+   {
+    "pos": "B5",
+    "title": "The Last Time I Saw Richard",
+    "dur": "4:13"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Joni Mitchell",
+    "id": 90233,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1971,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-14",
   "artist": "Fleetwood Mac",
   "title": "Rumours",
-  "catno": null,
+  "catno": "36.020",
   "genres": [
    "Rock"
   ],
@@ -418,53 +1755,215 @@
   "for_sale": true,
   "notes": null,
   "year": 1977,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Warner Bros. Records",
+  "cover_url": "https://i.discogs.com/ltXwYRIGpy5C40q9GCoDdf3aM3bXNCY1eEV03VzVl_c/rs:fit/g:sm/q:90/h:597/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTMxNTMy/ODgtMTcyMzIxOTE3/NS0xMjY2LmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/97FbwPDL8Z5jd_uFpPHx4yboxGRbRwVZz_5nyudynlY/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTMxNTMy/ODgtMTcyMzIxOTE3/NS0xMjY2LmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 3153288,
+  "discogs_url": "https://www.discogs.com/release/3153288-Fleetwood-Mac-Rumours",
+  "master_id": 38722,
   "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-15",
-  "artist": "Stevie Wonder",
-  "title": "Songs In The Key Of Life",
-  "catno": null,
-  "genres": [
-   "Soul",
-   "Funk"
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Second Hand News",
+    "dur": "2:43",
+    "by": "Lindsey Buckingham"
+   },
+   {
+    "pos": "A2",
+    "title": "Dreams",
+    "dur": "4:14",
+    "by": "Stevie Nicks"
+   },
+   {
+    "pos": "A3",
+    "title": "Never Going Back Again",
+    "dur": "2:02",
+    "by": "Lindsey Buckingham"
+   },
+   {
+    "pos": "A4",
+    "title": "Don't Stop",
+    "dur": "3:11",
+    "by": "Christine McVie"
+   },
+   {
+    "pos": "A5",
+    "title": "Go Your Own Way",
+    "dur": "3:38",
+    "by": "Lindsey Buckingham"
+   },
+   {
+    "pos": "A6",
+    "title": "Songbird",
+    "dur": "3:20",
+    "by": "Christine McVie"
+   },
+   {
+    "pos": "B1",
+    "title": "The Chain",
+    "dur": "4:28",
+    "by": "Christine McVie, John McVie, Lindsey Buckingham, Mick Fleetwood, Stevie Nicks"
+   },
+   {
+    "pos": "B2",
+    "title": "You Make Loving Fun",
+    "dur": "3:31",
+    "by": "Christine McVie"
+   },
+   {
+    "pos": "B3",
+    "title": "I Don't Want To Know",
+    "dur": "3:11",
+    "by": "Stevie Nicks"
+   },
+   {
+    "pos": "B4",
+    "title": "Oh Daddy",
+    "dur": "3:54",
+    "by": "Christine McVie"
+   },
+   {
+    "pos": "B5",
+    "title": "Gold Dust Woman",
+    "dur": "4:51",
+    "by": "Stevie Nicks"
+   }
   ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1976,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
+  "credits": [
+   {
+    "name": "Fleetwood Mac",
+    "id": 47333,
+    "roles": [
+     "Producer"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "John McVie",
+    "id": 273840,
+    "roles": [
+     "Bass",
+     "Written-By"
+    ],
+    "tracks": [
+     "B1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Mick Fleetwood",
+    "id": 273841,
+    "roles": [
+     "Drums",
+     "Percussion",
+     "Written-By"
+    ],
+    "tracks": [
+     "B1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Lindsey Buckingham",
+    "id": 264436,
+    "roles": [
+     "Guitar",
+     "Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A3",
+     "A5",
+     "B1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Christine McVie",
+    "id": 205020,
+    "roles": [
+     "Keyboards",
+     "Synthesizer",
+     "Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A4",
+     "A6",
+     "B1",
+     "B2",
+     "B4"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Stevie Nicks",
+    "id": 13735,
+    "roles": [
+     "Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A2",
+     "B1",
+     "B3",
+     "B5"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Ken Caillat",
+    "id": 257502,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Richard Dashut",
+    "id": 257503,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Chris Morris",
+    "id": 338783,
+    "roles": [
+     "Assistant Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1977,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-16",
   "artist": "Marvin Gaye",
   "title": "What's Going On",
-  "catno": null,
+  "catno": "TS-310",
   "genres": [
    "Soul"
   ],
@@ -473,138 +1972,1083 @@
   "for_sale": false,
   "notes": null,
   "year": 1971,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Tamla",
+  "cover_url": "https://i.discogs.com/LvyK57HH33FJ9EITwXekKQGpXQUL8rOTHtpeCpxj-1E/rs:fit/g:sm/q:90/h:600/w:587/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTY2Njc5/OTctMTY2Nzc4MDQw/OC03NzIzLmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/ZuEklXaekCIH2lXFvwVy5zgoLlEjiM2xbbMSM89ZDgg/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTY2Njc5/OTctMTY2Nzc4MDQw/OC03NzIzLmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 6667997,
+  "discogs_url": "https://www.discogs.com/release/6667997-Marvin-Gaye-Whats-Going-On",
+  "master_id": 66631,
   "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-17",
-  "artist": "The Beach Boys",
-  "title": "Pet Sounds",
-  "catno": null,
-  "genres": [
-   "Pop",
-   "Rock"
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "What's Going On",
+    "dur": "3:51",
+    "by": "Al Cleveland, Marvin Gaye, Renaldo Benson"
+   },
+   {
+    "pos": "A2",
+    "title": "What's Happening Brother",
+    "dur": "2:57",
+    "by": "James Nyx, Marvin Gaye"
+   },
+   {
+    "pos": "A3",
+    "title": "Flyin' High (In The Friendly Sky)",
+    "dur": "3:40",
+    "by": "Marvin Gaye"
+   },
+   {
+    "pos": "A4",
+    "title": "Save The Children",
+    "dur": "3:04",
+    "by": "Al Cleveland, Marvin Gaye, Renaldo Benson"
+   },
+   {
+    "pos": "A5",
+    "title": "God Is Love",
+    "dur": "2:31",
+    "by": "Anna Gordy Gaye, Elgie Stover, James Nyx, Marvin Gaye"
+   },
+   {
+    "pos": "A6",
+    "title": "Mercy Mercy Me (The Ecology)",
+    "dur": "3:05",
+    "by": "Marvin Gaye"
+   },
+   {
+    "pos": "B1",
+    "title": "Right On",
+    "dur": "7:20",
+    "by": "Earl DeRouen, Marvin Gaye"
+   },
+   {
+    "pos": "B2",
+    "title": "Wholy Holy",
+    "dur": "3:20",
+    "by": "Al Cleveland, Marvin Gaye, Renaldo Benson"
+   },
+   {
+    "pos": "B3",
+    "title": "Inner City Blues (Make Me Wanna Holler)",
+    "dur": "5:16",
+    "by": "James Nyx, Marvin Gaye"
+   }
   ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1966,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-18",
-  "artist": "Joy Division",
-  "title": "Unknown Pleasures",
-  "catno": null,
-  "genres": [
-   "Rock",
-   "Post-Punk"
+  "credits": [
+   {
+    "name": "Marvin Gaye",
+    "id": 18984,
+    "roles": [
+     "Liner Notes",
+     "Piano",
+     "Producer",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A3",
+     "A4",
+     "A5",
+     "A6",
+     "B1",
+     "B2",
+     "B3"
+    ],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Angelo Carlisi",
+    "id": 421428,
+    "roles": [
+     "Alto Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Elgie Stover",
+    "id": 270444,
+    "roles": [
+     "Backing Vocals",
+     "Written-By"
+    ],
+    "tracks": [
+     "A5"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Lem Barney",
+    "id": 633615,
+    "roles": [
+     "Backing Vocals"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Mel Farr",
+    "id": 633620,
+    "roles": [
+     "Backing Vocals"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Robert Rogers",
+    "id": 405402,
+    "roles": [
+     "Backing Vocals"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "The Andantes",
+    "id": 330878,
+    "roles": [
+     "Backing Vocals"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Tate Houston",
+    "id": 323467,
+    "roles": [
+     "Baritone Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Bob Babbitt",
+    "id": 211616,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "James Jamerson",
+    "id": 211637,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Max Janowsky",
+    "id": 633619,
+    "roles": [
+     "String Bass Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Earl DeRouen",
+    "id": 350769,
+    "roles": [
+     "Bongos",
+     "Congas",
+     "Written-By"
+    ],
+    "tracks": [
+     "B1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Eddie \"Bongo\" Brown",
+    "id": 319198,
+    "roles": [
+     "Bongos",
+     "Congas"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Johnny Griffith",
+    "id": 177794,
+    "roles": [
+     "Celeste Celesta"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Edward Korkigian",
+    "id": 396361,
+    "roles": [
+     "Cello"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Italo Babini",
+    "id": 396350,
+    "roles": [
+     "Cello"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Thaddeus Markiewicz",
+    "id": 396363,
+    "roles": [
+     "Cello"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "David Van DePitte",
+    "id": 331070,
+    "roles": [
+     "Conductor",
+     "Arranged By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Chet Forest",
+    "id": 633621,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Dayna Hartwick",
+    "id": 422270,
+    "roles": [
+     "Flute"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "William Perich",
+    "id": 633617,
+    "roles": [
+     "Flute"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Joe Messina",
+    "id": 387424,
+    "roles": [
+     "Guitar"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Robert White",
+    "id": 295915,
+    "roles": [
+     "Guitar"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Carole Crosby",
+    "id": 396351,
+    "roles": [
+     "Harp"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jack Ashford",
+    "id": 377626,
+    "roles": [
+     "Percussion",
+     "Tambourine"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Eli Fontaine",
+    "id": 296361,
+    "roles": [
+     "Soloist",
+     "Alto Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "William \"Wild Bill\" Moore",
+    "id": 421420,
+    "roles": [
+     "Soloist",
+     "Tenor Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Larry Nozero",
+    "id": 253149,
+    "roles": [
+     "Soprano Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "George Benson",
+    "id": 638309,
+    "roles": [
+     "Tenor Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Carl Raetz",
+    "id": 421441,
+    "roles": [
+     "Trombone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Johnny Trudell",
+    "id": 421427,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Maurice Davis",
+    "id": 387418,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jack Brokensha",
+    "id": 387421,
+    "roles": [
+     "Vibes Vibraphone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "David Ireland",
+    "id": 396359,
+    "roles": [
+     "Viola"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Edouard Kesner",
+    "id": 396371,
+    "roles": [
+     "Viola"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Meyer Shapiro",
+    "id": 396364,
+    "roles": [
+     "Viola"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Nathan Gordon",
+    "id": 396355,
+    "roles": [
+     "Viola"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Alvin Score",
+    "id": 396368,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Beatriz Budinzky",
+    "id": 396358,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Felix Resnick",
+    "id": 396366,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Gordon Staples",
+    "id": 389103,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "James Waring",
+    "id": 396357,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Lillian Downs",
+    "id": 396370,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Richard Margitza",
+    "id": 396352,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Virginia Halfmann",
+    "id": 396354,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Zinovi Bistritzky",
+    "id": 396369,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Curtis McNair",
+    "id": 1755728,
+    "roles": [
+     "Art Direction"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Tom Schlesinger",
+    "id": 1755727,
+    "roles": [
+     "Graphic Supervision Artwork"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Ed Wolfrum",
+    "id": 404194,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Don Holden",
+    "id": 523021,
+    "roles": [
+     "Lacquer Cut By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Jim Hendin",
+    "id": 2220034,
+    "roles": [
+     "Photography By (Front And Rear Cover)"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "The Gaye And Gordy Family Archives",
+    "id": 2219970,
+    "roles": [
+     "Inside Montage Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Al Cleveland",
+    "id": 391755,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A4",
+     "B2"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Renaldo Benson",
+    "id": 270445,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A4",
+     "B2"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "James Nyx",
+    "id": 270442,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A2",
+     "A5",
+     "B3"
+    ],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Anna Gordy Gaye",
+    "id": 623953,
+    "roles": [
+     "Written-By"
+    ],
+    "tracks": [
+     "A5"
+    ],
+    "leader": false,
+    "kind": "credit"
+   }
   ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1979,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1971,
+  "to_wash_since": "2026-11-02T00:00:00Z",
+  "washed_at": null
  },
  {
   "id": "demo-19",
   "artist": "Frank Zappa",
   "title": "Hot Rats",
-  "catno": null,
+  "catno": "RS6356",
   "genres": [
    "Rock",
    "Jazz"
   ],
   "crates": [],
   "status": "owned",
-  "for_sale": false,
-  "notes": null,
+  "for_sale": true,
+  "notes": "Light ring wear, plays clean.",
   "year": 1969,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Bizarre Records",
+  "cover_url": "https://i.discogs.com/O16gA6SBcfG2zou4Olbahokx9EQT0gmrUNmln3H1dVs/rs:fit/g:sm/q:90/h:596/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIwODI2/MDE5LTE3NTUxMTYw/MTktNzg1NC5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/COaxSuVdmTwLCcPWL9a9c4LITY_H5jYq61cDGIfUtjI/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIwODI2/MDE5LTE3NTUxMTYw/MTktNzg1NC5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 20826019,
+  "discogs_url": "https://www.discogs.com/release/20826019-Frank-Zappa-Hot-Rats",
+  "master_id": 35600,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Peaches En Regalia",
+    "dur": "3:58"
+   },
+   {
+    "pos": "A2",
+    "title": "Willie The Pimp",
+    "dur": "9:25"
+   },
+   {
+    "pos": "A3",
+    "title": "Son Of Mr. Green Genes",
+    "dur": "8:58"
+   },
+   {
+    "pos": "B1",
+    "title": "Little Umbrellas",
+    "dur": "3:09"
+   },
+   {
+    "pos": "B2",
+    "title": "The Gumbo Variations",
+    "dur": "12:55"
+   },
+   {
+    "pos": "B3",
+    "title": "It Must Be A Camel",
+    "dur": "5:18"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Frank Zappa",
+    "id": 92623,
+    "roles": [
+     "Guitar",
+     "Octave Bass",
+     "Percussion",
+     "Producer",
+     "Composed By",
+     "Arranged By",
+     "Directed By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Max Bennett",
+    "id": 253204,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [
+     "A2 to B3"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Shuggie Otis",
+    "id": 5493,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [
+     "A1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "John Guerin",
+    "id": 253201,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [
+     "A2",
+     "B1",
+     "B3"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Paul Humphrey",
+    "id": 244728,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [
+     "A3",
+     "B2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Ron Selico",
+    "id": 253202,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [
+     "A1"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Captain Beefheart",
+    "id": 119009,
+    "roles": [
+     "Lead Vocals"
+    ],
+    "tracks": [
+     "A2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Ian Underwood",
+    "id": 253203,
+    "roles": [
+     "Piano",
+     "Organ",
+     "Flute",
+     "Clarinet",
+     "Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Don \"Sugarcane\" Harris",
+    "id": 253205,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [
+     "A2",
+     "B2"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Jean-Luc Ponty",
+    "id": 220594,
+    "roles": [
+     "Violin"
+    ],
+    "tracks": [
+     "B3"
+    ],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Cal Schenkel",
+    "id": 574497,
+    "roles": [
+     "Cover Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "John Williams",
+    "id": 1827674,
+    "roles": [
+     "Interior Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Brian Ingoldsby",
+    "id": 431375,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Cliff Goldstein",
+    "id": 911630,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Dick Kunc",
+    "id": 411863,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Jack Hunt",
+    "id": 423502,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Herb Cohen",
+    "id": 673064,
+    "roles": [
+     "Management (Master Of Bizarre Business)"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1969,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-20",
-  "artist": "J.S. Bach, Glenn Gould",
+  "artist": "Johann Sebastian Bach, Glenn Gould",
   "title": "The Goldberg Variations",
-  "catno": null,
+  "catno": "1P 7613",
   "genres": [
    "Classical"
   ],
-  "crates": [],
+  "crates": [
+   "Late night"
+  ],
   "status": "owned",
   "for_sale": false,
   "notes": null,
-  "year": 1956,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "year": 1982,
+  "label": "CBS Masterworks Digital",
+  "cover_url": "https://i.discogs.com/pnkELWpVlQ7aksHk7et8f97U1iJXgRopO-rI2b3NE0A/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI2MzU5/MTAtMTI5NDM0NTIx/NC5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/iC2FF4p_QxQ2KrfxThV3nrhXG8GLjCNz1qrPXrgW8fA/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTI2MzU5/MTAtMTI5NDM0NTIx/NC5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 2635910,
+  "discogs_url": "https://www.discogs.com/release/2635910-Bach-Glenn-Gould-The-Goldberg-Variations",
+  "master_id": 48325,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A",
+    "title": "Aria & Variations 1-15",
+    "dur": "24:14"
+   },
+   {
+    "pos": "B",
+    "title": "Variations 16-30 & Aria",
+    "dur": "27:06"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Johann Sebastian Bach",
+    "id": 95537,
+    "roles": [
+     "Composed By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Glenn Gould",
+    "id": 517160,
+    "roles": [
+     "Piano",
+     "Produced By Producer"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Henrietta Condak",
+    "id": 723685,
+    "roles": [
+     "Cover Design Design"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "John Johnson",
+    "id": 466433,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Marty Greenblatt",
+    "id": 425816,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Ray Moore",
+    "id": 384856,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Stan Tonkel",
+    "id": 372225,
+    "roles": [
+     "Engineer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Don Hunstein",
+    "id": 1905443,
+    "roles": [
+     "Cover Photo Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Samuel H. Carter",
+    "id": 836830,
+    "roles": [
+     "Produced By Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Glenn Gould"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1982,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-21",
   "artist": "Nina Simone",
   "title": "Wild Is The Wind",
-  "catno": null,
+  "catno": "PHS 600-207",
   "genres": [
    "Jazz",
    "Soul"
@@ -614,52 +3058,103 @@
   "for_sale": false,
   "notes": null,
   "year": 1966,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Philips",
+  "cover_url": "https://i.discogs.com/7WcZUrwY-ReUTXh0rBS3go_nJ44JrsDm1_a4bD2cvP4/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg4MzI4/MjgtMTQ2OTcyMjM4/Ny04NDQ2LmpwZWc.jpeg",
+  "thumb_url": "https://i.discogs.com/zqoetX8jkDEZ9Wbfapuc4LFiIUsutEurTlrwWCtoF4s/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTg4MzI4/MjgtMTQ2OTcyMjM4/Ny04NDQ2LmpwZWc.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 8832828,
+  "discogs_url": "https://www.discogs.com/release/8832828-Nina-Simone-Wild-Is-The-Wind",
+  "master_id": 122235,
   "price": null,
-  "tracks": [],
-  "credits": [],
-  "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
- },
- {
-  "id": "demo-22",
-  "artist": "Kraftwerk",
-  "title": "Trans-Europe Express",
-  "catno": null,
-  "genres": [
-   "Electronic"
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "I Love Your Lovin' Ways",
+    "dur": "2:35"
+   },
+   {
+    "pos": "A2",
+    "title": "Four Women",
+    "dur": "4:20"
+   },
+   {
+    "pos": "A3",
+    "title": "Lilac Wine (From \"Dance Me A Song\")",
+    "dur": "4:14"
+   },
+   {
+    "pos": "A4",
+    "title": "Break Down And Let It All Out",
+    "dur": "2:45"
+   },
+   {
+    "pos": "A5",
+    "title": "Either Way I Lose",
+    "dur": "2:44"
+   },
+   {
+    "pos": "B1",
+    "title": "Why Keep On Breakin My Heart",
+    "dur": "2:30"
+   },
+   {
+    "pos": "B2",
+    "title": "Wild Is The Wind",
+    "dur": "6:53"
+   },
+   {
+    "pos": "B3",
+    "title": "Black Is The Color Of My True Love's Hair",
+    "dur": "3:25"
+   },
+   {
+    "pos": "B4",
+    "title": "If I Should Lose You",
+    "dur": "3:55"
+   }
   ],
-  "crates": [],
-  "status": "owned",
-  "for_sale": false,
-  "notes": null,
-  "year": 1977,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
-  "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
+  "credits": [
+   {
+    "name": "Nina Simone",
+    "id": 10584,
+    "roles": [],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Sid Mark",
+    "id": 1852887,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Hal Mooney",
+    "id": 166629,
+    "roles": [
+     "Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1966,
+  "to_wash_since": null,
+  "washed_at": "2026-09-27T00:00:00Z"
  },
  {
   "id": "demo-23",
   "artist": "Eric Dolphy",
   "title": "Out To Lunch!",
-  "catno": null,
+  "catno": "BLP 4163",
   "genres": [
    "Jazz"
   ],
@@ -668,16 +3163,157 @@
   "for_sale": false,
   "notes": null,
   "year": 1964,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Blue Note",
+  "cover_url": "https://i.discogs.com/TAWjuJpsdFawde0ecV9tNfZMKBgYJa1-nd5Siuxm3WQ/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEwOTA2/NTQ0LTE1MDYzMDIy/MDMtMzE5NC5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/g9FKjpWR4KgMRnFbq5zyS8llOb6K6-KTHT0UdAlSz-s/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEwOTA2/NTQ0LTE1MDYzMDIy/MDMtMzE5NC5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
-  "price": null,
-  "tracks": [],
-  "credits": [],
+  "discogs_id": 10906544,
+  "discogs_url": "https://www.discogs.com/release/10906544-Eric-Dolphy-Out-To-Lunch",
+  "master_id": 64167,
+  "price": {
+   "value": 175,
+   "currency": "USD",
+   "for_sale": 4,
+   "release": 10906544,
+   "vinyl": true,
+   "format": "Vinyl, Album, Mono, LP, Non-DG version",
+   "checked_at": "2026-11-22T01:18:53.426Z"
+  },
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Hat And Beard",
+    "dur": "8:24",
+    "by": "Eric Dolphy"
+   },
+   {
+    "pos": "A2",
+    "title": "Something Sweet, Something Tender",
+    "dur": "6:02",
+    "by": "Eric Dolphy"
+   },
+   {
+    "pos": "A3",
+    "title": "Gazzelloni",
+    "dur": "7:22",
+    "by": "Eric Dolphy"
+   },
+   {
+    "pos": "B1",
+    "title": "Out To Lunch",
+    "dur": "12:06",
+    "by": "Eric Dolphy"
+   },
+   {
+    "pos": "B2",
+    "title": "Straight Up And Down",
+    "dur": "8:19",
+    "by": "Eric Dolphy"
+   }
+  ],
+  "credits": [
+   {
+    "name": "Eric Dolphy",
+    "id": 145272,
+    "roles": [
+     "Alto Saxophone",
+     "Flute",
+     "Bass Clarinet",
+     "Written By",
+     "Written-By"
+    ],
+    "tracks": [
+     "A1",
+     "A2",
+     "A3",
+     "B1",
+     "B2"
+    ],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Richard Davis",
+    "id": 263441,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Anthony Williams",
+    "id": 261295,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Freddie Hubbard",
+    "id": 55745,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Bobby Hutcherson",
+    "id": 29968,
+    "roles": [
+     "Vibraphone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Reid Miles",
+    "id": 490780,
+    "roles": [
+     "Cover Design",
+     "Cover Photo Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Alfred Bennett Spellman, Jr.",
+    "id": 1647719,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Alfred Lion",
+    "id": 252962,
+    "roles": [
+     "Producer"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Rudy Van Gelder",
+    "id": 252966,
+    "roles": [
+     "Recording By Recorded By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Eric Dolphy",
    "Freddie Hubbard",
@@ -685,14 +3321,17 @@
    "Richard Davis",
    "Tony Williams"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1964,
+  "to_wash_since": null,
+  "washed_at": null
  },
  {
   "id": "demo-24",
   "artist": "Andrew Hill",
   "title": "Point Of Departure",
-  "catno": null,
+  "catno": "BLP 4167",
   "genres": [
    "Jazz"
   ],
@@ -701,16 +3340,138 @@
   "for_sale": false,
   "notes": null,
   "year": 1965,
-  "label": null,
-  "cover_url": null,
-  "thumb_url": null,
+  "label": "Blue Note",
+  "cover_url": "https://i.discogs.com/uGIWVPKfAa7_5FsBY40ZW0PaeboJCGraZb7o5fWZA7g/rs:fit/g:sm/q:90/h:600/w:600/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIxMDgw/ODctMTMyNzM2MDk2/NS5qcGVn.jpeg",
+  "thumb_url": "https://i.discogs.com/cyrxvtLHrYn2POxhPjaSAD_kGP-L_Ve5jay03d5uS3A/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTIxMDgw/ODctMTMyNzM2MDk2/NS5qcGVn.jpeg",
   "cover_locked": false,
-  "discogs_id": null,
-  "discogs_url": null,
-  "master_id": null,
+  "discogs_id": 2108087,
+  "discogs_url": "https://www.discogs.com/release/2108087-Andrew-Hill-Point-Of-Departure",
+  "master_id": 140559,
   "price": null,
-  "tracks": [],
-  "credits": [],
+  "tracks": [
+   {
+    "pos": "A1",
+    "title": "Refuge",
+    "dur": ""
+   },
+   {
+    "pos": "A2",
+    "title": "New Monastery",
+    "dur": ""
+   },
+   {
+    "pos": "B1",
+    "title": "Spectrum",
+    "dur": ""
+   },
+   {
+    "pos": "B2",
+    "title": "Flight 19",
+    "dur": ""
+   },
+   {
+    "pos": "B3",
+    "title": "Dedication",
+    "dur": ""
+   }
+  ],
+  "credits": [
+   {
+    "name": "Andrew Hill",
+    "id": 61584,
+    "roles": [
+     "Piano",
+     "Written-By"
+    ],
+    "tracks": [],
+    "leader": true,
+    "kind": "musician"
+   },
+   {
+    "name": "Eric Dolphy",
+    "id": 145272,
+    "roles": [
+     "Alto Saxophone",
+     "Flute",
+     "Bass Clarinet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Richard Davis",
+    "id": 263441,
+    "roles": [
+     "Bass"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Anthony Williams",
+    "id": 261295,
+    "roles": [
+     "Drums"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Joe Henderson",
+    "id": 10079,
+    "roles": [
+     "Tenor Saxophone"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Kenny Dorham",
+    "id": 254945,
+    "roles": [
+     "Trumpet"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "musician"
+   },
+   {
+    "name": "Reid Miles",
+    "id": 490780,
+    "roles": [
+     "Cover Design",
+     "Cover Photo Photography By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Rudy Van Gelder",
+    "id": 252966,
+    "roles": [
+     "Lacquer Cut By",
+     "Recorded By"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   },
+   {
+    "name": "Nat Hentoff",
+    "id": 332791,
+    "roles": [
+     "Liner Notes"
+    ],
+    "tracks": [],
+    "leader": false,
+    "kind": "credit"
+   }
+  ],
   "personnel_hint": [
    "Andrew Hill",
    "Kenny Dorham",
@@ -719,7 +3480,10 @@
    "Richard Davis",
    "Tony Williams"
   ],
-  "enrich_status": "pending",
-  "created_at": "2026-01-01T00:00:00Z"
+  "enrich_status": "matched",
+  "created_at": "2026-01-01T00:00:00Z",
+  "original_year": 1965,
+  "to_wash_since": null,
+  "washed_at": null
  }
 ]

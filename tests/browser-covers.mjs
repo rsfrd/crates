@@ -164,7 +164,7 @@ await shot("c02-cover-options");
 await p.click('.cover-opt:has-text("1974, Japan")');
 await p.waitForTimeout(300);
 check((await p.getAttribute(".thumb.large img", "src")) === "/t/d.png", "picked image becomes the cover");
-check(JSON.parse(await p.evaluate(() => localStorage.getItem("crate.demo.v1"))).find((r) => r.title.startsWith("The Black Saint")).cover_locked === true, "chosen cover is locked");
+check(JSON.parse(await p.evaluate(() => localStorage.getItem("crate.demo.v2"))).find((r) => r.title.startsWith("The Black Saint")).cover_locked === true, "chosen cover is locked");
 
 // refresh details must keep the chosen cover
 await p.click("#refresh"); await p.waitForTimeout(400);

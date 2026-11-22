@@ -100,7 +100,7 @@ await p.goto(BASE); await p.waitForSelector(".row");
 check((await p.textContent("#crate")).includes(`Japanese (${inCrate + 1})`), "crate count includes the new record, after reload");
 
 // pick for me
-const owned = () => p.evaluate(() => JSON.parse(localStorage.getItem("crate.demo.v1")).filter((r) => r.status === "owned"));
+const owned = () => p.evaluate(() => JSON.parse(localStorage.getItem("crate.demo.v2")).filter((r) => r.status === "owned"));
 await p.goto(BASE); await p.waitForSelector(".row");
 const fp = await p.locator(".fab-pick").boundingBox(), fa = await p.locator('a.fab[href="#/add"]').boundingBox();
 check(fp.x + fp.width > 390 / 2 && fp.x + fp.width < fa.x && fa.x - (fp.x + fp.width) < 60, `shuffle button sits just left of Add (${Math.round(fa.x - fp.x - fp.width)}px gap)`);
