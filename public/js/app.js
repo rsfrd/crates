@@ -1703,6 +1703,7 @@ function renderTools() {
         <button class="list-row" id="export"><span><strong>Download a copy</strong><span>Get a CSV of all your albums, with tracks, personnel and notes</span></span>${ICON.download}</button>
         <button class="list-row" id="backup"><span><strong>Download a backup</strong><span>A complete copy that restores everything exactly (JSON)</span></span>${ICON.download}</button>
         <a class="list-row" href="#/import/backup" data-import><span><strong>Restore from a backup</strong><span>Bring back albums from a backup file</span></span>${ICON.upload}</a>
+        ${MAKE_DEMO && state.store.canEnrich ? `<button class="list-row" id="make-demo"><span><strong>Make demo data</strong><span>Looks up the demo albums on Discogs and downloads demo.json</span></span>${ICON.download}</button>` : ""}
         ${mode === "live" ? `<button class="list-row" id="signout"><span><strong>Sign out</strong></span>${ICON.signout}</button>` : ""}
       </div>`)}
     </div>`, "tools");
@@ -1714,6 +1715,7 @@ function renderTools() {
   panel.querySelector("#stop")?.addEventListener("click", () => { state.enrich.stop = true; state.enrich.note = "Stopping…"; renderOverlay(); });
   panel.querySelector("#export").addEventListener("click", exportCSV);
   panel.querySelector("#backup").addEventListener("click", exportBackup);
+  panel.querySelector("#make-demo")?.addEventListener("click", (e) => makeDemoData(e.currentTarget));
   panel.querySelector("#prices-all")?.addEventListener("click", () => runQueue(priceable(), (a) => checkPrice(a, true, true), "Prices updated"));
   panel.querySelectorAll("[data-crate-open]").forEach((b) => b.addEventListener("click", () => { state.crate = b.dataset.crateOpen; state.genre = ""; setQuery(""); }));
   panel.querySelectorAll("[data-crate-rename]").forEach((b) => b.addEventListener("click", () => renameCrate(b.dataset.crateRename)));
@@ -1785,6 +1787,38 @@ async function enrichOnce(a) {
   const patch = r.release ? releasePatch(a, r.release, r.status) : { enrich_status: "not_found" };
   await updateAlbum(a.id, patch);
   return r.rateRemaining;
+}
+
+// TEMPORARY: "?makedemo" adds a row to the Collection page that fills demo.json's sample albums
+// with Discogs details (covers, tracks, personnel, years, want-list prices). Remove once demo.json is updated.
+const MAKE_DEMO = new URLSearchParams(location.search).has("makedemo");
+async function makeDemoData(btn) {
+  const label = btn.querySelector("strong");
+  btn.disabled = true;
+  try {
+    const sample = await (await fetch("demo.json", { cache: "no-store" })).json();
+    const out = [];
+    for (const [i, d] of sample.entries()) {
+      label.textContent = `Looking up ${i + 1} of ${sample.length}…`;
+      const row = { ...d };
+      try {
+        const r = await politeApi({ op: "match", artist: d.artist, title: d.title, catno: d.catno || "" });
+        if (r?.release) {
+          Object.assign(row, releasePatch(d, r.release, r.status), { master_id: r.release.master_id ?? null, original_year: r.release.original_year ?? null });
+          if (row.status === "want" && row.discogs_id) {
+            const p = await politeApi({ op: "price", id: row.discogs_id, master: row.master_id ? "0" : "1", fmt: "1" });
+            if (p?.price) row.price = { value: p.price.value, currency: p.price.currency, for_sale: p.price.for_sale, release: row.discogs_id, vinyl: p.price.vinyl ?? null, format: p.price.format || null, checked_at: new Date().toISOString() };
+          }
+        } else row.enrich_status = r ? "not_found" : "error";
+      } catch (e) { row.enrich_status = "error"; row._error = e.message; }
+      out.push(row);
+      await sleep(1500);
+    }
+    download("demo.json", JSON.stringify(out, null, 1), "application/json");
+    label.textContent = "Downloaded demo.json";
+  } catch (e) {
+    label.textContent = "Make demo data"; toast(e.message);
+  } finally { btn.disabled = false; }
 }
 
 async function lookUpBandcamp(a, url) {
