@@ -2,7 +2,7 @@
 
 This is Garage Crates, a record collection app that makes it easy to keep track of the albums you own, want to buy, want to sell, and need to wash. You can get started quickly by importing from Discogs, uploading a CSV, or adding your records one by one — all you need is most of the artist and most of the title and the app will look up the rest through the Discogs API.
 
-<img width="135" alt="IMG_5601" src="https://github.com/user-attachments/assets/bbd2a528-f02b-4195-96d7-aa59d8791b7a" />
+<img width="135" alt="IMG_5601" src="https://github.com/user-attachments/assets/a193816b-180a-49b5-aa7a-ca6174225b68" />
 <img width="135" alt="IMG_5602" src="https://github.com/user-attachments/assets/da9df22c-8922-41eb-9b08-36e9d21ccbe8" />
 <img width="135" alt="IMG_5603" src="https://github.com/user-attachments/assets/64c84d1a-7e66-47b4-8136-46e264c0a5e1" />
 <img width="135" alt="IMG_5604" src="https://github.com/user-attachments/assets/a9e4c05c-201e-447d-bf67-ced057185cbf" />
