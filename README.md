@@ -2,10 +2,12 @@
 
 This is Garage Crates, a record collection app that makes it easy to keep track of the albums you own, want to buy, want to sell, and need to wash. You can get started quickly by importing from Discogs, uploading a CSV, or adding your records one by one — all you need is most of the artist and most of the title and the app will look up the rest through the Discogs API.
 
-<img width="178" height="320" alt="IMG_5597 Small" src="https://github.com/user-attachments/assets/0cd6639a-1868-4304-a510-11d01e0250bf" />
-<img width="179" height="320" alt="IMG_5598 Small" src="https://github.com/user-attachments/assets/a9ffdd62-2c1d-4ed0-80d5-06824dd1ca62" />
-<img width="179" height="320" alt="IMG_5599 Small" src="https://github.com/user-attachments/assets/349958fd-ccb0-47b3-b79b-c801a9f572b6" />
-<img width="182" height="320" alt="IMG_5600 Small" src="https://github.com/user-attachments/assets/91a21788-6e2f-4c7d-97dd-31ec29086209" />
+<img width="200" alt="IMG_5601" src="https://github.com/user-attachments/assets/56b13be3-834d-4888-bd8a-05116af0a815" />
+<img width="200" alt="IMG_5602" src="https://github.com/user-attachments/assets/050420b5-aab7-42d2-9199-6df91632d507" />
+<img width="200" alt="IMG_5603" src="https://github.com/user-attachments/assets/5c8676de-0471-450c-90e9-4f515d0127e7" />
+<img width="200" alt="IMG_5604" src="https://github.com/user-attachments/assets/96e2b987-fdac-49b4-a213-927cc3341c70" />
+<img width="200" alt="IMG_5605" src="https://github.com/user-attachments/assets/4d4c0384-d40a-4900-8d37-da12b793dd2e" />
+
 <br><br>
 
 I found myself flipping through bins in record stores trying to remember whether I already had the title I was looking at and this was the solution. It's also handy for when you're listening, don't have the sleeve nearby and want to know the name of a track or who's playing on it.  It runs on the free tier of Netlify and Supabase, so you can take it anywhere. 
