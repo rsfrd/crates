@@ -132,7 +132,7 @@ The pieces are in [`aws/`](aws/): `template.yaml` (all the AWS resources, using 
 4. **Deploy**: **Actions → Deploy to AWS → Run workflow**, or push to `main`. The first run takes 10–20 minutes while CloudFront and the certificate are created. The run's summary shows the address.
 5. **Tell Supabase about the new address** if you sign in by email link: **Authentication → URL Configuration**, add it to the redirect URLs.
 
-If you move an existing Netlify site to AWS, stop builds on the Netlify site afterwards (**Project configuration → Build & deploy → Continuous deployment → Build settings → Configure**, then set **Build status** to **Stopped builds**) so pushes don't use Netlify credits.
+If you move an existing Netlify site to AWS, stop builds on the Netlify site afterwards (**Project configuration → Developer settings → Continuous deployment → Build settings → Configure**, then set **Build status** to **Stopped builds**) so pushes don't use Netlify credits.
 
 ---
 
