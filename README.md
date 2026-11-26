@@ -120,17 +120,31 @@ When you pull in a newer version of this project, run any update files you haven
 | `008_original_year.sql` | the year each album first came out; records pick it up the next time their details are fetched or refreshed |
 | `009_wash_queue.sql` | the wash queue |
 
+## Run it on your own AWS (optional)
+
+Netlify is the easy way and runs this well on its free plan. If you already use AWS, the same repository can deploy there instead: the site on S3 behind CloudFront, and the same server functions on one Lambda at `/api/*`. The database stays on Supabase either way. Every push to `main` deploys, and it costs a few cents a month or less.
+
+The pieces are in [`aws/`](aws/): `template.yaml` (all the AWS resources, using AWS SAM), `lambda/handler.mjs` (hands each request to the functions in `netlify/functions`, so both hosts run the same code), and `bootstrap/github-deploy-role.yaml`. The deploy itself is [`.github/workflows/deploy-aws.yml`](.github/workflows/deploy-aws.yml), which does nothing until you add the secrets below.
+
+1. **Let GitHub deploy to your account.** In the AWS console, open CloudFormation in the region you want (the workflow uses **us-east-2** unless you set an `AWS_REGION` variable). Choose **Create stack → With new resources**, upload `aws/bootstrap/github-deploy-role.yaml`, and name it `crates-github-deploy`. Set the GitHub owner, repository and their numeric IDs to your own (`api.github.com/repos/<owner>/<repo>` shows both). If the account already deploys another app from GitHub this way, set **CreateOidcProvider** to `false`. Tick the IAM acknowledgement, create it, and copy **RoleArn** from the Outputs tab.
+2. **Add repository secrets** in GitHub (**Settings → Secrets and variables → Actions → New repository secret**): `AWS_ROLE_ARN` (from step 1), `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `DISCOGS_TOKEN` (the same three values as the Netlify setup).
+3. **Optional custom address.** If the domain's hosted zone is in Route 53, add a repository *variable* `SITE_DOMAIN`, e.g. `crates.example.org`. The workflow requests the certificate and points the address at CloudFront. Without it, the site gets a `cloudfront.net` address.
+4. **Deploy**: **Actions → Deploy to AWS → Run workflow**, or push to `main`. The first run takes 10–20 minutes while CloudFront and the certificate are created. The run's summary shows the address.
+5. **Tell Supabase about the new address** if you sign in by email link: **Authentication → URL Configuration**, add it to the redirect URLs.
+
+If you move an existing Netlify site to AWS, stop builds on the Netlify site afterwards (**Site configuration → Build & deploy → Stop builds**) so pushes don't use Netlify credits.
+
 ---
 
 ## Good to know
 
 - **Netlify's free plan** gives 300 credits a month, and every deploy to your live site costs 15. Updates whose description includes `[skip netlify]` don't deploy.
-- **Supabase pauses idle free projects** after about a week. A small daily ping (`netlify/functions/keepalive.mjs`) prevents that. If it ever does pause, the app still opens with the copy saved on your phone; restore the project from the Supabase dashboard.
+- **Supabase pauses idle free projects** after about a week. A small daily ping (`netlify/functions/keepalive.mjs`, run on a schedule by Netlify or AWS) prevents that. If it ever does pause, the app still opens with the copy saved on your phone; restore the project from the Supabase dashboard.
 - **Personnel follows Discogs.** Classic jazz releases usually have full credits with instruments; some rock and newer releases only list the band. Credits are per pressing, so if a match picked a reissue with thin credits, **Fix match** to the original.
 - **Prices** are Discogs' lowest listed price for the matched pressing, before shipping. A want matched to a CD or other non-vinyl pressing gets no price; it shows under **Needs a look** so you can Fix match to the LP. Discogs' API doesn't share individual listings, so seller ratings and shipping are on Discogs when you follow the links.
 - **Your own covers** are kept in a Supabase Storage folder called `covers`, and a cover you choose is never replaced by a refresh.
 - **Backups**: on the Collection page, **Download a copy** gives a CSV of every album with its tracks, personnel and notes, to read in any spreadsheet (it also imports back in as a spreadsheet). **Download a backup** saves everything exactly as stored (JSON), and **Restore from a backup** brings back any albums from it that aren't in your collection, with nothing to fetch again. Your own cover photos stay in Supabase Storage; the backup keeps their links.
-- **Keys**: nothing secret lives in this repository. Your Supabase and Discogs settings are Netlify environment variables. The Supabase anon key is designed to be public; your data is protected by sign-in and the database rules in `setup.sql`.
+- **Keys**: nothing secret lives in this repository. Your Supabase and Discogs settings are Netlify environment variables (or GitHub secrets, on AWS). The Supabase anon key is designed to be public; your data is protected by sign-in and the database rules in `setup.sql`.
 
 ## What's in here
 
@@ -149,6 +163,8 @@ netlify/functions/       small server functions (the site owner only)
   config.mjs             hands the site its Supabase settings
   keepalive.mjs          daily ping so Supabase doesn't pause
 netlify/lib/             the logic behind those, plus the owner check
+aws/                     optional AWS hosting: SAM template, Lambda wrapper, GitHub deploy role
+.github/workflows/       deploy-aws.yml (runs only when AWS secrets are set)
 supabase/setup.sql       everything a new site's database needs
 supabase/updates/        updates for copies set up before a feature existed
 tests/                   node --test tests/*.test.mjs; browser walkthroughs: node tests/browser*.mjs <folder>

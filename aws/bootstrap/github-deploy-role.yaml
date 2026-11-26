@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  One-time setup for running Garage Crates on AWS. Lets GitHub Actions in one repo deploy to this
+  AWS account using short-lived credentials (OpenID Connect), so no AWS keys are ever stored in GitHub.
+  Deploy this once from the CloudFormation console, then copy the RoleArn output into GitHub.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: rsfrd
+    Description: Your GitHub user or organisation name
+  GitHubRepo:
+    Type: String
+    Default: crates
+    Description: Repository name only, without the owner
+  GitHubOwnerId:
+    Type: String
+    Default: "4387787"
+    Description: Numeric ID of the GitHub owner (api.github.com/users/<owner> -> id)
+  GitHubRepoId:
+    Type: String
+    Default: "1450832735"
+    Description: Numeric ID of the repository (api.github.com/repos/<owner>/<repo> -> id)
+  CreateOidcProvider:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Choose false if this AWS account already has the token.actions.githubusercontent.com identity provider (for example from another app's setup).
+
+Conditions:
+  MakeProvider: !Equals [!Ref CreateOidcProvider, "true"]
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${GitHubRepo}-github-deploy"
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                # Only runs on main in this one repo can deploy. Newer repos identify themselves with
+                # permanent IDs (owner@id/repo@id); older ones use plain names. Accept both.
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:ref:refs/heads/main"
+                  - !Sub "repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/main"
+      # Broad on purpose for a personal account: the stack creates IAM roles, a bucket, CloudFront and Lambda.
+      # The trust policy above is what keeps it locked to your repo's main branch.
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+Outputs:
+  RoleArn:
+    Description: Paste this into GitHub as the AWS_ROLE_ARN secret
+    Value: !GetAtt DeployRole.Arn

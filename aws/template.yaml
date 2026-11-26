@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Garage Crates on AWS - the site on S3 behind CloudFront, the server functions (Discogs, images, Bandcamp)
+  on one Lambda at /api/*. The database stays on Supabase. Deployed by .github/workflows/deploy-aws.yml.
+
+Parameters:
+  SupabaseUrl:
+    Type: String
+    Description: Supabase project URL (Supabase -> Project Settings -> API)
+  SupabaseAnonKey:
+    Type: String
+    NoEcho: true
+    Description: Supabase anon / publishable key (NOT the service role key)
+  DiscogsToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Discogs personal access token
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Optional custom address, e.g. crates.example.org
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: us-east-1 ACM certificate for DomainName (the deploy workflow requests it)
+  HostedZoneId:
+    Type: String
+    Default: ""
+    Description: Route 53 hosted zone that DomainName belongs to
+
+Conditions:
+  WithDomain: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Not [!Equals [!Ref CertificateArn, ""]]
+    - !Not [!Equals [!Ref HostedZoneId, ""]]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 512
+    CodeUri: .build/
+    Environment:
+      Variables:
+        SUPABASE_URL: !Ref SupabaseUrl
+        SUPABASE_ANON_KEY: !Ref SupabaseAnonKey
+        DISCOGS_TOKEN: !Ref DiscogsToken
+
+Resources:
+  # ---------- server functions ----------
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Timeout: 28            # CloudFront waits 30 seconds for an answer
+      FunctionUrlConfig:
+        AuthType: NONE       # the functions check the Supabase sign-in themselves
+
+  KeepAliveFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.keepalive
+      Timeout: 20
+      Events:
+        Daily:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 day)
+            RetryPolicy:
+              MaximumRetryAttempts: 1
+
+  # ---------- site ----------
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SiteOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-site"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Same security headers netlify.toml sets.
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-headers"
+        SecurityHeadersConfig:
+          FrameOptions: { FrameOption: DENY, Override: true }
+          ReferrerPolicy: { ReferrerPolicy: no-referrer, Override: true }
+
+  # Never caches (no TTL), but includes the sign-in header so CloudFront passes it to the functions:
+  # CloudFront drops Authorization on GET requests unless the cache policy names it.
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-api"
+        DefaultTTL: 0
+        MinTTL: 0
+        MaxTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: false
+          EnableAcceptEncodingBrotli: false
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers: [Authorization]
+          QueryStringsConfig:
+            QueryStringBehavior: all
+          CookiesConfig:
+            CookieBehavior: none
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${AWS::StackName} - Garage Crates"
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Aliases: !If [WithDomain, [!Ref DomainName], !Ref AWS::NoValue]
+        ViewerCertificate: !If
+          - WithDomain
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref AWS::NoValue
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !Ref SiteOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+          - Id: api
+            # https://abc123.lambda-url.us-east-2.on.aws/  ->  abc123.lambda-url.us-east-2.on.aws
+            DomainName: !Select [2, !Split ["/", !GetAtt ApiFunctionUrl.FunctionUrl]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              OriginReadTimeout: 30
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          # Managed-CachingDisabled: small files, and the app's service worker does the caching
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: !Ref ApiCachePolicy
+            # Managed-AllViewerExceptHostHeader: query string and headers, but the function URL's own host
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !Ref SecurityHeaders
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CloudFrontReadsSite
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  # crates.example.org -> CloudFront (Z2FDTNDATAQYW2 is CloudFront's fixed hosted zone id)
+  DomainRecordA:
+    Type: AWS::Route53::RecordSet
+    Condition: WithDomain
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+  DomainRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Condition: WithDomain
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+Outputs:
+  SiteUrl:
+    Description: Open this to use Garage Crates
+    Value: !If [WithDomain, !Sub "https://${DomainName}", !Sub "https://${Distribution.DomainName}"]
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  DistributionId:
+    Value: !Ref Distribution

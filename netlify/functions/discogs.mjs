@@ -16,7 +16,7 @@ export default async (req) => {
   const p = new URL(req.url).searchParams;
   const op = p.get("op");
   const token = process.env.DISCOGS_TOKEN;
-  if (!token && op !== "images") return json({ error: "DISCOGS_TOKEN is not set in Netlify" }, 500);
+  if (!token && op !== "images") return json({ error: "DISCOGS_TOKEN is not set on the server" }, 500);
   const client = token ? makeClient(token) : null;
   try {
     let body;

@@ -1,0 +1,161 @@
+name: Deploy to AWS
+
+# Optional. Netlify users can ignore this: it only runs when the AWS_ROLE_ARN secret is set
+# (see "Run it on your own AWS" in the README). Without it, every run just skips.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # for AWS OIDC
+  contents: read
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-2' }}
+  STACK_NAME: ${{ vars.STACK_NAME || 'crates' }}
+  # Custom address, e.g. crates.example.org. Leave unset to use the cloudfront.net address.
+  # Its hosted zone must already exist in Route 53.
+  SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check setup
+        id: ready
+        env:
+          ROLE: ${{ secrets.AWS_ROLE_ARN }}
+          SUPA: ${{ secrets.SUPABASE_URL }}
+          ANON: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "::notice::Skipping AWS deploy: no AWS_ROLE_ARN secret (Netlify sites don't need one)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SUPA" ] || [ -z "$ANON" ]; then
+            echo "::error::Add the SUPABASE_URL and SUPABASE_ANON_KEY repository secrets (see README)."
+            exit 1
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.ok == 'true'
+        with:
+          node-version: 22
+
+      - name: Unit tests
+        if: steps.ready.outputs.ok == 'true'
+        run: node --test tests/*.test.mjs
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.ready.outputs.ok == 'true'
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/setup-sam@v2
+        if: steps.ready.outputs.ok == 'true'
+        with:
+          use-installer: true
+
+      - name: Clear a failed first attempt
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          # A stack whose very first create rolled back can't be updated; it has to be deleted first.
+          status=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo NONE)
+          echo "Current stack status: $status"
+          if [ "$status" = "ROLLBACK_COMPLETE" ]; then
+            aws cloudformation delete-stack --stack-name "$STACK_NAME"
+            aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
+          fi
+
+      - name: Certificate for the custom domain (us-east-1)
+        if: steps.ready.outputs.ok == 'true' && env.SITE_DOMAIN != ''
+        id: cert
+        run: |
+          # CloudFront certificates must live in us-east-1; ACM and Route 53 are driven directly so the
+          # stack itself can stay in your own region.
+          A="aws acm --region us-east-1"
+          zone_of() {  # hosted zone whose name is the longest suffix of $1
+            local d="$1" z=""
+            while [ -z "$z" ] && [[ "$d" == *.* ]]; do
+              z=$(aws route53 list-hosted-zones-by-name --dns-name "$d." --max-items 1 \
+                --query "HostedZones[?Name=='$d.'].Id | [0]" --output text | sed 's#/hostedzone/##; s/^None$//')
+              d="${d#*.}"
+            done; echo "$z"; }
+          find_cert() { $A list-certificates --certificate-statuses "$1" --output json \
+            | jq -r --arg d "$SITE_DOMAIN" '.CertificateSummaryList[] | select(((.SubjectAlternativeNameSummaries // [.DomainName]) | sort) == [$d]) | .CertificateArn' | head -1; }
+
+          zone=$(zone_of "$SITE_DOMAIN")
+          if [ -z "$zone" ]; then echo "::error::No Route 53 hosted zone found for $SITE_DOMAIN"; exit 1; fi
+          arn=$(find_cert ISSUED)
+          if [ -z "$arn" ]; then
+            arn=$(find_cert PENDING_VALIDATION)
+            [ -z "$arn" ] && arn=$($A request-certificate --domain-name "$SITE_DOMAIN" --validation-method DNS \
+              --idempotency-token crates --query CertificateArn --output text)
+            for i in $(seq 1 20); do
+              rec=$($A describe-certificate --certificate-arn "$arn" --output json | jq -c '.Certificate.DomainValidationOptions[0].ResourceRecord // empty')
+              [ -n "$rec" ] && break; sleep 3
+            done
+            aws route53 change-resource-record-sets --hosted-zone-id "$zone" --change-batch \
+              "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$(echo "$rec" | jq -r .Name)\",\"Type\":\"CNAME\",\"TTL\":300,\"ResourceRecords\":[{\"Value\":\"$(echo "$rec" | jq -r .Value)\"}]}}]}" >/dev/null
+            echo "Waiting for the certificate to be issued..."
+            $A wait certificate-validated --certificate-arn "$arn"
+          fi
+          echo "zone=$zone" >> "$GITHUB_OUTPUT"
+          echo "arn=$arn" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy infrastructure and server functions
+        if: steps.ready.outputs.ok == 'true'
+        env:
+          CERT_ARN: ${{ steps.cert.outputs.arn }}
+          ZONE_ID: ${{ steps.cert.outputs.zone }}
+        run: |
+          bash aws/build.sh
+          params=(SupabaseUrl="${{ secrets.SUPABASE_URL }}" SupabaseAnonKey="${{ secrets.SUPABASE_ANON_KEY }}" DiscogsToken="${{ secrets.DISCOGS_TOKEN }}")
+          if [ -n "$CERT_ARN" ]; then
+            params+=(DomainName="$SITE_DOMAIN" CertificateArn="$CERT_ARN" HostedZoneId="$ZONE_ID")
+          fi
+          sam deploy \
+            --template-file aws/template.yaml \
+            --stack-name "$STACK_NAME" \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "${params[@]}"
+
+      - name: Read stack outputs
+        if: steps.ready.outputs.ok == 'true'
+        id: out
+        run: |
+          get() { aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text | sed 's/^None$//'; }
+          echo "bucket=$(get SiteBucketName)" >> "$GITHUB_OUTPUT"
+          echo "dist=$(get DistributionId)" >> "$GITHUB_OUTPUT"
+          echo "url=$(get SiteUrl)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload site
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          B="s3://${{ steps.out.outputs.bucket }}"
+          aws s3 sync public/ "$B/" --delete --cache-control "no-cache" --exclude ".*"
+          # types S3 doesn't guess on its own
+          aws s3 cp public/manifest.webmanifest "$B/manifest.webmanifest" --content-type "application/manifest+json" --cache-control "no-cache"
+
+      - name: Refresh CloudFront
+        if: steps.ready.outputs.ok == 'true'
+        run: aws cloudfront create-invalidation --distribution-id "${{ steps.out.outputs.dist }}" --paths "/*" >/dev/null
+
+      - name: Summary
+        if: steps.ready.outputs.ok == 'true'
+        run: echo "Garage Crates is live at ${{ steps.out.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"

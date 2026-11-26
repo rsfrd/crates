@@ -1,6 +1,9 @@
-# Never commit keys: Supabase and Discogs settings belong in Netlify's environment variables.
+# Never commit keys: Supabase and Discogs settings belong in Netlify's environment variables (or GitHub secrets for AWS).
 .env
 .env.*
 .netlify/
 node_modules/
 .DS_Store
+
+# Lambda bundle made by aws/build.sh
+aws/.build/
