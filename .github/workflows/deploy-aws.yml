@@ -22,6 +22,9 @@ env:
   # Custom address, e.g. crates.example.org. Leave unset to use the cloudfront.net address.
   # Its hosted zone must already exist in Route 53.
   SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+  # More addresses for the same site (space-separated), e.g. crates.example.dev. Each needs a Route 53
+  # hosted zone in this account. They go live once one certificate covering all of them is issued.
+  EXTRA_DOMAINS: ${{ vars.EXTRA_DOMAINS }}
 
 jobs:
   deploy:
@@ -78,7 +81,7 @@ jobs:
             aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
           fi
 
-      - name: Certificate for the custom domain (us-east-1)
+      - name: Certificate for the custom domains (us-east-1)
         if: steps.ready.outputs.ok == 'true' && env.SITE_DOMAIN != ''
         id: cert
         run: |
@@ -92,38 +95,84 @@ jobs:
                 --query "HostedZones[?Name=='$d.'].Id | [0]" --output text | sed 's#/hostedzone/##; s/^None$//')
               d="${d#*.}"
             done; echo "$z"; }
-          find_cert() { $A list-certificates --certificate-statuses "$1" --output json \
-            | jq -r --arg d "$SITE_DOMAIN" '.CertificateSummaryList[] | select(((.SubjectAlternativeNameSummaries // [.DomainName]) | sort) == [$d]) | .CertificateArn' | head -1; }
+          upsert() {  # zone name type value
+            aws route53 change-resource-record-sets --hosted-zone-id "$1" --change-batch \
+              "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$2\",\"Type\":\"$3\",\"TTL\":300,\"ResourceRecords\":[{\"Value\":\"$4\"}]}}]}" >/dev/null; }
+          # a certificate in state $1 whose names are exactly the remaining arguments
+          find_cert() { local st="$1"; shift; local want; want=$(printf '%s\n' "$@" | sort | jq -R . | jq -sc .)
+            $A list-certificates --certificate-statuses "$st" --output json \
+              | jq -r --argjson w "$want" '.CertificateSummaryList[] | select(((.SubjectAlternativeNameSummaries // [.DomainName]) | sort) == $w) | .CertificateArn' | head -1; }
+          validate_records() {  # write the DNS validation CNAMEs for cert $1 (with $2 names) into each name's zone
+            local recs="[]"
+            for i in $(seq 1 20); do
+              recs=$($A describe-certificate --certificate-arn "$1" --output json | jq -c '[(.Certificate.DomainValidationOptions // [])[] | select(.ResourceRecord) | {d:.DomainName,n:.ResourceRecord.Name,v:.ResourceRecord.Value}]')
+              [ "$(echo "$recs" | jq length)" -ge "$2" ] && break; sleep 3
+            done
+            echo "$recs" | jq -c '.[]' | while read -r r; do
+              z=$(zone_of "$(echo "$r" | jq -r .d)")
+              if [ -n "$z" ]; then upsert "$z" "$(echo "$r" | jq -r .n)" CNAME "$(echo "$r" | jq -r .v)"; fi
+            done; }
 
           zone=$(zone_of "$SITE_DOMAIN")
           if [ -z "$zone" ]; then echo "::error::No Route 53 hosted zone found for $SITE_DOMAIN"; exit 1; fi
-          arn=$(find_cert ISSUED)
+          extras=(); extra_zones=()
+          for x in $EXTRA_DOMAINS; do
+            z=$(zone_of "$x")
+            if [ -z "$z" ]; then echo "::warning::No Route 53 hosted zone for $x yet; skipping it."; continue; fi
+            extras+=("$x"); extra_zones+=("$x=$z")
+          done
+
+          arn=""; live_extras=""
+          if [ ${#extras[@]} -gt 0 ]; then
+            arn=$(find_cert ISSUED "$SITE_DOMAIN" "${extras[@]}")
+            if [ -n "$arn" ]; then
+              live_extras=$(IFS=,; echo "${extras[*]}")
+            else
+              # One certificate covering every address. It issues on its own once each domain's DNS is
+              # live; until then the site keeps serving SITE_DOMAIN alone, and the next run switches over.
+              p=$(find_cert PENDING_VALIDATION "$SITE_DOMAIN" "${extras[@]}")
+              if [ -z "$p" ]; then
+                p=$($A request-certificate --domain-name "$SITE_DOMAIN" --subject-alternative-names "${extras[@]}" \
+                  --validation-method DNS --idempotency-token cratesall$(date +%y%m%d) --query CertificateArn --output text)
+              fi
+              validate_records "$p" $((1 + ${#extras[@]}))
+              echo "Waiting up to ~10 minutes for the certificate covering ${extras[*]}..."
+              if timeout 600 $A wait certificate-validated --certificate-arn "$p"; then
+                arn="$p"; live_extras=$(IFS=,; echo "${extras[*]}")
+              else
+                echo "::notice::Certificate for ${extras[*]} is still waiting on DNS; serving $SITE_DOMAIN only. Re-run this workflow once it issues."
+              fi
+            fi
+          fi
           if [ -z "$arn" ]; then
-            arn=$(find_cert PENDING_VALIDATION)
-            [ -z "$arn" ] && arn=$($A request-certificate --domain-name "$SITE_DOMAIN" --validation-method DNS \
-              --idempotency-token crates --query CertificateArn --output text)
-            for i in $(seq 1 20); do
-              rec=$($A describe-certificate --certificate-arn "$arn" --output json | jq -c '.Certificate.DomainValidationOptions[0].ResourceRecord // empty')
-              [ -n "$rec" ] && break; sleep 3
-            done
-            aws route53 change-resource-record-sets --hosted-zone-id "$zone" --change-batch \
-              "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$(echo "$rec" | jq -r .Name)\",\"Type\":\"CNAME\",\"TTL\":300,\"ResourceRecords\":[{\"Value\":\"$(echo "$rec" | jq -r .Value)\"}]}}]}" >/dev/null
-            echo "Waiting for the certificate to be issued..."
-            $A wait certificate-validated --certificate-arn "$arn"
+            arn=$(find_cert ISSUED "$SITE_DOMAIN")
+            if [ -z "$arn" ]; then
+              arn=$(find_cert PENDING_VALIDATION "$SITE_DOMAIN")
+              [ -z "$arn" ] && arn=$($A request-certificate --domain-name "$SITE_DOMAIN" --validation-method DNS \
+                --idempotency-token crates --query CertificateArn --output text)
+              validate_records "$arn" 1
+              echo "Waiting for the certificate to be issued..."
+              $A wait certificate-validated --certificate-arn "$arn"
+            fi
           fi
           echo "zone=$zone" >> "$GITHUB_OUTPUT"
           echo "arn=$arn" >> "$GITHUB_OUTPUT"
+          echo "aliases=$live_extras" >> "$GITHUB_OUTPUT"
+          [ -n "$live_extras" ] && echo "extra_zones=${extra_zones[*]}" >> "$GITHUB_OUTPUT"
+          true
 
       - name: Deploy infrastructure and server functions
         if: steps.ready.outputs.ok == 'true'
         env:
           CERT_ARN: ${{ steps.cert.outputs.arn }}
           ZONE_ID: ${{ steps.cert.outputs.zone }}
+          ALIASES: ${{ steps.cert.outputs.aliases }}
         run: |
           bash aws/build.sh
           params=(SupabaseUrl="${{ secrets.SUPABASE_URL }}" SupabaseAnonKey="${{ secrets.SUPABASE_ANON_KEY }}" DiscogsToken="${{ secrets.DISCOGS_TOKEN }}")
           if [ -n "$CERT_ARN" ]; then
             params+=(DomainName="$SITE_DOMAIN" CertificateArn="$CERT_ARN" HostedZoneId="$ZONE_ID")
+            [ -n "$ALIASES" ] && params+=(ExtraAliases="$ALIASES")
           fi
           sam deploy \
             --template-file aws/template.yaml \
@@ -142,7 +191,24 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text | sed 's/^None$//'; }
           echo "bucket=$(get SiteBucketName)" >> "$GITHUB_OUTPUT"
           echo "dist=$(get DistributionId)" >> "$GITHUB_OUTPUT"
+          echo "distdomain=$(get DistributionDomain)" >> "$GITHUB_OUTPUT"
           echo "url=$(get SiteUrl)" >> "$GITHUB_OUTPUT"
+
+      - name: DNS records for the extra addresses
+        if: steps.ready.outputs.ok == 'true' && steps.cert.outputs.extra_zones != '' && steps.out.outputs.distdomain != ''
+        env:
+          EXTRA_ZONES: ${{ steps.cert.outputs.extra_zones }}
+          TARGET: ${{ steps.out.outputs.distdomain }}
+        run: |
+          # Z2FDTNDATAQYW2 is CloudFront's fixed hosted zone id for alias records
+          for pair in $EXTRA_ZONES; do
+            name="${pair%%=*}"; zone="${pair#*=}"
+            for type in A AAAA; do
+              aws route53 change-resource-record-sets --hosted-zone-id "$zone" --change-batch \
+                "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$name\",\"Type\":\"$type\",\"AliasTarget\":{\"HostedZoneId\":\"Z2FDTNDATAQYW2\",\"DNSName\":\"$TARGET\",\"EvaluateTargetHealth\":false}}}]}" >/dev/null
+            done
+            echo "$name -> $TARGET"
+          done
 
       - name: Upload site
         if: steps.ready.outputs.ok == 'true'
